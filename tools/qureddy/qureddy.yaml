@@ -10,6 +10,11 @@ description: >
   relevant quantum computer exists. The result is a CycloneDX 1.7 cryptographic bill of
   materials (CBOM) you can archive, diff across scans, and carry into compliance evidence.
   A full scan probes several handshakes, so it usually takes 30 seconds to 2 minutes.
+brand:
+  product: "BreachSAFE QuReddy"
+  version: "0.2.12"
+  url: "https://www.breachsafe.ai"
+  repo: "https://github.com/breachsafe/qureddy"
 inputs:
   - name: host
     type: text

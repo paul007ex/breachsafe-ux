@@ -20,6 +20,19 @@ from breachsafe_wizard.brand import THEME, CSS, BRAND
 DESCS = load_descriptors()
 _LOGO = ROOT / "assets" / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
+# Header brand comes from the primary standalone tool (this deployment fronts one tool).
+_HDR = next((d["brand"] for d in DESCS.values() if d.get("standalone") is not False and d.get("brand")), None) \
+    or {"product": "BreachSAFE Wizard", "version": "0.1.0", "url": "https://www.breachsafe.ai", "repo": ""}
+_LICENSE = "Source-available, PolyForm Noncommercial 1.0.0"
+def _link(u, t):
+    return f'<a href="{u}" target="_blank" rel="noopener" style="color:#0ba0b6;text-decoration:none">{t}</a>' if u else t
+# lucide icons, the same set EnXemble uses (ISC). SVGs use currentColor so they inherit the badge colour.
+_ICON_DIR = ROOT / "assets" / "icons"
+def _svg(name, px=20):
+    p = _ICON_DIR / f"{name}.svg"
+    return p.read_text().replace('width="24" height="24"', f'width="{px}" height="{px}" style="vertical-align:middle"') if p.exists() else ""
+_STATUS_SVG = {"valid": _svg("shield-check"), "invalid": _svg("circle-x"), "unavailable": _svg("triangle-alert"), "none": ""}
+_ICON = {"run": str(_ICON_DIR / "scan.svg"), "convert": str(_ICON_DIR / "arrow-right.svg")}
 
 _HEAD = {"valid": "VALID", "invalid": "INVALID",
          "unavailable": "VALIDATOR UNAVAILABLE", "none": "NO EXTERNAL VALIDATOR"}
@@ -32,7 +45,8 @@ _BUSY_LABEL = "Running..."
 def _badge(state, detail, hi=(), raw=""):
     """Render the honest 3-state verdict. Never emits green markup for a non-`valid` state."""
     color = _COLOR.get(state, "#b45309")
-    head = f'<span style="color:{color};font-weight:800">{_HEAD.get(state, state.upper())}</span>'
+    head = (f'<span style="color:{color};font-weight:800;display:inline-flex;align-items:center;gap:8px">'
+            f'{_STATUS_SVG.get(state, "")}{_HEAD.get(state, state.upper())}</span>')
     body = f"\n\n{detail}" if detail else ""
     h = "\n".join(f"- **{x['label']}:** `{x['value']}`" for x in hi)
     md = f"### {head}{body}" + (f"\n\n{h}" if h else "")
@@ -132,9 +146,11 @@ def build():
         with gr.Row(equal_height=True):
             with gr.Column(scale=8):
                 gr.HTML(f'<div class="brandbar" style="display:flex;align-items:center;gap:14px">{img}'
-                        f'<div><div style="font-size:22px;font-weight:800">{BRAND["name"]} '
-                        f'<span style="color:#16c7d8">Wizard</span></div>'
-                        f'<div style="color:#64748b;font-size:12px">{BRAND["tagline"]}</div></div></div>')
+                        f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{_HDR["product"]} '
+                        f'<span style="color:#16c7d8">v{_HDR["version"]}</span></div>'
+                        f'<div style="color:#64748b;font-size:12px">'
+                        f'{_link(_HDR["url"], "breachsafe.ai")} &nbsp;&middot;&nbsp; '
+                        f'{_link(_HDR["repo"], "GitHub")} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>')
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
         # class-based dark mode, like EnXemble (next-themes .dark). Toggles the theme's _dark tokens.
@@ -162,7 +178,7 @@ def build():
                 for spec in desc.get("inputs", []):
                     ordered.append(next(adv_iter) if spec.get("group") == "advanced" else next(basic_iter))
 
-                run_btn = gr.Button(_RUN_LABEL.format(id=did), variant="primary")
+                run_btn = gr.Button(_RUN_LABEL.format(id=did), variant="primary", icon=_ICON["run"])
                 badge = gr.Markdown(_empty(desc))
                 dl = gr.DownloadButton("Download output", visible=False)
                 with gr.Accordion("Raw log", open=False):
@@ -178,7 +194,7 @@ def build():
                  .then(lambda d=did: _idle(d), None, run_btn))
 
                 for chain in desc.get("chains", []):
-                    cbtn = gr.Button(chain.get("label", chain["to"]), variant="secondary")
+                    cbtn = gr.Button(chain.get("label", chain["to"]), variant="secondary", icon=_ICON["convert"])
                     cbadge = gr.Markdown()
                     cdl = gr.DownloadButton("Download output", visible=False)
                     with gr.Accordion(f"{chain['to']} raw log", open=False):
@@ -193,11 +209,10 @@ def build():
                            None, cbtn))
         gr.HTML(
             '<div class="bs-footer">'
-            f'<span>{BRAND["company"]} {BRAND["product"]}</span>'
-            f'<a href="{BRAND["url"]}" target="_blank" rel="noopener">breachsafe.ai</a>'
-            f'<a href="{BRAND["repo"]}" target="_blank" rel="noopener">GitHub</a>'
-            f'<span>Advisory AI: {BRAND["ai"]}</span>'
-            '<span>Source-available, PolyForm Noncommercial 1.0.0</span></div>')
+            f'<span>{_HDR["product"]} v{_HDR["version"]}</span>'
+            f'{_link(_HDR["url"], "breachsafe.ai")}'
+            f'{_link(_HDR["repo"], "GitHub")}'
+            f'<span>{_LICENSE}</span></div>')
     return demo
 
 
@@ -205,7 +220,7 @@ def main():
     demo = build()
     demo.queue()  # required so gr.Progress + concurrency work for long-running scans
     # Gradio 6.0 moved theme/css from the Blocks constructor to launch().
-    demo.launch(theme=THEME, css=CSS,
+    demo.launch(theme=THEME, css=CSS, allowed_paths=[str(_ICON_DIR)],
                 server_name="127.0.0.1", server_port=int(os.environ.get("WIZARD_PORT", "7860")))
 
 
