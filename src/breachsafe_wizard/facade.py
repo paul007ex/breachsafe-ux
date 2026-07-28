@@ -16,10 +16,18 @@ RUN_ROOT = Path(os.environ.get("WIZARD_RUN_ROOT", os.path.expanduser("~/mint-pro
 _TOK = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
+def _tools_dir() -> Path:
+    """The descriptor root. A host package (e.g. qureddy) points here via WIZARD_TOOLS_DIR
+    so the wizard renders that package's own tools instead of the bundled examples (W-1/W-2).
+    Read at call time — never bound at import — so setting the env before launch is enough."""
+    d = os.environ.get("WIZARD_TOOLS_DIR")
+    return Path(d) if d else TOOLS
+
+
 def load_descriptors() -> dict:
-    """Discover every tools/<name>/<name>.yaml, ordered by `order` then id."""
+    """Discover every <tools_dir>/<name>/<name>.yaml, ordered by `order` then id."""
     ds = []
-    for y in sorted(TOOLS.glob("*/*.yaml")):
+    for y in sorted(_tools_dir().glob("*/*.yaml")):
         d = yaml.safe_load(y.read_text())
         d["_dir"] = str(y.parent)
         ds.append(d)
@@ -28,7 +36,21 @@ def load_descriptors() -> dict:
 
 
 def _bin_path() -> str:
-    return os.pathsep.join(str(p) for p in TOOLS.glob("*/bin"))
+    return os.pathsep.join(str(p) for p in _tools_dir().glob("*/bin"))
+
+
+def tool_available(desc: dict) -> bool:
+    """Best-effort: can this descriptor's tool actually run here? Used to render an honest
+    chain-button state (W-5) rather than a dead button that always reports UNAVAILABLE."""
+    run = desc.get("run", {})
+    if run.get("image"):
+        return shutil.which("docker") is not None
+    base = run.get("base") or run.get("argv") or []
+    cmd = base[0] if base else None
+    if not cmd:
+        return True
+    path = f"{_bin_path()}{os.pathsep}{os.environ.get('PATH', '')}"
+    return shutil.which(cmd, path=path) is not None
 
 
 def _subst(argv: list[str], mapping: dict) -> list[str]:
@@ -72,6 +94,12 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     mapping = dict(params) | {"share": str(workdir), "workdir": str(workdir),
                               "artifact": str(artifact), "python": sys.executable}
     argv = _build_argv(desc, params, mapping)
+    if desc["run"].get("image"):
+        # Docker backend (W-3/W-4): the tool binary is the image ENTRYPOINT, so drop argv[0]
+        # (the tool name in run.base) and hand the rest to `docker run`. Pin images by @sha256;
+        # a stdout-artifact tool needs no mount (docker captures stdout). Missing docker ->
+        # FileNotFoundError below -> honest unavailable, never a false verdict.
+        argv = ["docker", "run", "--rm", desc["run"]["image"], *argv[1:]]
 
     try:
         proc = subprocess.run(argv, capture_output=True, text=True,

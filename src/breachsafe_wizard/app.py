@@ -14,15 +14,21 @@ import base64
 import os
 from pathlib import Path
 import gradio as gr
-from breachsafe_wizard.facade import load_descriptors, run_descriptor, ROOT
+from breachsafe_wizard.facade import load_descriptors, run_descriptor, tool_available, ROOT
 from breachsafe_wizard.brand import THEME, CSS, BRAND
 
-DESCS = load_descriptors()
+# Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
+# that sets WIZARD_TOOLS_DIR before calling main() gets its own tools rendered.
 _LOGO = ROOT / "assets" / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
-# Header brand comes from the primary standalone tool (this deployment fronts one tool).
-_HDR = next((d["brand"] for d in DESCS.values() if d.get("standalone") is not False and d.get("brand")), None) \
-    or {"product": "BreachSAFE Wizard", "version": "0.1.0", "url": "https://www.breachsafe.ai", "repo": ""}
+_HDR_DEFAULT = {"product": "BreachSAFE Wizard", "version": "0.1.0",
+                "url": "https://www.breachsafe.ai", "repo": ""}
+
+
+def _header_brand(descs):
+    # Header brand comes from the primary standalone tool (this deployment fronts one tool).
+    return next((d["brand"] for d in descs.values()
+                 if d.get("standalone") is not False and d.get("brand")), None) or _HDR_DEFAULT
 _LICENSE = "Source-available, PolyForm Noncommercial 1.0.0"
 def _link(u, t):
     return f'<a href="{u}" target="_blank" rel="noopener" style="color:#0ba0b6;text-decoration:none">{t}</a>' if u else t
@@ -118,8 +124,8 @@ def _handler(desc):
     return run
 
 
-def _chain_handler(chain):
-    target = DESCS[chain["to"]]
+def _chain_handler(chain, descs):
+    target = descs[chain["to"]]
 
     def run(artifact_path, progress=gr.Progress()):
         if not artifact_path:
@@ -141,22 +147,24 @@ def _idle(did):
 
 
 def build():
+    descs = load_descriptors()
+    hdr = _header_brand(descs)
     with gr.Blocks(title=BRAND["name"]) as demo:
         img = f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>' if _B64 else ""
         with gr.Row(equal_height=True):
             with gr.Column(scale=8):
                 gr.HTML(f'<div class="brandbar" style="display:flex;align-items:center;gap:14px">{img}'
-                        f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{_HDR["product"]} '
-                        f'<span style="color:#16c7d8">v{_HDR["version"]}</span></div>'
+                        f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{hdr["product"]} '
+                        f'<span style="color:#16c7d8">v{hdr["version"]}</span></div>'
                         f'<div style="color:#64748b;font-size:12px">'
-                        f'{_link(_HDR["url"], "breachsafe.ai")} &nbsp;&middot;&nbsp; '
-                        f'{_link(_HDR["repo"], "GitHub")} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>')
+                        f'{_link(hdr["url"], "breachsafe.ai")} &nbsp;&middot;&nbsp; '
+                        f'{_link(hdr["repo"], "GitHub")} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>')
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
         # class-based dark mode, like EnXemble (next-themes .dark). Toggles the theme's _dark tokens.
         theme_btn.click(fn=None, inputs=None, outputs=None,
                         js="() => { const el = document.querySelector('gradio-app') || document.body; el.classList.toggle('dark'); }")
-        for did, desc in DESCS.items():
+        for did, desc in descs.items():
             if desc.get("standalone") is False:
                 continue  # chain-only tool (e.g. mint-oscal): reached via a Convert button, not its own tab
             with gr.Tab(desc.get("title", did)):
@@ -194,7 +202,17 @@ def build():
                  .then(lambda d=did: _idle(d), None, run_btn))
 
                 for chain in desc.get("chains", []):
-                    cbtn = gr.Button(chain.get("label", chain["to"]), variant="secondary", icon=_ICON["convert"])
+                    target = descs.get(chain["to"])
+                    clabel = chain.get("label", chain["to"])
+                    if target is None or not tool_available(target):
+                        # W-5: honest, not a dead button. Disable it and say why it cannot run
+                        # (e.g. a qureddy-only [ui] install has no mint-oscal for OSCAL conversion).
+                        need = (target or {}).get("run", {}).get("base", [chain["to"]])[0]
+                        gr.Button(f"{clabel} (unavailable)", variant="secondary",
+                                  icon=_ICON["convert"], interactive=False)
+                        gr.Markdown(f"_Requires `{need}`, which is not installed in this deployment._")
+                        continue
+                    cbtn = gr.Button(clabel, variant="secondary", icon=_ICON["convert"])
                     cbadge = gr.Markdown()
                     cdl = gr.DownloadButton("Download output", visible=False)
                     with gr.Accordion(f"{chain['to']} raw log", open=False):
@@ -202,16 +220,16 @@ def build():
                     cout = gr.JSON(label=f"{chain['to']} output")
                     cstate = gr.State(None)
                     (cbtn.click(lambda: gr.update(value=_BUSY_LABEL, interactive=False), None, cbtn)
-                     .then(_chain_handler(chain), [artifact_state], [cbadge, cout, craw, cstate],
+                     .then(_chain_handler(chain, descs), [artifact_state], [cbadge, cout, craw, cstate],
                            show_progress="full", concurrency_limit=1)
                      .then(lambda p: gr.update(value=p, visible=bool(p)), cstate, cdl)
                      .then(lambda c=chain: gr.update(value=c.get("label", c["to"]), interactive=True),
                            None, cbtn))
         gr.HTML(
             '<div class="bs-footer">'
-            f'<span>{_HDR["product"]} v{_HDR["version"]}</span>'
-            f'{_link(_HDR["url"], "breachsafe.ai")}'
-            f'{_link(_HDR["repo"], "GitHub")}'
+            f'<span>{hdr["product"]} v{hdr["version"]}</span>'
+            f'{_link(hdr["url"], "breachsafe.ai")}'
+            f'{_link(hdr["repo"], "GitHub")}'
             f'<span>{_LICENSE}</span></div>')
     return demo
 
@@ -221,7 +239,8 @@ def main():
     demo.queue()  # required so gr.Progress + concurrency work for long-running scans
     # Gradio 6.0 moved theme/css from the Blocks constructor to launch().
     demo.launch(theme=THEME, css=CSS, allowed_paths=[str(_ICON_DIR)],
-                server_name="127.0.0.1", server_port=int(os.environ.get("WIZARD_PORT", "7860")))
+                server_name=os.environ.get("WIZARD_HOST", "127.0.0.1"),
+                server_port=int(os.environ.get("WIZARD_PORT", "7860")))
 
 
 if __name__ == "__main__":
