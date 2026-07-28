@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Config-driven, honest single-tool UX harness for BreachSAFE tools (one YAML per tool)"
 requires-python = ">=3.12"
 license = "PolyForm-Noncommercial-1.0.0"
-dependencies = ["gradio>=6", "pyyaml>=6", "cyclonedx-python-lib>=11,<12"]
+dependencies = ["gradio>=6", "pyyaml>=6", "cyclonedx-python-lib[json-validation]>=11,<12"]
 
 [project.scripts]
 breachsafe-wizard = "breachsafe_wizard.app:main"

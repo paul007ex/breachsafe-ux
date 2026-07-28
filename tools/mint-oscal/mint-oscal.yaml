@@ -1,9 +1,13 @@
 order: 2
 id: mint-oscal
-title: "mint-oscal — scan / CBOM → OSCAL POA&M"
+standalone: false   # reached via the QuReddy 'Convert to OSCAL' button, not its own tab
+title: "mint-oscal: scan or CBOM to OSCAL POA&M"
 description: >
-  Turn a QuReddy scan (scan.v1) or a CycloneDX CBOM into a NIST-validated OSCAL
-  Plan of Action & Milestones. The badge is the real oscal-cli verdict, not ours.
+  Turn a scan or a CBOM into audit-ready evidence. mint-oscal maps the cryptographic
+  findings into an OSCAL Plan of Action and Milestones, the format that assessors and GRC
+  tooling already consume, and checks it against the NIST oscal-cli so what you export is
+  provably well-formed. Upload a QuReddy scan or a CycloneDX CBOM, or reach this straight
+  from the QuReddy Convert to OSCAL button.
 inputs:
   - name: source
     type: enum

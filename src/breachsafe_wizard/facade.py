@@ -5,7 +5,7 @@ typed argv (no shell), runs the tool, runs its external validator, and derives a
 3-state badge (valid / invalid / validator-unavailable). Zero tool-specific logic lives here.
 """
 from __future__ import annotations
-import json, os, re, shutil, subprocess, uuid
+import json, os, re, shutil, subprocess, sys, uuid
 from pathlib import Path
 import yaml
 
@@ -45,6 +45,8 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     if "argv" in run:
         return _subst(run["argv"], mapping)
     argv = list(run.get("base", []))
+    if run.get("positional_from"):                      # compose one positional, e.g. "{host}:{port}"
+        argv.append(_subst([run["positional_from"]], mapping)[0])
     for spec in desc.get("inputs", []):
         v = params.get(spec["name"])
         if spec.get("positional"):
@@ -67,7 +69,8 @@ def run_descriptor(desc: dict, params: dict) -> dict:
 
     env = dict(os.environ)
     env["PATH"] = f"{_bin_path()}{os.pathsep}{env.get('PATH','')}"
-    mapping = dict(params) | {"share": str(workdir), "workdir": str(workdir), "artifact": str(artifact)}
+    mapping = dict(params) | {"share": str(workdir), "workdir": str(workdir),
+                              "artifact": str(artifact), "python": sys.executable}
     argv = _build_argv(desc, params, mapping)
 
     try:
@@ -98,7 +101,7 @@ def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
     if not v:
         return ("none", "no external validator declared")
     mapping = {"share": str(workdir), "workdir": str(workdir),
-               "artifact": str(artifact), "artifact_name": artifact.name}
+               "artifact": str(artifact), "artifact_name": artifact.name, "python": sys.executable}
     argv = _subst(v["argv"], mapping)
     if not shutil.which(argv[0]):
         return ("unavailable", f"validator '{argv[0]}' not installed")
@@ -126,10 +129,10 @@ def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
         return ("unavailable", "validator could not run (infrastructure)")
     if "pass_if" in rule and match(rule["pass_if"]):
         return ("valid", "validator accepted the artifact")
-    if "fail_if" in rule and match(rule["fail_if"]):
-        pass
     g = rule.get("fail_detail_grep")
     detail = "\n".join(l.strip() for l in text.splitlines() if g and g in l)[:1500] if g else ""
+    if "fail_if" in rule and match(rule["fail_if"]):
+        return ("invalid", detail or "validator rejected the artifact")
     return (rule.get("otherwise", "invalid"), detail or "validator ran; artifact not accepted")
 
 

@@ -21,19 +21,18 @@ DESCS = load_descriptors()
 _LOGO = ROOT / "assets" / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
 
-_ICON = {"valid": "✅", "invalid": "❌", "unavailable": "⚠️", "none": "➖"}
 _HEAD = {"valid": "VALID", "invalid": "INVALID",
          "unavailable": "VALIDATOR UNAVAILABLE", "none": "NO EXTERNAL VALIDATOR"}
-# colour is a REDUNDANT cue only — the icon + word already carry the state (WCAG 1.4.1).
+# No emoji (house rule). The word carries the state as text; colour is a redundant cue (WCAG 1.4.1).
 _COLOR = {"valid": "#0ba0b6", "invalid": "#b91c1c", "unavailable": "#b45309", "none": "#475569"}
-_RUN_LABEL = "▶ Run {id}"
-_BUSY_LABEL = "⏳ Running…"
+_RUN_LABEL = "Run {id}"
+_BUSY_LABEL = "Running..."
 
 
 def _badge(state, detail, hi=(), raw=""):
     """Render the honest 3-state verdict. Never emits green markup for a non-`valid` state."""
     color = _COLOR.get(state, "#b45309")
-    head = f'<span style="color:{color};font-weight:800">{_ICON.get(state, "⚠️")} {_HEAD.get(state, state.upper())}</span>'
+    head = f'<span style="color:{color};font-weight:800">{_HEAD.get(state, state.upper())}</span>'
     body = f"\n\n{detail}" if detail else ""
     h = "\n".join(f"- **{x['label']}:** `{x['value']}`" for x in hi)
     md = f"### {head}{body}" + (f"\n\n{h}" if h else "")
@@ -42,12 +41,10 @@ def _badge(state, detail, hi=(), raw=""):
 
 def _empty(desc):
     """Pre-run empty state: say what the tool does and what a result looks like (not blank)."""
-    vname = desc.get("validate", {}).get("argv", ["(none)"])[0]
-    return (f"### ⏳ Ready\nRun **{desc['id']}** to produce `{desc['run'].get('artifact_name', 'artifact.json')}`. "
-            f"The verdict below is the real result of an external validator "
-            f"(`{vname}`), reported honestly as one of "
-            f"**{_ICON['valid']} VALID / {_ICON['invalid']} INVALID / {_ICON['unavailable']} VALIDATOR-UNAVAILABLE** "
-            f"— never a fabricated green on an empty or failed run.")
+    return (f"### Ready\nRun **{desc['id']}** to produce `{desc['run'].get('artifact_name', 'artifact.json')}`. "
+            f"The verdict below is the real result of an external validator, reported honestly as one of "
+            f"**VALID / INVALID / VALIDATOR-UNAVAILABLE**. "
+            f"It is never a fabricated green on an empty or failed run.")
 
 
 def _widget(spec):
@@ -131,12 +128,21 @@ def _idle(did):
 
 def build():
     with gr.Blocks(title=BRAND["name"]) as demo:
-        img = f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>' if _B64 else "🛡️"
-        gr.HTML(f'<div class="brandbar" style="display:flex;align-items:center;gap:14px">{img}'
-                f'<div><div style="font-size:22px;font-weight:800">{BRAND["name"]} '
-                f'<span style="color:#16c7d8">Wizard</span></div>'
-                f'<div style="color:#64748b;font-size:12px">{BRAND["tagline"]}</div></div></div>')
+        img = f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>' if _B64 else ""
+        with gr.Row(equal_height=True):
+            with gr.Column(scale=8):
+                gr.HTML(f'<div class="brandbar" style="display:flex;align-items:center;gap:14px">{img}'
+                        f'<div><div style="font-size:22px;font-weight:800">{BRAND["name"]} '
+                        f'<span style="color:#16c7d8">Wizard</span></div>'
+                        f'<div style="color:#64748b;font-size:12px">{BRAND["tagline"]}</div></div></div>')
+            with gr.Column(scale=1, min_width=130):
+                theme_btn = gr.Button("Light / Dark", size="sm")
+        # class-based dark mode, like EnXemble (next-themes .dark). Toggles the theme's _dark tokens.
+        theme_btn.click(fn=None, inputs=None, outputs=None,
+                        js="() => { const el = document.querySelector('gradio-app') || document.body; el.classList.toggle('dark'); }")
         for did, desc in DESCS.items():
+            if desc.get("standalone") is False:
+                continue  # chain-only tool (e.g. mint-oscal): reached via a Convert button, not its own tab
             with gr.Tab(desc.get("title", did)):
                 gr.Markdown(desc.get("description", ""))
                 widgets, advanced_widgets = [], []
@@ -158,6 +164,7 @@ def build():
 
                 run_btn = gr.Button(_RUN_LABEL.format(id=did), variant="primary")
                 badge = gr.Markdown(_empty(desc))
+                dl = gr.DownloadButton("Download output", visible=False)
                 with gr.Accordion("Raw log", open=False):
                     raw_log = gr.Markdown("")
                 out = gr.JSON(label="artifact")
@@ -167,11 +174,13 @@ def build():
                 (run_btn.click(lambda d=did: _busy(d), None, run_btn)
                  .then(_handler(desc), ordered, [badge, out, raw_log, artifact_state],
                        show_progress="full", concurrency_limit=1 if heavy else None)
+                 .then(lambda p: gr.update(value=p, visible=bool(p)), artifact_state, dl)
                  .then(lambda d=did: _idle(d), None, run_btn))
 
                 for chain in desc.get("chains", []):
-                    cbtn = gr.Button(chain.get("label", f"→ {chain['to']}"), variant="secondary")
+                    cbtn = gr.Button(chain.get("label", chain["to"]), variant="secondary")
                     cbadge = gr.Markdown()
+                    cdl = gr.DownloadButton("Download output", visible=False)
                     with gr.Accordion(f"{chain['to']} raw log", open=False):
                         craw = gr.Markdown("")
                     cout = gr.JSON(label=f"{chain['to']} output")
@@ -179,8 +188,16 @@ def build():
                     (cbtn.click(lambda: gr.update(value=_BUSY_LABEL, interactive=False), None, cbtn)
                      .then(_chain_handler(chain), [artifact_state], [cbadge, cout, craw, cstate],
                            show_progress="full", concurrency_limit=1)
-                     .then(lambda c=chain: gr.update(value=c.get("label", f"→ {c['to']}"), interactive=True),
+                     .then(lambda p: gr.update(value=p, visible=bool(p)), cstate, cdl)
+                     .then(lambda c=chain: gr.update(value=c.get("label", c["to"]), interactive=True),
                            None, cbtn))
+        gr.HTML(
+            '<div class="bs-footer">'
+            f'<span>{BRAND["company"]} {BRAND["product"]}</span>'
+            f'<a href="{BRAND["url"]}" target="_blank" rel="noopener">breachsafe.ai</a>'
+            f'<a href="{BRAND["repo"]}" target="_blank" rel="noopener">GitHub</a>'
+            f'<span>Advisory AI: {BRAND["ai"]}</span>'
+            '<span>Source-available, PolyForm Noncommercial 1.0.0</span></div>')
     return demo
 
 

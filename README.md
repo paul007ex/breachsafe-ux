@@ -1,100 +1,178 @@
 # breachsafe-wizard
 
-A **config-driven, honest single-tool UX harness** for BreachSAFE tools. One tool = one YAML
-descriptor; the engine builds a typed argv (no shell), runs the tool, runs its **external**
-validator, and reports an honest **3-state** verdict:
+A config-driven, honest single-tool UX harness. Point it at a command-line tool, declare
+that tool's parameters in one YAML file, and the wizard renders a web form, runs the tool,
+validates the output with an external validator, and reports an honest three-state verdict:
+VALID, INVALID, or VALIDATOR-UNAVAILABLE. It never shows a green result the validator did
+not actually give.
 
-| Badge | Meaning |
-|---|---|
-| ✅ **VALID** | the external validator ran **and accepted** the artifact |
-| ❌ **INVALID** | the external validator ran **and rejected** it |
-| ⚠️ **VALIDATOR UNAVAILABLE** | the validator (or tool) **could not run** — infra/absent |
+Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the honest
+badge are written once in the engine and shared by every tool.
 
-The verdict is never a fabricated green: an empty run, a failed tool, or a missing validator
-is reported as `unavailable`/`invalid`, not `valid`. That honesty is the product.
+- Home: https://www.breachsafe.ai
+- Source: https://github.com/paul007ex/breachsafe-wizard
+- Licence: PolyForm Noncommercial 1.0.0 (see [Licence](#8-licence))
 
-Built on [Gradio](https://gradio.app) (Apache-2.0). See
-[`docs/adr/0001-breachsafe-wizard.md`](docs/adr/0001-breachsafe-wizard.md) for the rationale.
+## Contents
 
-## Install
+1. [What it is](#1-what-it-is)
+2. [Quickstart](#2-quickstart)
+3. [Architecture](#3-architecture)
+4. [The honest three-state badge](#4-the-honest-three-state-badge)
+5. [Add a tool (the descriptor)](#5-add-a-tool-the-descriptor)
+6. [Execution backends](#6-execution-backends)
+7. [Development](#7-development)
+8. [Licence](#8-licence)
 
-```bash
+## 1. What it is
+
+Every tool the wizard wraps is the same pipeline with different nouns:
+
+```
+INPUT (params/file)  ->  run the tool  ->  ARTIFACT  ->  external validator  ->  honest verdict
+```
+
+The wizard exists to make that pipeline pretty and, above all, honest. The verdict is the
+real result of an external validator (for example NIST oscal-cli, or the CycloneDX schema
+validator), reported as one of three distinct states. A tool that failed to run, or a
+validator that could not run, is never rendered as a pass.
+
+Two tools ship as examples:
+
+- QuReddy scans a TLS endpoint for post-quantum readiness and produces a CycloneDX 1.7 CBOM.
+- mint-oscal turns a scan or CBOM into an OSCAL Plan of Action and Milestones, reached
+  through the QuReddy "Convert to OSCAL" button.
+
+## 2. Quickstart
+
+Requires Python 3.12 and, for tools that use them, Docker.
+
+```
 python3.12 -m venv .venv
-.venv/bin/pip install -e .        # gradio, pyyaml, cyclonedx-python-lib
+.venv/bin/pip install -e .
+.venv/bin/python -m breachsafe_wizard.app     # serves http://127.0.0.1:7860
 ```
 
-## Run
+Open the URL, fill in the form, and run. Change the port with `WIZARD_PORT`. Run scratch and
+Docker bind-mounts live under `~/mint-proof/wizard-runs`; on macOS this must stay under
+`/Users` for Docker Desktop to mount it. Override with `WIZARD_RUN_ROOT`.
 
-```bash
-breachsafe-wizard                 # console-script entry point
-# or:
-python -m breachsafe_wizard.app
+Note on the bundled examples: the QuReddy and mint-oscal shims currently expect those tools'
+source trees to be present locally. Containerised execution (`run.image`) removes that
+requirement and is the recommended path for a portable install; see
+[Execution backends](#6-execution-backends).
+
+## 3. Architecture
+
+```
+  tools/<tool>/<tool>.yaml              one file declares the whole tool surface
+        |   inputs[], run, validate, render, chains
+        v
+  facade.py  (engine, no tool-specific logic)
+        |   render widgets  ->  build typed argv (no shell)  ->  run tool
+        |   ->  artifact  ->  external validator  ->  honest 3-state badge
+        v
+  app.py  (thin Gradio shell: the type-to-widget map, written once)
+        |
+        v
+  web surface, one tab per standalone tool
 ```
 
-Serves on `http://127.0.0.1:7860` (override with `WIZARD_PORT`). Run scratch (and Docker
-bind-mounts for validators like `oscal-cli`) live under `~/mint-proof/wizard-runs` — on
-macOS this must stay under `/Users` for Docker Desktop to mount it. Override with
-`WIZARD_RUN_ROOT`.
+- facade.py is the engine. It loads descriptors, builds a typed argv (values are single argv
+  elements, never a shell string, so an input can never become a command), runs the tool,
+  runs the validator, and derives the badge. It carries no knowledge of any specific tool.
+- app.py is the Gradio shell. It maps a parameter type to a widget once, then loops over
+  descriptors. Adding a tool changes no code here.
+- tools/<name>/ holds one descriptor and an optional run shim per tool.
 
-## Test
+## 4. The honest three-state badge
 
-```bash
-.venv/bin/pip install pytest
+The badge is the point of the project. Its rule is declarative and auditable as data.
+
+| State | Meaning |
+|---|---|
+| VALID | the validator ran and accepted the artifact |
+| INVALID | the validator ran and rejected the artifact |
+| VALIDATOR-UNAVAILABLE | the tool or the validator could not run (missing dependency, Docker down, timeout) |
+
+A crashed tool, a missing validator dependency, or an empty run all resolve to
+VALIDATOR-UNAVAILABLE, never to VALID. Colour is a redundant cue only; the word carries the
+state as text.
+
+## 5. Add a tool (the descriptor)
+
+Create `tools/<name>/<name>.yaml`. Each input declares its widget and how it maps to argv by
+exactly one of: `positional: true`, `arg: --x`, or `flag: --x`.
+
+```yaml
+id: mytool
+title: "My Tool"
+standalone: true                     # false = reached only through another tool's chain button
+inputs:
+  - { name: host, type: text, label: host, required: true }
+  - { name: port, type: int,  label: port, default: 443, min: 1, max: 65535 }
+  - { name: fast, type: bool, label: "fast mode", default: false, flag: "--fast", group: advanced }
+run:
+  base: [mytool, scan]
+  positional_from: "{host}:{port}"   # compose one positional from several inputs
+  artifact_from: stdout
+  artifact_name: out.json
+validate:
+  argv: ["{python}", "-c", "..."]    # {python} is the running interpreter, not a bare 'python'
+  badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
+render:
+  highlights: [ { label: status, find_prop: "status" } ]
+chains:
+  - { to: mint-oscal, label: "Convert to OSCAL", pass_artifact_as: source_file, with: { source: cbom } }
+```
+
+Widget types: `text`, `int`, `float`, `bool`, `enum` (radio for up to three choices,
+dropdown for more), and `file`. Put rarely-used inputs in `group: advanced` to place them
+behind a collapsible section. Tokens available in argv: `{share}`/`{workdir}` (the per-run
+dir), `{artifact}` (the artifact path), `{python}` (the running interpreter), and every
+input by `{name}`.
+
+## 6. Execution backends
+
+A descriptor chooses one way to run its tool. The honest-unavailable path is shared by all
+of them, so a backend that cannot run yields VALIDATOR-UNAVAILABLE rather than a false verdict.
+
+| Backend | Descriptor | Portable | Isolated | Status |
+|---|---|---|---|---|
+| Local binary | `run.base` on PATH | no | no | supported |
+| Python shim | `{python}` plus PYTHONPATH | no | no | supported (the bundled examples) |
+| Docker image | `run.image` pinned by `@sha256` | yes | yes | planned |
+| Remote API | `run.endpoint` | yes | yes | future |
+
+Multi-tool orchestration and workflows are out of scope for the wizard by design; that is
+the role of the orchestration layer (Osmedeus and TAO), not a single-tool surface. Docker
+images, when added, must be pinned by digest, never a floating `:latest` tag.
+
+## 7. Development
+
+```
 .venv/bin/python -m pytest tests/ -q
 ```
 
-`tests/test_honesty.py` drives the real pipeline (real `mint-oscal`, real `oscal-cli` in
-Docker) and asserts the honesty/safety properties: good input → valid; an OSCAL-invalid
-timestamp → invalid; a shell-metachar `source` value spawns **no** command (argv-safe); an
-absent validator → unavailable; malformed input → never `valid`.
+`tests/test_honesty.py` drives the real pipeline (real tools from source, real oscal-cli in
+Docker) and asserts the load-bearing properties: a good artifact validates, a rejected one
+reports INVALID, an injection attempt is argv-safe, an absent validator reports
+VALIDATOR-UNAVAILABLE, and a malformed input never reports VALID.
 
-## Add a tool
+Layout:
 
-Drop a descriptor at `tools/<name>/<name>.yaml` and a run shim at `tools/<name>/bin/<name>`
-(so the wizard runs the tool without installing its source tree). No UI code changes.
-
-```yaml
-order: 1                         # tab order; ties broken by id
-id: mytool
-title: "My Tool — what it does"
-description: "One-line summary shown above the inputs."
-inputs:
-  # each input becomes a widget AND maps to argv by EXACTLY ONE of:
-  #   positional: true   -> value only
-  #   flag: "--x"        -> emits the token when the value is truthy
-  #   arg:  "--x"        -> emits ["--x", value] when set
-  - { name: target, type: text,  label: "target", positional: true, required: true,
-      placeholder: "example.com:443", info: "shown under the field" }
-  - { name: format, type: enum,  label: "format", choices: [cbom, json], default: cbom, arg: "--format" }
-  - { name: timeout, type: int,  label: "timeout (s)", widget: slider, min: 1, max: 300, default: 30, arg: "--timeout" }
-  - { name: fast,   type: bool,  label: "fast mode", default: false, flag: "--fast", group: advanced }
-run:
-  base: [mytool, scan]           # or a fully-static `argv: [...]` with {token} substitution
-  artifact_from: stdout          # capture stdout as the artifact
-  artifact_name: out.json
-  timeout_s: 180
-validate:                        # the EXTERNAL check that produces the badge
-  argv: [some-validator, "{artifact}"]
-  timeout_s: 60
-  badge_rule:
-    unavailable_if: { stdout_contains_any: ["Cannot connect", "Unable to find image"] }
-    pass_if:        { exit: 0 }
-    otherwise:      invalid      # ran but didn't bless → invalid (honest)
-render:
-  highlights:                    # pull scalar props out of the artifact for a summary
-    - { label: "status", find_prop: "mytool:status" }
-chains:                          # optional: hand the artifact to another tool
-  - { to: other-tool, label: "Do next →", pass_artifact_as: source_file, with: { source: mytool } }
+```
+src/breachsafe_wizard/   facade.py (engine), app.py (shell), brand.py (tokens)
+tools/<name>/            <name>.yaml descriptor, bin/ run shim
+docs/adr/                architecture decision records
+tests/                   honesty and safety tests
 ```
 
-**Widget types:** `text`, `enum` (Radio for ≤3 choices, Dropdown otherwise), `int`/`float`
-(`widget: slider` for a slider, else a number box), `bool` (checkbox), `file`. Mark rare
-params `group: advanced` to place them behind a collapsed "Advanced options" accordion.
+Known gaps are tracked in `docs/KNOWN-ISSUES.md`.
 
-**Tokens** available in `run`/`validate` argv: `{share}`/`{workdir}` (the per-run dir),
-`{artifact}` (the artifact path), plus every input by `{name}`. Values substitute into a
-single argv element — never a shell string — so they can never become a new command.
+## 8. Licence
 
-## License
-
-Source-available under **PolyForm Noncommercial 1.0.0** — see [`LICENSE`](LICENSE).
+Source-available under PolyForm Noncommercial 1.0.0
+(`SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`). You may use, modify, and share it
+for any noncommercial purpose. Commercial use, including inclusion in a commercial product
+or service, requires a separate licence from BreachSAFE. See [LICENSE](LICENSE).
