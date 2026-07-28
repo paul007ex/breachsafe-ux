@@ -129,7 +129,10 @@ def _chain_handler(chain, descs):
 
     def run(artifact_path, progress=gr.Progress()):
         if not artifact_path:
-            return "### ⚠️ Nothing to convert\nRun the tool above first.", None, "", None
+            # Pre-run guard (no artifact yet): mirror _empty()'s honest, emoji-free surface
+            # rather than a validator verdict — nothing has been validated to badge.
+            return ("### Nothing to convert yet\nRun the tool above first, then use this "
+                    "button to convert its output.", None, "", None)
         progress(0, desc=f"running {target['id']}…")
         params = dict(chain.get("with", {})) | {chain["pass_artifact_as"]: artifact_path}
         res = run_descriptor(target, params)
