@@ -1,0 +1,39 @@
+order: 2
+id: mint-oscal
+title: "mint-oscal — scan / CBOM → OSCAL POA&M"
+description: >
+  Turn a QuReddy scan (scan.v1) or a CycloneDX CBOM into a NIST-validated OSCAL
+  Plan of Action & Milestones. The badge is the real oscal-cli verdict, not ours.
+inputs:
+  - name: source
+    type: enum
+    label: "source adapter (--from)"
+    choices: [qureddy, cbom]
+    default: cbom
+    info: "Which adapter parses the upload: qureddy = a QuReddy scan.v1 JSON; cbom = a CycloneDX CBOM."
+    arg: "--from"
+  - name: source_file
+    type: file
+    label: "scan.json or cbom.json"
+    info: "Required. A single .json file matching the selected source adapter."
+    accept: [".json"]
+    positional: true
+    required: true
+run:
+  base: [mint-oscal, poam, generate]
+  artifact_from: stdout
+  artifact_name: poam.json
+  timeout_s: 60
+validate:
+  argv: [docker, run, --rm, -v, "{share}:/w", "ghcr.io/metaschema-framework/oscal-cli:latest", validate, /w/poam.json]
+  timeout_s: 180
+  badge_rule:
+    unavailable_if: { stdout_contains_any: ["Cannot connect to the Docker daemon", "Unable to find image"] }
+    pass_if: { stdout_contains: "is valid", stdout_not_contains: "is invalid" }
+    otherwise: invalid
+    fail_detail_grep: ""
+render:
+  primary: json
+  highlights:
+    - { label: readiness, find_prop: readiness }
+    - { label: "mapping-confidence", find_prop: "mapping-confidence" }

@@ -1,0 +1,105 @@
+order: 1
+id: qureddy
+title: "QuReddy — PQC readiness scan (TLS)"
+description: >
+  Scan a TLS endpoint for post-quantum readiness and render a CycloneDX 1.7 CBOM.
+  Live network scan — a full run probes TLS 1.3 hybrid KEX, a classical control, legacy
+  protocols and certificate evidence, so total time can be several times the per-probe
+  timeout (typically 30s–2min).
+inputs:
+  - name: target
+    type: text
+    label: "target (host[:port], URL, or IP)"
+    placeholder: "pq.cloudflareresearch.com:443"
+    info: "Required. Port defaults to 443 if omitted."
+    positional: true
+    required: true
+  - name: format
+    type: enum
+    label: "output format"
+    choices: [cbom, json, rich]
+    default: cbom
+    info: "cbom = CycloneDX 1.7 CBOM (default, needed to chain to mint-oscal); json = raw scan; rich = console."
+    arg: "--format"
+  - name: timeout
+    type: int
+    label: "per-probe timeout (s)"
+    widget: slider
+    min: 1
+    max: 300
+    default: 30
+    info: "Seconds per probe (1–300, default 30). A full scan runs several probes, so total time is a multiple of this."
+    arg: "--timeout"
+  - name: sni
+    type: text
+    label: "SNI override"
+    placeholder: "one.one.one.one"
+    info: "Optional. Recommended for name-based virtual hosts and IP targets."
+    group: advanced
+    arg: "--sni"
+  - name: openssl
+    type: text
+    label: "OpenSSL 3.5+ binary path"
+    placeholder: "/opt/homebrew/opt/openssl@3.5/bin/openssl"
+    info: "Optional. Path to an OpenSSL 3.5 LTS+ binary; defaults to the one on PATH."
+    group: advanced
+    arg: "--openssl"
+  - name: retries
+    type: int
+    label: "retries"
+    widget: slider
+    min: 0
+    max: 3
+    default: 0
+    info: "Extra retry attempts on transient failure (0–3, default 0)."
+    group: advanced
+    arg: "--retries"
+  - name: retry_delay
+    type: float
+    label: "retry delay (s)"
+    widget: slider
+    min: 0.0
+    max: 10.0
+    default: 1.0
+    info: "Seconds between retries (0.0–10.0, default 1.0)."
+    group: advanced
+    arg: "--retry-delay"
+  - name: reproducible
+    type: bool
+    label: "reproducible"
+    default: false
+    info: "Omit per-run identity (serial, timestamps, scan id) for a stable, diffable digest."
+    group: advanced
+    flag: "--reproducible"
+  - name: verbose
+    type: bool
+    label: "verbose (-v)"
+    default: false
+    info: "Emit per-subprocess start/finish diagnostics to the log."
+    group: advanced
+    flag: "-v"
+run:
+  base: [qureddy, scan, tls]
+  artifact_from: stdout
+  artifact_name: cbom.json
+  timeout_s: 180
+validate:
+  # QuReddy has no external CLI validator; CycloneDX 1.7 schema-conformance is the honest check.
+  argv:
+    - python
+    - -c
+    - "import sys; from cyclonedx.schema import SchemaVersion; from cyclonedx.validation.json import JsonStrictValidator; d=open('{artifact}').read(); r=JsonStrictValidator(SchemaVersion.V1_7).validate_str(d); sys.exit(0 if r is None else 1)"
+  timeout_s: 30
+  badge_rule:
+    pass_if: { exit: 0 }
+    fail_if: { exit: 1 }
+    otherwise: unavailable
+render:
+  primary: json
+  highlights:
+    - { label: "scan.status", find_prop: "qureddy:scan.status" }
+chains:
+  - to: mint-oscal
+    label: "Convert to OSCAL →"
+    pass_artifact_as: source_file
+    with: { source: cbom }
