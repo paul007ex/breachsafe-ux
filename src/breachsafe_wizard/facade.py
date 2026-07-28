@@ -80,6 +80,10 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         return {"error": f"tool not found: {argv[0]}", "badge": ("unavailable", "tool not installed")}
     except subprocess.TimeoutExpired:
         return {"error": "tool timed out", "badge": ("unavailable", "tool timed out")}
+    except (OSError, ValueError) as e:
+        # NUL byte in a param, E2BIG, bad fd, permission — the launch itself failed.
+        # Honest badge, never a traceback to the UI (#183). FileNotFoundError is caught above.
+        return {"error": f"could not launch tool: {e}", "badge": ("unavailable", "tool could not be launched")}
 
     if desc["run"].get("artifact_from") == "stdout":
         artifact.write_text(proc.stdout)
@@ -112,7 +116,14 @@ def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
     text = out.stdout + out.stderr
     rule = v["badge_rule"]
 
+    _COND_KEYS = {"stdout_contains", "stdout_contains_any", "stdout_not_contains", "exit"}
+
     def match(cond: dict) -> bool:
+        # Fail CLOSED (#182): an empty or all-unrecognized condition must never vacuously
+        # pass. A descriptor typo (e.g. stdout_has for stdout_contains) is a bug, not a
+        # green — a false 'valid' in the one honesty-critical path is the worst outcome.
+        if not cond or (set(cond) - _COND_KEYS):
+            return False
         ok = True
         if "stdout_contains" in cond:
             ok = ok and cond["stdout_contains"] in text
