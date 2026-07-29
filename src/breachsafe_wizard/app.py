@@ -14,7 +14,9 @@ import base64
 import os
 from pathlib import Path
 import gradio as gr
-from breachsafe_wizard.facade import load_descriptors, run_descriptor, tool_available, ROOT
+from breachsafe_wizard.facade import (
+    load_descriptors, run_descriptor, tool_available, verify_path, test_connection, ROOT,
+)
 from breachsafe_wizard.brand import THEME, CSS, BRAND
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
@@ -41,7 +43,7 @@ _STATUS_SVG = {"valid": _svg("shield-check"), "invalid": _svg("circle-x"), "unav
 _ICON = {"run": str(_ICON_DIR / "scan.svg"), "convert": str(_ICON_DIR / "arrow-right.svg")}
 
 _HEAD = {"valid": "VALID", "invalid": "INVALID",
-         "unavailable": "VALIDATOR UNAVAILABLE", "none": "NO EXTERNAL VALIDATOR"}
+         "unavailable": "UNAVAILABLE", "none": "NO EXTERNAL VALIDATOR"}
 # No emoji (house rule). The word carries the state as text; colour is a redundant cue (WCAG 1.4.1).
 _COLOR = {"valid": "#0ba0b6", "invalid": "#b91c1c", "unavailable": "#b45309", "none": "#475569"}
 _RUN_LABEL = "Run {id}"
@@ -105,10 +107,10 @@ def _result(desc, res):
     """(badge_md, artifact_json, raw_log_md, artifact_path). Honest on every branch."""
     state, detail = res["badge"]
     if "error" in res:
-        human = {"unavailable": "The tool or its validator could not run.",
-                 "invalid": "The validator rejected this artifact."}.get(state, "The run did not succeed.")
+        # detail now carries the specific reason (which tool, or the tool's own error line);
+        # show it directly. The full stderr is in the Raw log below.
         raw = f"```\n{res['error']}\n```"
-        return _badge(state, f"{human} ({detail})"), None, raw, None
+        return _badge(state, detail), None, raw, None
     return (_badge(state, detail, res.get("highlights", [])),
             res.get("artifact"), "", res.get("artifact_path"))
 
@@ -120,7 +122,10 @@ def _handler(desc):
         res = run_descriptor(desc, params)
         progress(1)
         badge, art, raw, path = _result(desc, res)
-        return badge, art, raw, path
+        # Reset the Run button here, atomic with the result, so it always clears "Running…"
+        # (a trailing .then could be skipped; _result never raises, so this return always runs).
+        reset = gr.update(value=_RUN_LABEL.format(id=desc["id"]), interactive=True)
+        return badge, art, raw, path, reset
     return run
 
 
@@ -149,6 +154,21 @@ def _idle(did):
     return gr.update(value=_RUN_LABEL.format(id=did), interactive=True)
 
 
+def _diag_md(ok, text):
+    color = "#0ba0b6" if ok else "#b45309"
+    return f'<span style="color:{color};font-weight:700">{"OK" if ok else "FAILED"}</span>: {text}'
+
+
+def _verify_md(value, argv_template):
+    ok, line = verify_path(value, argv_template)
+    return _diag_md(ok, line)
+
+
+def _preflight_md(host, port, openssl=""):
+    ok, msg = test_connection(host, port, openssl or "openssl")
+    return _diag_md(ok, msg)
+
+
 def build():
     descs = load_descriptors()
     hdr = _header_brand(descs)
@@ -173,15 +193,35 @@ def build():
             with gr.Tab(desc.get("title", did)):
                 gr.Markdown(desc.get("description", ""))
                 widgets, advanced_widgets = [], []
+                name2widget = {}
                 for spec in desc.get("inputs", []):
                     if spec.get("group") != "advanced":
-                        widgets.append(_widget(spec))
+                        w = _widget(spec)
+                        widgets.append(w)
+                        name2widget[spec["name"]] = w
                 # Progressive disclosure: advanced params collapsed by default (NN/g).
                 adv_specs = [s for s in desc.get("inputs", []) if s.get("group") == "advanced"]
-                if adv_specs:
+                pf = desc.get("preflight")
+                if adv_specs or pf:
                     with gr.Accordion("Advanced options", open=False):
                         for spec in adv_specs:
-                            advanced_widgets.append(_widget(spec))
+                            # The field is directly editable (pre-populated); `verify_argv` adds a
+                            # short Verify button next to it that runs the tool's own check.
+                            w = _widget(spec)
+                            advanced_widgets.append(w)
+                            name2widget[spec["name"]] = w
+                            if spec.get("verify_argv"):
+                                vb = gr.Button("Verify", size="sm", variant="secondary")
+                                vr = gr.Markdown()
+                                vb.click(lambda v, t=spec["verify_argv"]: _verify_md(v, t), w, vr)
+                        # `preflight` -> a "Test connection" button: openssl s_client to host:port.
+                        if pf and pf.get("host") in name2widget and pf.get("port") in name2widget:
+                            tb = gr.Button("Test connection", size="sm", variant="secondary")
+                            tr = gr.Markdown()
+                            ins = [name2widget[pf["host"]], name2widget[pf["port"]]]
+                            if pf.get("openssl") in name2widget:
+                                ins.append(name2widget[pf["openssl"]])
+                            tb.click(_preflight_md, ins, tr)
                 # widgets must be ordered to match desc["inputs"] for _collect's zip.
                 ordered = []
                 adv_iter = iter(advanced_widgets)
@@ -198,11 +238,12 @@ def build():
                 artifact_state = gr.State(None)
 
                 heavy = desc["run"].get("timeout_s", 0) >= 60
+                # run_btn is a handler OUTPUT so the reset is atomic with the result; no trailing
+                # .then that could be skipped and leave the button stuck on "Running…".
                 (run_btn.click(lambda d=did: _busy(d), None, run_btn)
-                 .then(_handler(desc), ordered, [badge, out, raw_log, artifact_state],
+                 .then(_handler(desc), ordered, [badge, out, raw_log, artifact_state, run_btn],
                        show_progress="full", concurrency_limit=1 if heavy else None)
-                 .then(lambda p: gr.update(value=p, visible=bool(p)), artifact_state, dl)
-                 .then(lambda d=did: _idle(d), None, run_btn))
+                 .then(lambda p: gr.update(value=p, visible=bool(p)), artifact_state, dl))
 
                 for chain in desc.get("chains", []):
                     target = descs.get(chain["to"])

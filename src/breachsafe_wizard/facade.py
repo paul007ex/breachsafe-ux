@@ -29,6 +29,18 @@ def load_descriptors() -> dict:
     ds = []
     for y in sorted(_tools_dir().glob("*/*.yaml")):
         d = yaml.safe_load(y.read_text())
+        if isinstance(d.get("brand"), dict):
+            # Display-only metadata may reference env vars, e.g. version: "${QUREDDY_VERSION}",
+            # so a host can single-source the version instead of duplicating it here. Scoped to
+            # brand only: run/validate argv never expand env, to avoid env injection into a command.
+            d["brand"] = {k: (os.path.expandvars(v) if isinstance(v, str) else v)
+                          for k, v in d["brand"].items()}
+        for inp in d.get("inputs", []):
+            # Pre-populate a field from the environment, e.g. default: "${QUREDDY_BIN}", so a host
+            # can show a resolved path the user then edits. Expands the DEFAULT value only, before
+            # the widget renders; the value a user submits is passed as a single argv element.
+            if isinstance(inp.get("default"), str):
+                inp["default"] = os.path.expandvars(inp["default"])
         d["_dir"] = str(y.parent)
         ds.append(d)
     ds.sort(key=lambda d: (d.get("order", 99), d["id"]))
@@ -51,6 +63,39 @@ def tool_available(desc: dict) -> bool:
         return True
     path = f"{_bin_path()}{os.pathsep}{os.environ.get('PATH', '')}"
     return shutil.which(cmd, path=path) is not None
+
+
+def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
+    """Run a tool's own version/verify command for a user-supplied path (the 'Verify' button).
+
+    argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns
+    (ok, one-line summary). Never raises; a bad path reports (False, reason).
+    """
+    argv = [(value if a == "{value}" else a) for a in argv_template]
+    if not argv or not argv[0].strip():
+        return (False, "no path set")
+    resolved = shutil.which(argv[0]) or argv[0]
+    try:
+        p = subprocess.run([resolved, *argv[1:]], capture_output=True, text=True, timeout=10)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        return (False, f"cannot run: {type(e).__name__}")
+    line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
+    return (p.returncode == 0, line or f"exit {p.returncode}")
+
+
+def test_connection(host: str, port, openssl: str = "openssl", timeout: float = 8.0) -> tuple[bool, str]:
+    """Preflight: does the endpoint complete a TLS handshake, using the same OpenSSL the scan
+    uses? `openssl s_client` with EOF on stdin. Never raises."""
+    if not str(host).strip():
+        return (False, "no host")
+    ossl = shutil.which(openssl.strip()) or openssl.strip() or "openssl"
+    try:
+        p = subprocess.run([ossl, "s_client", "-connect", f"{str(host).strip()}:{int(port)}"],
+                           input="", capture_output=True, text=True, timeout=timeout)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        return (False, f"could not run: {type(e).__name__}")
+    ok = p.returncode == 0
+    return (ok, f"{host}:{port} TLS {'ok' if ok else 'failed'}")
 
 
 def _subst(argv: list[str], mapping: dict) -> list[str]:
@@ -105,7 +150,8 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         proc = subprocess.run(argv, capture_output=True, text=True,
                               timeout=desc["run"].get("timeout_s", 120), env=env, cwd=str(workdir))
     except FileNotFoundError:
-        return {"error": f"tool not found: {argv[0]}", "badge": ("unavailable", "tool not installed")}
+        return {"error": f"tool not found: {argv[0]}",
+                "badge": ("unavailable", f"'{argv[0]}' is not installed or not on PATH")}
     except subprocess.TimeoutExpired:
         return {"error": "tool timed out", "badge": ("unavailable", "tool timed out")}
     except (OSError, ValueError) as e:
@@ -116,8 +162,12 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     if desc["run"].get("artifact_from") == "stdout":
         artifact.write_text(proc.stdout)
     if proc.returncode != 0 and (not artifact.exists() or artifact.stat().st_size == 0):
-        return {"error": (proc.stderr.strip()[:2000] or f"exit {proc.returncode}"),
-                "badge": ("unavailable", "tool run failed")}
+        _err = proc.stderr.strip()
+        # Surface the tool's own last diagnostic line (e.g. "OpenSSL 3.5 LTS not found") so the
+        # badge says what actually failed, not a generic "tool run failed".
+        _reason = _err.splitlines()[-1][:160] if _err else f"scan failed (exit {proc.returncode})"
+        return {"error": (_err[:2000] or f"exit {proc.returncode}"),
+                "badge": ("unavailable", _reason)}
 
     try:
         art_json = json.loads(artifact.read_text())
