@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
-# Run qureddy from its source tree without installing it (PYTHONPATH injection, no build).
-exec "/Users/paul/claude/breachsafe-wizard/.venv/bin/python" -c 'import sys,runpy; sys.path.insert(0,"/Users/paul/claude/qureddy/src"); runpy.run_module("qureddy", run_name="__main__")' "$@"
+# Run the synchronized canonical checkout and its own Python environment so
+# source code, package metadata, dependencies, and the console entrypoint agree.
+exec "/Users/paul/claude/qureddy/.venv/bin/python" -m qureddy "$@"

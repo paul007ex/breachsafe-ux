@@ -12,7 +12,7 @@ description: >
   A full scan probes several handshakes, so it usually takes 30 seconds to 2 minutes.
 brand:
   product: "BreachSAFE QuReddy"
-  version: "0.2.12"
+  version: "0.2.13"
   url: "https://www.breachsafe.ai"
   repo: "https://github.com/breachsafe/qureddy"
 inputs:
