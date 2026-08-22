@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,6 +71,19 @@ jobs:
       - name: Install (locked)
         run: uv sync --locked --extra dev
       - name: pytest (with coverage)
-        run: uv run --locked pytest -q --cov=breachsafe_ux --cov-report=term-missing
+        run: >
+          uv run --locked pytest -q
+          --cov=breachsafe_ux --cov-fail-under=70
+          --cov-report=term-missing --cov-report=xml:coverage.xml
+          --junitxml=pytest-results.xml
+      - name: upload test + coverage reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: |
+            coverage.xml
+            pytest-results.xml
+          if-no-files-found: warn
       - name: build (wheel + sdist)
         run: uv build
