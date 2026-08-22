@@ -98,6 +98,9 @@ def load_descriptors() -> dict:
     for y in sorted(_tools_dir().glob("*/*.yaml")):
         d = yaml.safe_load(y.read_text())
         _validate_descriptor(d, y)  # fail closed before the descriptor is used at all
+        flag = d.get("feature_flag") if isinstance(d, dict) else None
+        if flag and not feature_enabled(flag):
+            continue  # #67: gated off for this deployment (e.g. mint_oscal in the OSS base edition)
         if isinstance(d.get("brand"), dict):
             # Display-only metadata may reference env vars, e.g. version: "${QUREDDY_VERSION}",
             # so a host can single-source the version instead of duplicating it here. Scoped to
@@ -121,6 +124,17 @@ def load_descriptors() -> dict:
         ds.append(d)
     ds.sort(key=lambda d: (d.get("order", 99), d["id"]))
     return {d["id"]: d for d in ds}
+
+
+def feature_enabled(flag: str) -> bool:
+    """A descriptor or chain marked `feature_flag: X` renders only when this returns True (#67).
+
+    Gated by env `BREACHSAFE_UX_<X>` (default ON). Lets a deployment hide Pro features — e.g.
+    `mint_oscal` / OSCAL — so the OSS base experience can be previewed (BREACHSAFE_UX_MINT_OSCAL=
+    false) before the code is physically decoupled to the Pro consumer (#25).
+    """
+    val = os.environ.get(f"BREACHSAFE_UX_{flag.upper()}", "true").strip().lower()
+    return val not in ("false", "0", "no", "off")
 
 
 def _bin_path() -> str:

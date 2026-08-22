@@ -1,6 +1,7 @@
 schema_version: 1
 order: 2
 id: mint-oscal
+feature_flag: mint_oscal   # #67: OSCAL is Pro-gated; BREACHSAFE_UX_MINT_OSCAL=false hides it
 standalone: false   # reached via the QuReddy 'Convert to OSCAL' button, not its own tab
 title: "mint-oscal: scan or CBOM to OSCAL POA&M"
 description: >

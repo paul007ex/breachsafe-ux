@@ -22,6 +22,10 @@
       "type": "boolean",
       "description": "false = chain-only (reached via another tool's action button; no own tab)."
     },
+    "feature_flag": {
+      "type": "string",
+      "description": "Gate this descriptor behind env BREACHSAFE_UX_<FLAG> (default ON). Off => not loaded (no tab). Hides Pro features in the OSS base edition (#67, e.g. mint_oscal)."
+    },
     "title": { "type": "string" },
     "description": { "type": "string" },
     "brand": { "$ref": "#/$defs/brand" },
@@ -216,7 +220,11 @@
         "to": { "type": "string" },
         "label": { "type": "string" },
         "pass_artifact_as": { "type": "string" },
-        "with": { "type": "object" }
+        "with": { "type": "object" },
+        "feature_flag": {
+          "type": "string",
+          "description": "Gate this chain button behind env BREACHSAFE_UX_<FLAG> (default ON). Off => the button is hidden (#67)."
+        }
       }
     }
   }
