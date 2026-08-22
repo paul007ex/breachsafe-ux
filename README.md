@@ -54,7 +54,7 @@ your browser opens on it:
 
 ```
 docker run -d --rm --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
-sleep 4 && open http://localhost:7860        # macOS  ·  Linux: xdg-open  ·  Windows: start
+sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
 `--pull=always` fetches the newest image first, so copy-paste always runs the latest. The
