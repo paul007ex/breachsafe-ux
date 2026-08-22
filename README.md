@@ -40,7 +40,7 @@ validator that could not run, is never rendered as a pass.
 
 Three tabs ship as examples:
 
-- Quantum Audit scans a TLS endpoint for post-quantum readiness and produces a CycloneDX 1.7 CBOM.
+- HNDL Audit (TLS) measures harvest-now-decrypt-later exposure at a TLS endpoint and produces a CycloneDX 1.7 CBOM.
 - SSH Audit does the same for an SSH endpoint.
 - Compliance (OSCAL) turns a scan or CBOM into an OSCAL Plan of Action and Milestones (also
   reached from a scan tab's "Convert to OSCAL" button). Enterprise; gated by `BREACHSAFE_UX_MINT_OSCAL`.
@@ -58,7 +58,7 @@ sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  W
 ```
 
 `--pull=always` fetches the newest image first, so copy-paste always runs the latest. The
-**Quantum Audit** tab opens with the host prefilled — click **Run**. No login, no docker socket,
+**HNDL Audit (TLS)** tab opens with the host prefilled — click **Run**. No login, no docker socket,
 works on Intel and Apple Silicon. Stop it with `docker stop enxemble`. (`:edge` tracks the tip of
 `main`; `:latest` is the newest release.)
 
