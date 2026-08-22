@@ -1,20 +1,27 @@
 [project]
-name = "breachsafe-wizard"
+name = "breachsafe-ux"
 version = "0.2.0"
 description = "Config-driven, honest single-tool UX harness for BreachSAFE tools (one YAML per tool)"
 requires-python = ">=3.12"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "Apache-2.0"
 dependencies = ["gradio>=6", "pyyaml>=6", "cyclonedx-python-lib[json-validation]>=11,<12"]
 
 [project.scripts]
-breachsafe-wizard = "breachsafe_wizard.app:main"
+breachsafe-ux = "breachsafe_ux.app:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/breachsafe_wizard"]
+packages = ["src/breachsafe_ux"]
 
 [dependency-groups]
 dev = ["pytest>=8"]
+[tool.ruff.lint]
+# Intentional patterns in the UX host (revisit in the quality pass):
+#  B008  gradio uses gr.Progress() as an arg default (framework idiom)
+#  BLE001 validator/artifact paths deliberately catch broadly to fail CLOSED (unavailable)
+#  PLW1510 subprocess results are inspected manually (badge logic), never via check=
+#  SIM102/ISC004 kept for readability of the badge/render code
+ignore = ["B008", "BLE001", "PLW1510", "SIM102", "ISC004"]

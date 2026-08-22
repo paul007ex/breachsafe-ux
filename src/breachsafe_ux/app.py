@@ -10,20 +10,27 @@ UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
   * per-run data lives in `gr.State`, never in a module global that could leak across users.
 """
 from __future__ import annotations
+
 import base64
 import os
-from pathlib import Path
+
 import gradio as gr
-from breachsafe_wizard.facade import (
-    load_descriptors, run_descriptor, tool_available, verify_path, test_connection, ROOT,
+
+from breachsafe_ux.brand import BRAND, CSS, THEME
+from breachsafe_ux.facade import (
+    ROOT,
+    load_descriptors,
+    run_descriptor,
+    test_connection,
+    tool_available,
+    verify_path,
 )
-from breachsafe_wizard.brand import THEME, CSS, BRAND
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
-# that sets WIZARD_TOOLS_DIR before calling main() gets its own tools rendered.
+# that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
 _LOGO = ROOT / "assets" / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
-_HDR_DEFAULT = {"product": "BreachSAFE Wizard", "version": "0.1.0",
+_HDR_DEFAULT = {"product": "BreachSAFE UX", "version": "0.1.0",
                 "url": "https://www.breachsafe.ai", "repo": ""}
 
 
@@ -31,7 +38,7 @@ def _header_brand(descs):
     # Header brand comes from the primary standalone tool (this deployment fronts one tool).
     return next((d["brand"] for d in descs.values()
                  if d.get("standalone") is not False and d.get("brand")), None) or _HDR_DEFAULT
-_LICENSE = "Source-available, PolyForm Noncommercial 1.0.0"
+_LICENSE = "Apache-2.0 (open source)"
 def _link(u, t):
     return f'<a href="{u}" target="_blank" rel="noopener" style="color:#0ba0b6;text-decoration:none">{t}</a>' if u else t
 # lucide icons, the same set EnXemble uses (ISC). SVGs use currentColor so they inherit the badge colour.
@@ -283,8 +290,8 @@ def main():
     demo.queue()  # required so gr.Progress + concurrency work for long-running scans
     # Gradio 6.0 moved theme/css from the Blocks constructor to launch().
     demo.launch(theme=THEME, css=CSS, allowed_paths=[str(_ICON_DIR)],
-                server_name=os.environ.get("WIZARD_HOST", "127.0.0.1"),
-                server_port=int(os.environ.get("WIZARD_PORT", "7860")))
+                server_name=os.environ.get("BREACHSAFE_UX_HOST", "127.0.0.1"),
+                server_port=int(os.environ.get("BREACHSAFE_UX_PORT", "7860")))
 
 
 if __name__ == "__main__":

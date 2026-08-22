@@ -1,4 +1,4 @@
-"""Honesty / safety pressure tests for the breachsafe-wizard engine.
+"""Honesty / safety pressure tests for the breachsafe-ux engine.
 
 These exercise the REAL pipeline end-to-end through :func:`run_descriptor` — the real
 `mint-oscal` tool (run from source via the ``tools/mint-oscal/bin`` wrapper) and its real
@@ -18,14 +18,13 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import shutil
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from breachsafe_wizard.facade import load_descriptors, run_descriptor
+from breachsafe_ux.facade import load_descriptors, run_descriptor
 
 # A minimal, well-formed QuReddy scan.v1 document with a tz-aware timestamp. mint-oscal's
 # ``qureddy`` adapter turns this into an OSCAL POA&M that oscal-cli accepts.
@@ -125,7 +124,7 @@ def test_t5_malformed_input_is_not_valid(mint, fixtures_dir):
 # --- Unit-level honesty guards (no Docker / no tool source needed). Regressions for
 #     the two engine bugs found on the [ui] track: breachsafe/qureddy#182, #183. ---
 
-from breachsafe_wizard import facade  # noqa: E402
+from breachsafe_ux import facade
 
 
 @pytest.mark.parametrize("rule", [

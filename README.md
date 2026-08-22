@@ -1,4 +1,4 @@
-# breachsafe-wizard
+# breachsafe-ux
 
 A config-driven, honest single-tool UX harness. Point it at a command-line tool, declare
 that tool's parameters in one YAML file, and the wizard renders a web form, runs the tool,
@@ -10,7 +10,7 @@ Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the
 badge are written once in the engine and shared by every tool.
 
 - Home: https://www.breachsafe.ai
-- Source: https://github.com/paul007ex/breachsafe-wizard
+- Source: https://github.com/paul007ex/breachsafe-ux
 - Licence: PolyForm Noncommercial 1.0.0 (see [Licence](#8-licence))
 
 ## Contents
@@ -50,10 +50,10 @@ Requires Python 3.12 and, for tools that use them, Docker.
 ```
 python3.12 -m venv .venv
 .venv/bin/pip install -e .
-.venv/bin/python -m breachsafe_wizard.app     # serves http://127.0.0.1:7860
+.venv/bin/python -m breachsafe_ux.app     # serves http://127.0.0.1:7860
 ```
 
-Open the URL, fill in the form, and run. Change the port with `WIZARD_PORT`. Run scratch and
+Open the URL, fill in the form, and run. Change the port with `BREACHSAFE_UX_PORT`. Run scratch and
 Docker bind-mounts live under `~/mint-proof/wizard-runs`; on macOS this must stay under
 `/Users` for Docker Desktop to mount it. Override with `WIZARD_RUN_ROOT`.
 
@@ -162,7 +162,7 @@ VALIDATOR-UNAVAILABLE, and a malformed input never reports VALID.
 Layout:
 
 ```
-src/breachsafe_wizard/   facade.py (engine), app.py (shell), brand.py (tokens)
+src/breachsafe_ux/   facade.py (engine), app.py (shell), brand.py (tokens)
 tools/<name>/            <name>.yaml descriptor, bin/ run shim
 docs/adr/                architecture decision records
 tests/                   honesty and safety tests
@@ -173,6 +173,6 @@ Known gaps are tracked in `docs/KNOWN-ISSUES.md`.
 ## 8. Licence
 
 Source-available under PolyForm Noncommercial 1.0.0
-(`SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`). You may use, modify, and share it
+(the `Apache-2.0` license). You may use, modify, and share it
 for any noncommercial purpose. Commercial use, including inclusion in a commercial product
 or service, requires a separate licence from BreachSAFE. See [LICENSE](LICENSE).
