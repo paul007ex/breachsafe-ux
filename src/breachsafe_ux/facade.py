@@ -22,31 +22,20 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
+from breachsafe_ux.resolve import _run, _search_path, _tool_version, _tools_dir
 
 PKG = Path(__file__).resolve().parent
-ROOT = PKG.parent.parent  # repo root (…/breachsafe-ux)
-TOOLS = ROOT / "tools"
 RUN_ROOT = Path(
     os.environ.get("BREACHSAFE_UX_RUN_ROOT", str(Path.home() / "mint-proof" / "wizard-runs"))
 )
 # Substitution grammar (#50): `{{`/`}}` are literal braces; `{name}` is a token.
 _SUBST = re.compile(r"\{\{|\}\}|\{([a-zA-Z0-9_]+)\}")
-_VER_RE = re.compile(r"\d+\.\d+(?:\.\d+)?(?:[-.\w]+)?")  # first version-looking token (#51)
 
 
 class _DescriptorError(Exception):
     """A descriptor is malformed (e.g. an unresolved {token} in run argv). Surfaced as an
     'unavailable' badge rather than shipped as literal text to the tool (wizard #8).
     """
-
-
-def _tools_dir() -> Path:
-    """The descriptor root. A host package (e.g. qureddy) points here via BREACHSAFE_UX_TOOLS_DIR
-    so the wizard renders that package's own tools instead of the bundled examples (W-1/W-2).
-    Read at call time — never bound at import — so setting the env before launch is enough.
-    """
-    d = os.environ.get("BREACHSAFE_UX_TOOLS_DIR")
-    return Path(d) if d else TOOLS
 
 
 _SCHEMA_PATH = PKG / "descriptor.schema.json"
@@ -137,54 +126,20 @@ def feature_enabled(flag: str) -> bool:
     return val not in ("false", "0", "no", "off")
 
 
-def _bin_path() -> str:
-    return os.pathsep.join(str(p) for p in _tools_dir().glob("*/bin"))
-
-
-def _tool_version(argv: list[str]) -> str | None:
-    """Display-only (#51): run a tool's own version command and return the first version-looking
-    token, so a descriptor's shown version can be single-sourced from the installed tool instead
-    of a drifting literal. Resolves argv[0] against the tool bin shims. Never raises.
-    """
-    path = f"{_bin_path()}{os.pathsep}{os.environ.get('PATH', '')}"
-    exe = shutil.which(argv[0], path=path) or argv[0]
-    try:
-        p = subprocess.run([exe, *argv[1:]], input="", capture_output=True, text=True, timeout=5)
-    except (OSError, ValueError, subprocess.SubprocessError):
-        return None
-    m = _VER_RE.search((p.stdout or "") + (p.stderr or ""))
-    return m.group(0) if m else None
-
-
-def tool_available(desc: dict) -> bool:
-    """Best-effort: can this descriptor's tool actually run here? Used to render an accurate
-    chain-button state (W-5) rather than a dead button that always reports UNAVAILABLE.
-    """
-    run = desc.get("run", {})
-    if run.get("image"):
-        return shutil.which("docker") is not None
-    base = run.get("base") or run.get("argv") or []
-    cmd = base[0] if base else None
-    if not cmd:
-        return True
-    path = f"{_bin_path()}{os.pathsep}{os.environ.get('PATH', '')}"
-    return shutil.which(cmd, path=path) is not None
-
-
 def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
     """Run a tool's own version/verify command for a user-supplied path (the 'Verify' button).
 
     argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns
-    (ok, one-line summary). Never raises; a bad path reports (False, reason).
+    (ok, one-line summary). Never raises; a bad path reports (False, reason). Uses plain
+    shutil.which (not _resolve): the value is a user-supplied path, not the descriptor's tool.
     """
     argv = [(value if a == "{value}" else a) for a in argv_template]
     if not argv or not argv[0].strip():
         return (False, "no path set")
     resolved = shutil.which(argv[0]) or argv[0]
-    try:
-        p = subprocess.run([resolved, *argv[1:]], capture_output=True, text=True, timeout=10)
-    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
-        return (False, f"cannot run: {type(e).__name__}")
+    p = _run([resolved, *argv[1:]], timeout=10)
+    if p is None:
+        return (False, "cannot run")
     line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
     return (p.returncode == 0, line or f"exit {p.returncode}")
 
@@ -204,12 +159,9 @@ def run_action(action: dict, params: dict) -> tuple[bool, str]:
         return (False, str(e))
     if not argv or not argv[0].strip():
         return (False, "no command")
-    try:
-        p = subprocess.run(
-            argv, input="", capture_output=True, text=True, timeout=action.get("timeout_s", 10)
-        )
-    except (OSError, ValueError, subprocess.SubprocessError) as e:
-        return (False, f"could not run: {type(e).__name__}")
+    p = _run(argv, input_="", timeout=action.get("timeout_s", 10))
+    if p is None:
+        return (False, "could not run")
     ok = _match(action.get("ok_if") or {"exit": 0}, p.stdout + p.stderr, p.returncode)
     line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
     return (ok, line or f"exit {p.returncode}")
@@ -321,7 +273,7 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
 
     env = dict(os.environ)
-    env["PATH"] = f"{_bin_path()}{os.pathsep}{env.get('PATH', '')}"
+    env["PATH"] = _search_path()
     mapping = dict(params) | {
         "share": str(workdir),
         "workdir": str(workdir),

@@ -15,12 +15,12 @@ import pytest
 import yaml
 
 from breachsafe_ux.facade import (
-    ROOT,
     _DescriptorError,
     _validate_descriptor,
     _validator,
     load_descriptors,
 )
+from breachsafe_ux.resolve import ROOT
 
 REPO_DESCRIPTORS = sorted((ROOT / "tools").glob("*/*.yaml"))
 

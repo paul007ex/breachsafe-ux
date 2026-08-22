@@ -21,6 +21,7 @@ inputs:
   - name: host
     type: text
     label: "host"
+    default: "pq.cloudflareresearch.com"
     placeholder: "pq.cloudflareresearch.com"
     info: "Required. Hostname, URL, or IP of the TLS endpoint."
     required: true

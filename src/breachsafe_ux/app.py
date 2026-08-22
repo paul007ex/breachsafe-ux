@@ -12,9 +12,8 @@ UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
 
 from __future__ import annotations
 
-import base64
 import os
-from pathlib import Path
+import sys
 
 import gradio as gr
 
@@ -25,15 +24,26 @@ from breachsafe_ux.facade import (
     load_descriptors,
     run_action,
     run_descriptor,
-    tool_available,
     verify_path,
 )
+from breachsafe_ux.render import (
+    _B64,
+    _ICON,
+    _ICON_DIR,
+    _LICENSE,
+    _badge,
+    _diag_md,
+    _empty,
+    _env_advanced_md,
+    _env_line,
+    _env_panel_md,
+    _link,
+    _posture_md,
+)
+from breachsafe_ux.resolve import environment, tool_available
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
-_ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
-_LOGO = _ASSETS / "logo.png"
-_B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
 _HDR_DEFAULT = {
     "product": "BreachSAFE UX",
     "version": "0.1.0",
@@ -57,94 +67,10 @@ def _header_brand(descs):
     )
 
 
-_LICENSE = "Apache-2.0 (open source)"
-
-
-def _link(u, t):
-    return (
-        f'<a href="{u}" target="_blank" rel="noopener" style="color:#0ba0b6;text-decoration:none">{t}</a>'
-        if u
-        else t
-    )
-
-
-# lucide icons, the same set EnXemble uses (ISC). SVGs use currentColor so they inherit the badge colour.
-_ICON_DIR = _ASSETS / "icons"
-
-
-def _svg(name, px=20):
-    p = _ICON_DIR / f"{name}.svg"
-    return (
-        p.read_text().replace(
-            'width="24" height="24"', f'width="{px}" height="{px}" style="vertical-align:middle"'
-        )
-        if p.exists()
-        else ""
-    )
-
-
-_STATUS_SVG = {
-    "valid": _svg("shield-check"),
-    "invalid": _svg("circle-x"),
-    "unavailable": _svg("triangle-alert"),
-    "none": "",
-}
-_ICON = {"run": str(_ICON_DIR / "scan.svg"), "convert": str(_ICON_DIR / "arrow-right.svg")}
-
-_HEAD = {
-    "valid": "VALID",
-    "invalid": "INVALID",
-    "unavailable": "UNAVAILABLE",
-    "none": "NO EXTERNAL VALIDATOR",
-}
-# No emoji (house rule). The word carries the state as text; colour is a redundant cue (WCAG 1.4.1).
-_COLOR = {"valid": "#0ba0b6", "invalid": "#b91c1c", "unavailable": "#b45309", "none": "#475569"}
 _RUN_LABEL = "Run {id}"
 _BUSY_LABEL = "Running..."
 _RADIO_MAX = 3  # <= this many enum choices render as radios, else a dropdown
 _HEAVY_TIMEOUT_S = 60  # a tool timeout at/above this serializes runs (concurrency_limit=1)
-
-
-# Readiness-posture banner (#1): severity colour for a verdict derived from the scan findings,
-# shown ABOVE and separate from the evidence badge so a green badge never reads as "secure".
-_LEVEL_COLOR = {"high": "#b91c1c", "medium": "#b45309", "ok": "#0ba0b6", "unknown": "#475569"}
-
-
-def _posture_md(posture):
-    """A readiness banner from the findings, or "" when the descriptor declares none."""
-    if not posture:
-        return ""
-    color = _LEVEL_COLOR.get(posture.get("level"), "#475569")
-    return (
-        f'<div style="border-left:5px solid {color};padding:8px 14px;margin:0 0 12px">'
-        f'<span style="color:{color};font-weight:800">{posture.get("text", "")}</span>'
-        f"</div>\n\n"
-    )
-
-
-def _badge(state, detail, hi=(), head_text=None):
-    """Render the 3-state evidence verdict. Never emits green markup for a non-`valid` state.
-    `head_text` overrides the state word so a descriptor can say what was actually checked
-    (e.g. "Evidence: CBOM well-formed") instead of a bare "VALID" that implies security (#1).
-    """
-    color = _COLOR.get(state, "#b45309")
-    head = (
-        f'<span style="color:{color};font-weight:800;display:inline-flex;align-items:center;gap:8px">'
-        f"{_STATUS_SVG.get(state, '')}{head_text or _HEAD.get(state, state.upper())}</span>"
-    )
-    body = f"\n\n{detail}" if detail else ""
-    h = "\n".join(f"- **{x['label']}:** `{x['value']}`" for x in hi)
-    return f"### {head}{body}" + (f"\n\n{h}" if h else "")
-
-
-def _empty(desc):
-    """Pre-run empty state: say what the tool does and what a result looks like (not blank)."""
-    return (
-        f"### Ready\nRun **{desc['id']}** to produce `{desc['run'].get('artifact_name', 'artifact.json')}`. "
-        f"The verdict below is the real result of an external validator, reported as one of "
-        f"**VALID / INVALID / VALIDATOR-UNAVAILABLE**. "
-        f"It is never a fabricated green on an empty or failed run."
-    )
 
 
 def _widget(spec):
@@ -261,11 +187,6 @@ def _idle(did):
     return gr.update(value=_RUN_LABEL.format(id=did), interactive=True)
 
 
-def _diag_md(ok, text):
-    color = "#0ba0b6" if ok else "#b45309"
-    return f'<span style="color:{color};font-weight:700">{"OK" if ok else "FAILED"}</span>: {text}'
-
-
 def _verify_md(value, argv_template):
     ok, line = verify_path(value, argv_template)
     return _diag_md(ok, line)
@@ -280,6 +201,8 @@ def _action_md(desc, action, vals):
 def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
     descs = load_descriptors()
     hdr = _header_brand(descs)
+    primary = next((d for d in descs.values() if d.get("standalone") is not False), None)
+    env_line = _env_line(environment(primary)) if primary else ""
     with gr.Blocks(title=BRAND["name"]) as demo:
         img = (
             f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>'
@@ -294,7 +217,8 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                     f'<span style="color:#16c7d8">v{hdr["version"]}</span></div>'
                     f'<div style="color:#64748b;font-size:12px">'
                     f"{_link(hdr['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
-                    f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>"
+                    f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div>"
+                    f"{env_line}</div></div>"
                 )
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
@@ -310,6 +234,7 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                 continue  # chain-only tool (e.g. mint-oscal): reached via a Convert button, not its own tab
             with gr.Tab(desc.get("title", did)):
                 gr.Markdown(desc.get("description", ""))
+                env_rows = environment(desc)
                 widgets, advanced_widgets = [], []
                 name2widget = {}
                 for spec in desc.get("inputs", []):
@@ -317,9 +242,10 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                         w = _widget(spec)
                         widgets.append(w)
                         name2widget[spec["name"]] = w
-                # Progressive disclosure: advanced params collapsed by default (NN/g).
+                # Progressive disclosure: advanced params collapsed by default (NN/g). The binary
+                # provenance (#75) lives here too — greyed, read-only, below the editable params.
                 adv_specs = [s for s in desc.get("inputs", []) if s.get("group") == "advanced"]
-                if adv_specs:
+                if adv_specs or env_rows:
                     with gr.Accordion("Advanced options", open=False):
                         for spec in adv_specs:
                             # The field is directly editable (pre-populated); `verify_argv` adds a
@@ -331,6 +257,8 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                                 vb = gr.Button("Verify", size="sm", variant="secondary")
                                 vr = gr.Markdown()
                                 vb.click(lambda v, t=spec["verify_argv"]: _verify_md(v, t), w, vr)
+                        # Binary provenance (#75): greyed read-only lines; "" when no rows (harmless).
+                        gr.HTML(_env_advanced_md(env_rows))
                 # widgets must be ordered to match desc["inputs"] for _collect's zip.
                 ordered = []
                 adv_iter = iter(advanced_widgets)
@@ -433,7 +361,25 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
     return demo
 
 
-def main():
+def _check() -> int:
+    """`breachsafe-ux --check`: resolve every descriptor's environment, print it, and exit nonzero
+    if any tool or validator is missing. A curl on `/` is false-healthy — the Gradio shell serves
+    even when the underlying tool is absent — so this is the real Docker HEALTHCHECK signal: it
+    verifies the binaries the descriptors declare actually resolve on this system (#75).
+    """
+    ok = True
+    for did, desc in load_descriptors().items():
+        rows = environment(desc)
+        print(f"\n## {did}\n{_env_panel_md(rows)}")
+        if any(not r["ok"] for r in rows):
+            ok = False
+    print("\nOK" if ok else "\nMISSING TOOLS")
+    return 0 if ok else 1
+
+
+def main() -> None:
+    if "--check" in sys.argv[1:]:
+        raise SystemExit(_check())
     demo = build()
     demo.queue()  # required so gr.Progress + concurrency work for long-running scans
     # Gradio 6.0 moved theme/css from the Blocks constructor to launch().

@@ -6,7 +6,8 @@ import sys
 
 import yaml
 
-from breachsafe_ux.facade import ROOT, load_descriptors, run_action
+from breachsafe_ux.facade import load_descriptors, run_action
+from breachsafe_ux.resolve import ROOT
 
 
 def test_action_ok_on_exit_zero():

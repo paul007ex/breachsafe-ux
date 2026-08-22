@@ -77,7 +77,7 @@ def test_schema_rejects_validate_with_both_argv_and_by():
 def test_qureddy_json_and_rich_have_no_validator():
     import yaml
 
-    from breachsafe_ux.facade import ROOT
+    from breachsafe_ux.resolve import ROOT
 
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cases = q["validate"]["cases"]

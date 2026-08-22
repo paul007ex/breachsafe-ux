@@ -6,7 +6,8 @@ import sys
 
 import yaml
 
-from breachsafe_ux.facade import ROOT, _tool_version, load_descriptors
+from breachsafe_ux.facade import load_descriptors
+from breachsafe_ux.resolve import ROOT, _tool_version
 
 
 def test_tool_version_parses_a_version_token():
