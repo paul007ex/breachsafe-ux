@@ -31,7 +31,7 @@ def _header_brand(descs):
     # Header brand comes from the primary standalone tool (this deployment fronts one tool).
     return next((d["brand"] for d in descs.values()
                  if d.get("standalone") is not False and d.get("brand")), None) or _HDR_DEFAULT
-_LICENSE = "Source-available, PolyForm Noncommercial 1.0.0"
+_LICENSE = "Apache-2.0 (open source)"
 def _link(u, t):
     return f'<a href="{u}" target="_blank" rel="noopener" style="color:#0ba0b6;text-decoration:none">{t}</a>' if u else t
 # lucide icons, the same set EnXemble uses (ISC). SVGs use currentColor so they inherit the badge colour.

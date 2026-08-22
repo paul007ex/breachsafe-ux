@@ -1,0 +1,22 @@
+version = 1
+
+# breachsafe-ux: the OSS UX host, Apache-2.0 (relicensed #19) as a deliberate exception to the
+# BreachSAFE PolyForm-Noncommercial default so it can be a public shared dependency of the OSS
+# QuReddy [ux]. This file provides coverage for files that don't carry an inline SPDX header.
+
+[[annotations]]
+path = [
+  "src/**", "tests/**", "tools/**", "docs/**",
+  "README.md", "NOTICE", ".gitignore", ".python-version", "pyproject.toml",
+  "assets/logo.png", "assets/favicon.png",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 BreachSAFE <https://www.breachsafe.ai>"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Third-party: Lucide icon set (ISC) — kept under its original license, not relabelled.
+[[annotations]]
+path = ["assets/icons/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "Lucide Contributors <https://lucide.dev>"
+SPDX-License-Identifier = "ISC"

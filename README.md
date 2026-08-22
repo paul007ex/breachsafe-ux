@@ -173,6 +173,6 @@ Known gaps are tracked in `docs/KNOWN-ISSUES.md`.
 ## 8. Licence
 
 Source-available under PolyForm Noncommercial 1.0.0
-(`SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`). You may use, modify, and share it
+(the `Apache-2.0` license). You may use, modify, and share it
 for any noncommercial purpose. Commercial use, including inclusion in a commercial product
 or service, requires a separate licence from BreachSAFE. See [LICENSE](LICENSE).
