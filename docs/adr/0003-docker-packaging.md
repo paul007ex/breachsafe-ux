@@ -50,6 +50,14 @@ binary when it resolves on `PATH` and falls back to `docker run --pull=always <i
 (`src/breachsafe_ux/facade.py`, `resolve.py`; README §6). In the shipped `qureddy-ux` image the
 local binary always resolves, so the image path is not exercised there.
 
+**Base image retired (2026-08-22, #131).** Because the product image builds `FROM` the tool's
+official image (not the host-only base), the `ghcr.io/paul007ex/breachsafe-ux` **base image had no
+consumer**. It has been removed (`Dockerfile` + `.github/workflows/container.yml` + the base
+`.dockerignore`) and its container package deprecated. What remains is **one image per tool-UX
+product** (`qureddy-ux`) plus the **`breachsafe-ux` Python package/wheel** (the host engine —
+`pip install` and the wheel the product image bakes in). A future generic "bring-your-own-tools"
+host, if ever needed, would be reintroduced deliberately rather than maintained speculatively.
+
 The original context and decision are kept below unchanged as the historical record.
 
 ## Context
