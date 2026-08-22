@@ -80,3 +80,21 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # ---------------------------------------------------------------------------
+  # Docker base images in the Dockerfile (digest pinning)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "build"
+      include: scope
