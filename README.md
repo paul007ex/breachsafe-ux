@@ -172,6 +172,11 @@ when it resolves on PATH**, and falls back to the **docker image** otherwise (so
 the binary; the Docker deployment uses the image). `--pull=always` keeps the tool current; pin
 by digest (`@sha256`) instead of `:latest` when reproducibility matters more than freshness.
 
+The `qureddy-ux` image itself takes the opposite trade deliberately: its base is
+`ghcr.io/breachsafe/qureddy:latest`, unpinned, rebuilt daily. This image exists to put the
+current scanner in front of a user, so freshness wins. Reproducibility is preserved by the
+per-release `qureddy-ux` version tags, which are immutable.
+
 Multi-tool orchestration and workflows are out of scope by design; that is the role of the
 orchestration layer (Osmedeus and TAO).
 

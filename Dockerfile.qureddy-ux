@@ -8,7 +8,14 @@
 #   docker run -p 7860:7860 ghcr.io/paul007ex/qureddy-ux
 # qureddy is on PATH here, so scans run in-process (the descriptors' run.image is just a fallback).
 # Base image digest-pinned (#119) — tag comment kept for humans; the digest is authoritative.
-FROM ghcr.io/breachsafe/qureddy:latest@sha256:80ebc9bd217726adab9bcd107946d512c39702b05723af6bf651e56825fcc323
+# Track the qureddy release stream, deliberately UNPINNED. README §6 says to pin by digest
+# "when reproducibility matters more than freshness" — here freshness wins: this image exists
+# to put the current scanner in front of a user, and a stale pin silently shipped qureddy
+# 0.2.34 (Python 3.12) for six releases while upstream reached 0.2.40 (Python 3.14) (#138).
+# The scheduled rebuild in qureddy-ux-image.yml is what makes ":latest" mean latest — without
+# it this file only rebuilds when ux itself changes, so a qureddy release would never land.
+# Reproducibility is preserved by the per-release qureddy-ux tags, which are immutable.
+FROM ghcr.io/breachsafe/qureddy:latest
 LABEL org.opencontainers.image.title="qureddy-ux" \
       org.opencontainers.image.vendor="BreachSAFE" \
       org.opencontainers.image.source="https://github.com/paul007ex/breachsafe-ux" \
