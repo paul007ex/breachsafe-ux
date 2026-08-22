@@ -150,3 +150,4 @@ chains:
     label: "Convert to OSCAL"
     pass_artifact_as: source_file
     with: { source: cbom }
+    feature_flag: mint_oscal   # #67: hide the Convert button in the OSS base edition

@@ -12,6 +12,14 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Feature flags: a descriptor or chain marked `feature_flag: X` renders only when
+  `BREACHSAFE_UX_<X>` is not disabled (default on). `mint_oscal` gates the OSCAL tab + the
+  QuReddy "Convert to OSCAL" button, so `BREACHSAFE_UX_MINT_OSCAL=false` previews the OSS base
+  edition — the reversible bridge to decoupling OSCAL to Pro (#67).
+- Default dark theme on load (the Light/Dark button still toggles).
+
 ### Changed
 
 - Website URL updated to `https://www.breachsafe.io`, single-sourced via `BRAND["url"]`.

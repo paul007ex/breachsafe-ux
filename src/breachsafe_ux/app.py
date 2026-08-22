@@ -21,6 +21,7 @@ from breachsafe_ux._render import _posture
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     ROOT,
+    feature_enabled,
     load_descriptors,
     run_action,
     run_descriptor,
@@ -369,6 +370,8 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                 )
 
                 for chain in desc.get("chains", []):
+                    if chain.get("feature_flag") and not feature_enabled(chain["feature_flag"]):
+                        continue  # #67: gated off -> hide the button entirely (OSS base edition)
                     target = descs.get(chain["to"])
                     clabel = chain.get("label", chain["to"])
                     if target is None or not tool_available(target):
@@ -418,6 +421,13 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
             f"{_link(hdr['url'], 'breachsafe.io')}"
             f"{_link(hdr['repo'], 'GitHub')}"
             f"<span>{_LICENSE}</span></div>"
+        )
+        # Default to dark on load (EnXemble .dark tokens); the Light/Dark button still toggles it.
+        demo.load(
+            fn=None,
+            inputs=None,
+            outputs=None,
+            js="() => { const el = document.querySelector('gradio-app') || document.body; el.classList.add('dark'); }",
         )
     return demo
 
