@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.1-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -12,22 +12,45 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-22
+
 ### Added
 
+- Self-contained, multi-arch Docker image: `docker run -p 7860:7860 ghcr.io/paul007ex/qureddy-ux:latest`
+  — QuReddy, the host, and the descriptors in one public image (amd64 + arm64), no login, no docker
+  socket. A `run.image` backend also lets the engine run a tool as its published image, always
+  latest (`docker run --pull=always`), when the binary isn't on PATH.
+- SSH Audit tab — scan an SSH endpoint (`qureddy scan ssh`) alongside TLS (#68).
+- Environment / provenance model + `breachsafe-ux --check`: each tab shows (and the CLI reports)
+  which binary, version, and resolved path it uses; `--check` exits non-zero when a declared tool
+  or validator is missing — the real container health signal (#75).
+- Host version in the header ("BreachSAFE EnXemble v<version>") (#95).
 - Feature flags: a descriptor or chain marked `feature_flag: X` renders only when
-  `BREACHSAFE_UX_<X>` is not disabled (default on). `mint_oscal` gates the OSCAL tab + the
-  QuReddy "Convert to OSCAL" button, so `BREACHSAFE_UX_MINT_OSCAL=false` previews the OSS base
-  edition — the reversible bridge to decoupling OSCAL to Pro (#67).
+  `BREACHSAFE_UX_<X>` is not disabled (default on); `mint_oscal` gates the OSCAL tab (#67).
 - Default dark theme on load (the Light/Dark button still toggles).
 
 ### Changed
 
-- Website URL updated to `https://www.breachsafe.io`, single-sourced via `BRAND["url"]`.
-- Removed AI-slop "honest/honesty" phrasing from docs, code, and tests (#40); renamed
-  `tests/test_honesty.py` → `tests/test_badge_states.py`.
-- `tools/*/bin` shims are now git-ignored local operator wiring (no hardcoded paths),
-  documented in `tools/README.md`; live integration tests skip cleanly when the tool or
-  Docker are absent, so the suite is portable for a public checkout.
+- Product identity is **BreachSAFE EnXemble**, a multi-tool host: tabs are "Quantum Audit" (TLS),
+  "SSH Audit", and "Compliance (OSCAL)" (Enterprise); run buttons dropped the "Run" prefix.
+- Action buttons show the tool's actual output — "Test connection" is the real openssl / ssh
+  handshake, not a canned line (#97).
+- Dropped the browser-broken `rich` output format (#69); plainer, declarative UI copy.
+- Engine refactored into an MVC split (resolve / render / facade / app); only `app.py` and
+  `brand.py` import Gradio.
+- CI: added jscpd, a coverage threshold, `pytest-rerunfailures`, and a thicker release gate; runs
+  ubuntu-only.
+- Website URL `https://www.breachsafe.io`, single-sourced via `BRAND["url"]`; removed AI-slop
+  phrasing from docs, code, and tests (#40).
+- `tools/*/bin` shims are git-ignored local operator wiring; live integration tests skip cleanly
+  when the tool or Docker are absent, so the suite is portable for a public checkout.
+
+### Fixed
+
+- Manual file upload on the Compliance (OSCAL) tab (Gradio 6 `gr.File` returns a path string) (#101).
+- Spurious mypy "Button has no attribute click" from Gradio's `py.typed` (treat gradio as untyped).
+- Release gate repaired: installs the dev toolchain (`--extra dev`), ignores the cached uv
+  download, and builds with `uv build`.
 
 ## [0.3.0] - 2026-08-22
 

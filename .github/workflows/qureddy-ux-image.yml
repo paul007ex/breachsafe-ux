@@ -82,5 +82,6 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && github.ref_name || 'edge' }}
+            ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && 'latest' || 'edge' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
