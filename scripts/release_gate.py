@@ -115,9 +115,7 @@ def download_tool(name: str, directory: Path) -> Path:
 
 def _run(name: str, command: list[str]) -> None:
     print(f"::group::{name}", flush=True)
-    completed = subprocess.run(  # noqa: S603 - fixed repository gate definitions.
-        command, cwd=ROOT, check=False, timeout=COMMAND_TIMEOUT
-    )
+    completed = subprocess.run(command, cwd=ROOT, check=False, timeout=COMMAND_TIMEOUT)
     print("::endgroup::", flush=True)
     if completed.returncode != 0:
         raise RuntimeError(f"{name} failed (exit {completed.returncode})")

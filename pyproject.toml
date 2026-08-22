@@ -74,7 +74,7 @@ max-statements = 50
     "S108",     # /tmp paths are test literals, not real temp-file usage
     "PT006",    # parametrize name style is a matter of taste here
 ]
-"scripts/**/*.py" = ["INP001", "S603", "S607"]  # standalone CLIs; subprocess by design
+"scripts/**/*.py" = ["INP001", "S603", "S607", "S202"]  # standalone CLIs; subprocess by design; extractall is validated/filtered
 
 [tool.mypy]
 python_version = "3.12"
@@ -119,6 +119,9 @@ show_missing = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]
+# B202 (tarfile.extractall): our calls are safe — zip members are path-validated and tar uses
+# filter="data". bandit pattern-matches extractall regardless, so skip it project-wide.
+skips = ["B202"]
 
 [tool.deptry]
 known_first_party = ["breachsafe_ux"]

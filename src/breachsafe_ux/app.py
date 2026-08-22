@@ -17,10 +17,10 @@ import os
 
 import gradio as gr
 
+from breachsafe_ux._render import _posture
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     ROOT,
-    _posture,
     load_descriptors,
     run_action,
     run_descriptor,

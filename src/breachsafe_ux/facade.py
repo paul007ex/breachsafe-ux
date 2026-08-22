@@ -17,10 +17,11 @@ import sys
 import uuid
 import warnings
 from pathlib import Path
-from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
+
+from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
 
 PKG = Path(__file__).resolve().parent
 ROOT = PKG.parent.parent  # repo root (…/breachsafe-ux)
@@ -447,44 +448,5 @@ def _validate(
     return (rule.get("otherwise", "invalid"), detail or "validator ran; artifact not accepted")
 
 
-def _find_prop(obj: Any, name: str) -> Any:
-    if isinstance(obj, dict):
-        if obj.get("name") == name and "value" in obj:
-            return obj["value"]
-        for v in obj.values():
-            r = _find_prop(v, name)
-            if r is not None:
-                return r
-    elif isinstance(obj, list):
-        for it in obj:
-            r = _find_prop(it, name)
-            if r is not None:
-                return r
-    return None
-
-
-def _highlights(desc: dict[str, Any], art: Any) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    if art is None:
-        return out
-    for h in desc.get("render", {}).get("highlights", []):
-        val = _find_prop(art, h["find_prop"]) if "find_prop" in h else None
-        if val is not None:
-            out.append({"label": h["label"], "value": val})
-    return out
-
-
-def _posture(desc: dict[str, Any], art: Any) -> dict[str, Any] | None:
-    """Readiness banner derived from the scan FINDINGS, decoupled from the evidence badge (#1).
-
-    Reads `render.posture.from` out of the artifact and maps the value to a {text, level} case.
-    Returns None when no posture is declared or there is no artifact — the host never invents a
-    readiness verdict, and a green 'evidence valid' badge no longer stands in for 'secure'.
-    """
-    p = desc.get("render", {}).get("posture")
-    if not p or art is None:
-        return None
-    val = _find_prop(art, p["from"])
-    if val is None:
-        return p.get("default")
-    return p.get("cases", {}).get(str(val)) or p.get("default")
+# _find_prop / _highlights / _posture live in _render.py (kept the engine under the size ceiling).
+# Re-exported here so `facade._highlights` / `facade._posture` remain importable (app + tests).
