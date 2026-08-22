@@ -33,6 +33,7 @@ from breachsafe_ux.render import (
     _ICON,
     _ICON_DIR,
     _LICENSE,
+    _action_output_md,
     _badge,
     _diag_md,
     _empty,
@@ -199,9 +200,10 @@ def _verify_md(value, argv_template):
 
 
 def _action_md(desc, action, vals):
-    # A descriptor-declared action button (#5): run its argv against the current inputs.
-    ok, msg = run_action(action, _collect(desc, vals))
-    return _diag_md(ok, msg)
+    # A descriptor-declared action button (#5): run its argv against the current inputs and show
+    # the tool's actual output (#97), not a canned summary.
+    ok, output = run_action(action, _collect(desc, vals))
+    return _action_output_md(ok, output)
 
 
 def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)

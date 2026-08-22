@@ -151,7 +151,9 @@ def run_action(action: dict, params: dict) -> tuple[bool, str]:
 
     This is the generic replacement for what used to be the hardcoded openssl `test_connection`
     preflight: a 'Test connection' button is now just an action whose argv is `openssl s_client`
-    declared in the descriptor (ADR-0002 §2a / #21). Never raises.
+    declared in the descriptor (ADR-0002 §2a / #21). Returns (ok, output) where output is the
+    tool's own captured stdout+stderr (trimmed) so the UI can show the actual result, not a canned
+    line (#97). Never raises.
     """
     try:
         argv = _render(action["argv"], dict(params))
@@ -162,9 +164,10 @@ def run_action(action: dict, params: dict) -> tuple[bool, str]:
     p = _run(argv, input_="", timeout=action.get("timeout_s", 10))
     if p is None:
         return (False, "could not run")
-    ok = _match(action.get("ok_if") or {"exit": 0}, p.stdout + p.stderr, p.returncode)
-    line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
-    return (ok, line or f"exit {p.returncode}")
+    combined = p.stdout + p.stderr
+    ok = _match(action.get("ok_if") or {"exit": 0}, combined, p.returncode)
+    output = combined.strip()[:4000]
+    return (ok, output or f"exit {p.returncode}")
 
 
 def _render(argv: list[str], mapping: dict) -> list[str]:

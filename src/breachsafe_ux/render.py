@@ -59,6 +59,15 @@ def _diag_md(ok: bool, text: str) -> str:
     return f'<span style="color:{color};font-weight:700">{verdict}</span>: {text}'
 
 
+def _action_output_md(ok: bool, output: str) -> str:
+    """Action result (#97): the OK/FAILED verdict plus the tool's actual captured output in a code
+    block, so 'Test connection' shows the real openssl handshake — not a canned one-liner."""
+    color = "#0ba0b6" if ok else "#b45309"
+    verdict = "OK" if ok else "FAILED"
+    fence = output.replace("```", "'''")  # keep tool output from breaking the code fence
+    return f'<span style="color:{color};font-weight:700">{verdict}</span>\n\n```\n{fence}\n```'
+
+
 def _posture_md(posture: dict | None) -> str:
     """Readiness banner from the findings, or "" when the descriptor declares none (#1)."""
     if not posture:
