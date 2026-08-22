@@ -102,7 +102,16 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["gradio.*", "yaml.*", "jsonschema.*"]
+# gradio 6.x ships py.typed, so mypy resolves gr.Button but not its event methods (.click/.then)
+# which gradio attaches at runtime -> false "has no attribute" errors. follow_imports=skip treats
+# gradio as untyped (Any) at the UI boundary, which is what ignore_missing_imports did before 6.x
+# started shipping types. Keeps CI (cold) and local (incremental) in agreement.
+module = ["gradio.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["yaml.*", "jsonschema.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
