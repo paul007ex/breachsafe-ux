@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+# syntax=docker/dockerfile:1
+#
+# qureddy-ux: the CONSUMER image (ADR-0003) — the EnXemble base host + the QuReddy TLS/SSH
+# descriptors. The QuReddy tool is NOT baked in; the descriptors declare run.image, so the host
+# runs the official ghcr.io/breachsafe/qureddy:latest image on demand (docker run --pull=always,
+# always latest). Deploy with the docker socket mounted:
+#   docker run -p 7860:7860 -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/paul007ex/qureddy-ux
+# OSS edition: the Enterprise OSCAL tab is gated off.
+ARG BASE=ghcr.io/paul007ex/breachsafe-ux:edge
+FROM ${BASE}
+
+USER root
+# docker CLI only (not the daemon): the host daemon is reached through the mounted socket, and the
+# engine shells out to `docker run` to launch the tool image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends docker.io openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# ship only the OSS descriptors (Quantum Audit + SSH Audit)
+COPY tools/qureddy      /home/app/tools/qureddy
+COPY tools/qureddy-ssh  /home/app/tools/qureddy-ssh
+RUN chown -R app:app /home/app/tools
+
+USER app
+ENV BREACHSAFE_UX_TOOLS_DIR=/home/app/tools \
+    BREACHSAFE_UX_MINT_OSCAL=false
+# inherits from base: ENTRYPOINT ["breachsafe-ux"], HOST=0.0.0.0, PORT=7860, HEALTHCHECK

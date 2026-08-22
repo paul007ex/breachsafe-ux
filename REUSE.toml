@@ -7,8 +7,8 @@ version = 1
 [[annotations]]
 path = [
   "src/**", "tests/**", "tools/**", "docs/**", "scripts/**", "CHANGELOG.md",
-  "README.md", "NOTICE", ".gitignore", ".dockerignore", ".python-version", ".jscpd.json",
-  "pyproject.toml", "uv.lock",
+  "README.md", "NOTICE", ".gitignore", ".dockerignore", "*.dockerignore", ".python-version",
+  ".jscpd.json", "pyproject.toml", "uv.lock",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 BreachSAFE <https://www.breachsafe.io>"

@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build + publish the qureddy-ux CONSUMER image (base host + QuReddy descriptors) to GHCR.
+# The QuReddy tool is not baked in; the descriptors declare run.image, so the host runs the
+# official qureddy image on demand (docker run --pull=always). Builds FROM the base image this
+# repo publishes (container.yml). See ADR-0003 + Dockerfile.qureddy-ux.
+name: qureddy-ux-image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "Dockerfile.qureddy-ux"
+      - "Dockerfile.qureddy-ux.dockerignore"
+      - "tools/qureddy/**"
+      - "tools/qureddy-ssh/**"
+      - ".github/workflows/qureddy-ux-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: qureddy-ux-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/qureddy-ux
+  BASE: ghcr.io/${{ github.repository_owner }}/breachsafe-ux:edge
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build + push (edge on main; version tag on release)
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: Dockerfile.qureddy-ux
+          build-args: BASE=${{ env.BASE }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && github.ref_name || 'edge' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

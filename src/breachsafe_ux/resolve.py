@@ -77,16 +77,30 @@ def _probe_version(exe: str) -> str:
     return ""
 
 
-def tool_available(desc: dict[str, Any]) -> bool:
-    """Best-effort: can this descriptor's tool run here? (W-5 chain-button state.)"""
-    run = desc.get("run", {})
+def _tool_source(run: dict[str, Any]) -> tuple[str, str | None]:
+    """How a descriptor's tool runs here, preferring a local binary over the image:
+    ("local", resolved_path) if run.base[0] is on PATH, ("image", image_ref) if run.image is
+    declared (docker fallback), ("local", None) when no tool is declared, else ("missing", None).
+    Single source of truth for run_descriptor, tool_available, and environment (#75).
+    """
+    cmd = (run.get("base") or run.get("argv") or [None])[0]
+    path = _resolve(cmd) if cmd else None
+    if path:
+        return ("local", path)
     if run.get("image"):
-        return _resolve("docker") is not None
-    base = run.get("base") or run.get("argv") or []
-    cmd = base[0] if base else None
+        return ("image", run["image"])
     if not cmd:
-        return True
-    return _resolve(cmd) is not None
+        return ("local", None)  # no tool declared -> trivially runnable
+    return ("missing", None)
+
+
+def tool_available(desc: dict[str, Any]) -> bool:
+    """Best-effort: can this descriptor's tool run here? Local binary, or the docker image as a
+    fallback when docker is present (W-5 chain-button state)."""
+    mode, _ = _tool_source(desc.get("run", {}))
+    if mode == "image":
+        return _resolve("docker") is not None
+    return mode == "local"
 
 
 def _validator_argvs(desc: dict[str, Any]) -> list[list[str]]:
@@ -114,24 +128,42 @@ def environment(desc: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    tool = "docker" if run.get("image") else (run.get("base") or run.get("argv") or [None])[0]
-    if tool:
-        path = _resolve(tool)
-        version = (desc.get("brand") or {}).get("version", "") or (
-            _probe_version(path) if path else ""
-        )
+    mode, loc = _tool_source(run)
+    if mode == "image":
+        # docker fallback: the tool runs as its image (pulled on demand); show that provenance.
+        docker = _resolve("docker")
         rows.append(
-            {"role": "tool", "cmd": tool, "path": path, "ok": path is not None, "version": version}
+            {
+                "role": "tool",
+                "cmd": run["image"],
+                "path": f"docker run {run['image']}",
+                "ok": docker is not None,
+                "version": "(image)",
+            }
         )
-        seen.add(tool)
+        seen.add(run["image"])
+    else:
+        tool = (run.get("base") or run.get("argv") or [None])[0]
+        if tool:
+            version = (desc.get("brand") or {}).get("version", "") or (
+                _probe_version(loc) if loc else ""
+            )
+            rows.append(
+                {
+                    "role": "tool",
+                    "cmd": tool,
+                    "path": loc,
+                    "ok": loc is not None,
+                    "version": version,
+                }
+            )
+            seen.add(tool)
 
     for argv in _validator_argvs(desc):
         if not argv:
             continue
-        if argv[0] == "{python}":
-            cmd, path = "python", sys.executable
-        else:
-            cmd, path = argv[0], _resolve(argv[0])
+        cmd = "python" if argv[0] == "{python}" else argv[0]
+        path = sys.executable if argv[0] == "{python}" else _resolve(argv[0])
         if cmd in seen:
             continue
         seen.add(cmd)
