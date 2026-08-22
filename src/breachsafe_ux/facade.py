@@ -6,6 +6,7 @@ typed argv (no shell), runs the tool, runs its external validator, and derives a
 """
 from __future__ import annotations
 
+import functools
 import json
 import os
 import re
@@ -16,6 +17,7 @@ import uuid
 from pathlib import Path
 
 import yaml
+from jsonschema import Draft202012Validator
 
 PKG = Path(__file__).resolve().parent
 ROOT = PKG.parent.parent                    # repo root (…/breachsafe-ux)
@@ -47,11 +49,31 @@ def _tools_dir() -> Path:
     return Path(d) if d else TOOLS
 
 
+_SCHEMA_PATH = PKG / "descriptor.schema.json"
+
+
+@functools.lru_cache(maxsize=1)
+def _validator() -> Draft202012Validator:
+    """The compiled descriptor JSON Schema, loaded once. See descriptor.schema.json (#48)."""
+    return Draft202012Validator(json.loads(_SCHEMA_PATH.read_text()))
+
+
+def _validate_descriptor(doc: dict, path: Path) -> None:
+    """Fail closed (#48): a descriptor that does not match descriptor.schema.json must not
+    render. Raise naming the file and the JSON path of the first problem, so a typo is a clear
+    load-time error, not a silent drop or a mid-run surprise."""
+    errs = sorted(_validator().iter_errors(doc), key=lambda e: list(e.path))
+    if errs:
+        loc = "/".join(map(str, errs[0].path)) or "<root>"
+        raise _DescriptorError(f"{path.name}: invalid descriptor at '{loc}': {errs[0].message}")
+
+
 def load_descriptors() -> dict:
     """Discover every <tools_dir>/<name>/<name>.yaml, ordered by `order` then id."""
     ds = []
     for y in sorted(_tools_dir().glob("*/*.yaml")):
         d = yaml.safe_load(y.read_text())
+        _validate_descriptor(d, y)   # fail closed before the descriptor is used at all
         if isinstance(d.get("brand"), dict):
             # Display-only metadata may reference env vars, e.g. version: "${QUREDDY_VERSION}",
             # so a host can single-source the version instead of duplicating it here. Scoped to
