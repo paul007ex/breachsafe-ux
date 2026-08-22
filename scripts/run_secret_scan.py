@@ -113,7 +113,7 @@ def main() -> int:
     cache = ROOT / ".cache" / "release-tools"
     cache.mkdir(parents=True, exist_ok=True)
     gitleaks = download_tool("gitleaks", cache)
-    completed = subprocess.run(  # noqa: S603 - executable is checksum-verified before use
+    completed = subprocess.run(
         [str(gitleaks), "git", "--no-banner", "--log-opts=HEAD", str(ROOT)],
         cwd=ROOT,
         check=False,

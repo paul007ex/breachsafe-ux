@@ -43,7 +43,7 @@ jobs:
       - name: mypy
         run: uv run --locked mypy src
       - name: bandit
-        run: uv run --locked bandit -r -ll src scripts
+        run: uv run --locked bandit -c pyproject.toml -r -ll src scripts
       - name: pip-audit
         run: uv run --locked pip-audit
       - name: deptry
