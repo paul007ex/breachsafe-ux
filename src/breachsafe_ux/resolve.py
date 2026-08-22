@@ -49,7 +49,7 @@ def _run_env() -> dict[str, str]:
     PATH), so a child resolves the same binaries the engine's resolver does (#116). subprocess
     computes a bare argv[0]'s candidates from this env's PATH (os.get_exec_path), matching
     run_descriptor, verify_path, run_action, and _validate on one PATH."""
-    return {**os.environ, "PATH": _search_path()}
+    return os.environ | {"PATH": _search_path()}
 
 
 def _run(
@@ -128,6 +128,68 @@ def _validator_argvs(desc: dict[str, Any]) -> list[list[str]]:
     return [v["argv"]] if v.get("argv") else []
 
 
+def _dep_row(role: str, cmd: str, path: str | None) -> dict[str, Any]:
+    """One provenance row for a resolved (or unresolved) dependency binary (#75)."""
+    return {
+        "role": role,
+        "cmd": cmd,
+        "path": path,
+        "ok": path is not None,
+        "version": _probe_version(path) if path else "",
+    }
+
+
+def _tool_rows(desc: dict[str, Any], run: dict[str, Any], seen: set[str]) -> list[dict[str, Any]]:
+    """The 'tool' provenance row(s): docker-image fallback, or the resolved local binary (#75)."""
+    mode, loc = _tool_source(run)
+    if mode == "image":
+        # docker fallback: the tool runs as its image (pulled on demand); show that provenance.
+        seen.add(run["image"])
+        return [
+            {
+                "role": "tool",
+                "cmd": run["image"],
+                "path": f"docker run {run['image']}",
+                "ok": _resolve("docker") is not None,
+                "version": "(image)",
+            }
+        ]
+    tool = (run.get("base") or run.get("argv") or [None])[0]
+    if not tool:
+        return []
+    seen.add(tool)
+    version = (desc.get("brand") or {}).get("version", "") or (_probe_version(loc) if loc else "")
+    return [{"role": "tool", "cmd": tool, "path": loc, "ok": loc is not None, "version": version}]
+
+
+def _validator_rows(desc: dict[str, Any], seen: set[str]) -> list[dict[str, Any]]:
+    """Provenance rows for each validator dependency, de-duplicated against `seen` (#75)."""
+    rows: list[dict[str, Any]] = []
+    for argv in _validator_argvs(desc):
+        if not argv:
+            continue
+        cmd = "python" if argv[0] == "{python}" else argv[0]
+        if cmd in seen:
+            continue
+        seen.add(cmd)
+        path = sys.executable if argv[0] == "{python}" else _resolve(argv[0])
+        rows.append(_dep_row("validator", cmd, path))
+    return rows
+
+
+def _action_rows(desc: dict[str, Any], seen: set[str]) -> list[dict[str, Any]]:
+    """Provenance rows for each descriptor action's binary, de-duplicated against `seen` (#75)."""
+    rows: list[dict[str, Any]] = []
+    for action in desc.get("actions", []):
+        argv = action.get("argv") or []
+        cmd = argv[0] if argv else ""
+        if not cmd or cmd in seen:
+            continue
+        seen.add(cmd)
+        rows.append(_dep_row(action.get("label", "action"), cmd, _resolve(cmd)))
+    return rows
+
+
 def environment(desc: dict[str, Any]) -> list[dict[str, Any]]:
     """Every binary this descriptor resolves on THIS system — tool + validator dep(s) + each
     action/preflight — as rows {role, cmd, version, path, ok}. Single source of truth for
@@ -136,73 +198,5 @@ def environment(desc: dict[str, Any]) -> list[dict[str, Any]]:
     dependency's version, names no tool -> tool-agnostic + cross-platform.
     """
     run = desc.get("run", {})
-    rows: list[dict[str, Any]] = []
     seen: set[str] = set()
-
-    mode, loc = _tool_source(run)
-    if mode == "image":
-        # docker fallback: the tool runs as its image (pulled on demand); show that provenance.
-        docker = _resolve("docker")
-        rows.append(
-            {
-                "role": "tool",
-                "cmd": run["image"],
-                "path": f"docker run {run['image']}",
-                "ok": docker is not None,
-                "version": "(image)",
-            }
-        )
-        seen.add(run["image"])
-    else:
-        tool = (run.get("base") or run.get("argv") or [None])[0]
-        if tool:
-            version = (desc.get("brand") or {}).get("version", "") or (
-                _probe_version(loc) if loc else ""
-            )
-            rows.append(
-                {
-                    "role": "tool",
-                    "cmd": tool,
-                    "path": loc,
-                    "ok": loc is not None,
-                    "version": version,
-                }
-            )
-            seen.add(tool)
-
-    for argv in _validator_argvs(desc):
-        if not argv:
-            continue
-        cmd = "python" if argv[0] == "{python}" else argv[0]
-        path = sys.executable if argv[0] == "{python}" else _resolve(argv[0])
-        if cmd in seen:
-            continue
-        seen.add(cmd)
-        rows.append(
-            {
-                "role": "validator",
-                "cmd": cmd,
-                "path": path,
-                "ok": path is not None,
-                "version": _probe_version(path) if path else "",
-            }
-        )
-
-    for action in desc.get("actions", []):
-        argv = action.get("argv") or []
-        cmd = argv[0] if argv else ""
-        if not cmd or cmd in seen:
-            continue
-        seen.add(cmd)
-        path = _resolve(cmd)
-        rows.append(
-            {
-                "role": action.get("label", "action"),
-                "cmd": cmd,
-                "path": path,
-                "ok": path is not None,
-                "version": _probe_version(path) if path else "",
-            }
-        )
-
-    return rows
+    return _tool_rows(desc, run, seen) + _validator_rows(desc, seen) + _action_rows(desc, seen)

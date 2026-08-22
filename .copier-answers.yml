@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Retroactive copier answers for breachsafe-ux. This repo predates the breachsafe-repo
+# scaffolder; this file is written by hand so `copier update` can adopt future template
+# drift (spec: breachsafe-common/docs/specs/2026-08-22-breachsafe-repo-design.md, §4.1).
+# Keys mirror breachsafe-common/scaffold/copier.yml. `copier update` will re-apply changes
+# from the template's `_src_path`; `_commit` is set to the consumed ref (v1) as a baseline
+# and should be repinned to a real template tag on the first genuine `copier update`.
+# Changes here will be overwritten by `copier update` — do not edit by hand thereafter.
+_src_path: gh:paul007ex/breachsafe-common
+_commit: v1
+project_name: BreachSAFE EnXemble
+project_slug: breachsafe-ux
+module_name: breachsafe_ux
+description: The BreachSAFE EnXemble UX host — a Gradio-based tool facade for BreachSAFE tools.
+github_owner: paul007ex
+project_type: python-cli
+license: Apache-2.0
+python_version: "3.12"
+coverage_min: 70
+common_ref: v1
+# container_tag reflects the platform 3.14 toolchain image; breachsafe-ux is 3.12 today and
+# does not yet consume the reusable workflows/container — adoption tracks the 3.14 migration (#100).
+container_tag: "3.14-openssl3.5.7"
