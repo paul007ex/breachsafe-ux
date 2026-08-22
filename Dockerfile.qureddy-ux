@@ -29,19 +29,29 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 # add the EnXemble host (gradio + engine) on top of the qureddy tool image
 COPY dist/breachsafe_ux-*.whl /tmp/
-RUN pip install --no-cache-dir /tmp/breachsafe_ux-*.whl && rm -f /tmp/*.whl \
-    # Drop the installer from the RUNTIME image. pip is needed for the line above and never
-    # again: ENTRYPOINT is breachsafe-ux and the healthcheck is plain urllib. Its vendored tree
-    # is where Trivy finds msgpack GHSA-6v7p-g79w-8964 and setuptools CVE-2025-47273, both
-    # inherited from python:3.14-slim-bookworm rather than declared by us (breachsafe/qureddy#382).
-    # Deleting unused code beats excusing it with an ignore file, and it shrinks the image.
-    && pip uninstall -y pip setuptools 2>/dev/null || true; \
+# Install the host, then delete the installer. pip is needed for this line and never again:
+# ENTRYPOINT is breachsafe-ux and the healthcheck is plain urllib. pip's vendored tree is where
+# Trivy finds msgpack GHSA-6v7p-g79w-8964 and setuptools CVE-2025-47273, both inherited from
+# python:3.14-slim-bookworm rather than declared by us (breachsafe/qureddy#382). Removing unused
+# code beats suppressing a finding about it, and it shrinks the image.
+#
+# Every step is &&-chained on purpose: an earlier `|| true;` masked a failed install and produced
+# an image with no application in it that still built green.
+RUN set -eux; \
+    test "$(ls -1 /tmp/breachsafe_ux-*.whl | wc -l)" -eq 1; \
+    pip install --no-cache-dir /tmp/breachsafe_ux-*.whl; \
+    rm -f /tmp/*.whl; \
+    python3 -c "import breachsafe_ux"; \
+    command -v breachsafe-ux; \
+    pip uninstall -y pip setuptools; \
     rm -rf /usr/local/lib/python3.14/site-packages/pip \
            /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
            /usr/local/lib/python3.14/site-packages/setuptools \
            /usr/local/lib/python3.14/site-packages/setuptools-*.dist-info \
            /usr/local/lib/python3.14/site-packages/pkg_resources \
-           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14; \
+    python3 -c "import breachsafe_ux"; \
+    command -v breachsafe-ux
 
 # ship the OSS descriptors (HNDL Audit: TLS + SSH)
 COPY tools/qureddy      /opt/enxemble/tools/qureddy
