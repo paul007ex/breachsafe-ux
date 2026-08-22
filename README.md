@@ -1,6 +1,6 @@
 # breachsafe-ux
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](CHANGELOG.md)
 
 A config-driven, honest single-tool UX harness. Point it at a command-line tool, declare
 that tool's parameters in one YAML file, and the wizard renders a web form, runs the tool,
