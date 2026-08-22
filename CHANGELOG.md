@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.2-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.2] - 2026-08-22
+
+### Fixed
+- `__version__` is now derived from installed dist metadata instead of a hardcoded literal that
+  drifted from `pyproject` (#115).
+- Action buttons, the Verify button, and the external validator now resolve their tools via the
+  same augmented PATH (per-tool `bin` shims + ambient PATH) as the main runner (#116).
+- Artifact-derived strings are HTML-escaped before entering the badge/posture markup, and the
+  per-run scratch dir (`RUN_ROOT`) is now capped to the most recent runs (#121).
+
+### Changed
+- CI: the container image is built once and published by digest, so the pushed bytes are the
+  smoke-tested bytes; the release gate no longer duplicates the full suite on every PR (#117, #118).
+- Supply chain: base images are digest-pinned; published images now carry an SBOM + provenance,
+  pass a Trivy scan that fails on fixable HIGH/CRITICAL, and are cosign-signed; `packages: write`
+  is scoped to the push job (#119).
+- Scripts: shared tool-bootstrap + safe-extract helpers factored into `scripts/_release_support.py`
+  (#122).
+
+### Docs
+- ADR-0003 trued up to the shipped self-contained multi-arch image; `KNOWN-ISSUES.md` refreshed (#120).
 
 ## [0.3.1] - 2026-08-22
 
