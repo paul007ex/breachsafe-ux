@@ -1,0 +1,21 @@
+# Per-Dockerfile ignore (BuildKit) for the qureddy-ux consumer image. Same as .dockerignore
+# but keeps tools/qureddy + tools/qureddy-ssh (the OSS descriptors this image ships); drops the
+# Enterprise mint-oscal descriptor and local bin shims. The tool itself is NOT baked in.
+.git
+.github
+.gitignore
+.venv
+dist
+build
+.ruff_cache
+.mypy_cache
+**/__pycache__
+*.pyc
+.claude
+.agents
+.playwright-cli
+tests
+docs
+tools/mint-oscal
+tools/*/bin
+*.egg-info

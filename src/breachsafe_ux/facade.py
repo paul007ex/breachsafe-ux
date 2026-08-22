@@ -22,7 +22,13 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
-from breachsafe_ux.resolve import _run, _search_path, _tool_version, _tools_dir
+from breachsafe_ux.resolve import (
+    _run,
+    _search_path,
+    _tool_source,
+    _tool_version,
+    _tools_dir,
+)
 
 PKG = Path(__file__).resolve().parent
 RUN_ROOT = Path(
@@ -288,12 +294,13 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     except _DescriptorError as e:
         # wizard #8: a malformed descriptor is an 'unavailable' badge, never a silent bad scan.
         return {"error": str(e), "badge": ("unavailable", f"descriptor error: {e}")}
-    if desc["run"].get("image"):
-        # Docker backend (W-3/W-4): the tool binary is the image ENTRYPOINT, so drop argv[0]
-        # (the tool name in run.base) and hand the rest to `docker run`. Pin images by @sha256;
-        # a stdout-artifact tool needs no mount (docker captures stdout). Missing docker ->
+    if _tool_source(desc["run"])[0] == "image":
+        # Docker backend (W-3/W-4): the local binary isn't on PATH, so run the tool as its image.
+        # The tool is the image ENTRYPOINT, so drop argv[0] (the tool name in run.base) and hand
+        # the rest to `docker run`. --pull=always keeps the tool current (the qureddy image ships
+        # often); a stdout-artifact tool needs no mount (docker captures stdout). Missing docker ->
         # FileNotFoundError below -> unavailable, never a false verdict.
-        argv = ["docker", "run", "--rm", desc["run"]["image"], *argv[1:]]
+        argv = ["docker", "run", "--rm", "--pull=always", desc["run"]["image"], *argv[1:]]
 
     try:
         proc = subprocess.run(

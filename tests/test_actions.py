@@ -89,3 +89,19 @@ def test_collect_file_input_is_filepath_string():
     }
     params = _collect(desc, ["cbom", "/tmp/uploaded/cbom.json"])
     assert params == {"source": "cbom", "source_file": "/tmp/uploaded/cbom.json"}
+
+
+def test_tool_source_prefers_local_then_image(monkeypatch):
+    """The engine runs a local binary if it resolves, else falls back to run.image (docker),
+    else reports missing. Backs run_descriptor / tool_available / environment (#docker-backend).
+    """
+    from breachsafe_ux import resolve
+
+    run = {"base": ["qureddy", "scan", "tls"], "image": "ghcr.io/breachsafe/qureddy:latest"}
+    monkeypatch.setattr(
+        resolve, "_resolve", lambda c: "/usr/local/bin/qureddy" if c == "qureddy" else None
+    )
+    assert resolve._tool_source(run)[0] == "local"
+    monkeypatch.setattr(resolve, "_resolve", lambda c: None)  # nothing on PATH
+    assert resolve._tool_source(run) == ("image", "ghcr.io/breachsafe/qureddy:latest")
+    assert resolve._tool_source({"base": ["qureddy"]})[0] == "missing"  # no image, not on PATH

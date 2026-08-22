@@ -63,6 +63,9 @@ inputs:
     flag: "-v"
 run:
   base: [qureddy, scan, ssh]
+  # Docker fallback: when qureddy isn't on PATH (e.g. the Docker deployment), the engine runs
+  # this image instead (docker run --pull=always). Local installs use the PATH binary.
+  image: ghcr.io/breachsafe/qureddy:latest
   positional_from: "{host}:{port}"
   artifact_from: stdout
   artifact_name: cbom.json
