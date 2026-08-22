@@ -5,12 +5,20 @@
 # blocking check for a release candidate (lint, type-check, tests, file-size
 # policy, single-source version check, reuse compliance, build, secret scan)
 # under a checksum-pinned uv with uv run --locked.
+#
+# NOT a per-PR gate (#118): ci.yml is the PR gate. This runs only for release
+# candidates — pushes to main / version tags, PRs targeting a release/** branch,
+# any PR carrying the `release` label, or a manual workflow_dispatch. The job is
+# guarded so ordinary PRs to main trigger nothing expensive (they short-circuit).
 
 name: release-gate
 
 on:
-  pull_request:
+  push:
     branches: [main]
+    tags: ["v*"]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +31,12 @@ concurrency:
 jobs:
   local-gate:
     name: Local release gate (${{ matrix.os }})
+    # Run for release candidates only, never every PR (#118): push to main/tags,
+    # manual dispatch, PRs into a release/** branch, or a PR labeled `release`.
+    if: >-
+      github.event_name != 'pull_request' ||
+      startsWith(github.base_ref, 'release/') ||
+      contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
