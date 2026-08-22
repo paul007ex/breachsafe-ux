@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Installed skill set for breachsafe-ux (a python-cli-archetype repo). Skills are the
+# canonical BreachSAFE tooling installed from breachsafe-common/skills (formerly the
+# breachsafe-skills repo) and copied verbatim into both agent layouts (.claude/skills/
+# and .agents/skills/). This manifest documents the installed set so drift can be checked
+# and re-synced. Edit skills upstream in breachsafe-common/skills, never the installed copies.
+repo: breachsafe-ux
+archetype: python-cli
+source: https://github.com/paul007ex/breachsafe-common/tree/main/skills
+skills:
+  - breachsafe-architecture-review
+  - breachsafe-cicd-hygiene
+  - breachsafe-container-hygiene
+  - breachsafe-docs
+  - breachsafe-implement
+  - breachsafe-quality-review
+  - breachsafe-release
+  - breachsafe-review-gate
+  - breachsafe-scorecard-verify
+  - breachsafe-ux-frameworks
