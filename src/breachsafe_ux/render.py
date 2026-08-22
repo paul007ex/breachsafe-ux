@@ -95,13 +95,11 @@ def _badge(state: str, detail: str, hi: tuple = (), head_text: str | None = None
 
 
 def _empty(desc: dict) -> str:
-    """Pre-run empty state: what the tool does + what a result looks like (not blank)."""
+    """Pre-run empty state: what the tool produces + how to read the verdict."""
     artifact = desc["run"].get("artifact_name", "artifact.json")
     return (
-        f"### Ready\nRun **{desc['id']}** to produce `{artifact}`. The verdict below is the real "
-        "result of an external validator, reported as one of "
-        "**VALID / INVALID / VALIDATOR-UNAVAILABLE**. It is never a fabricated green on an empty "
-        "or failed run."
+        f"### Ready\nProduces `{artifact}`. The verdict below shows the external validator "
+        "result: VALID, INVALID, or VALIDATOR-UNAVAILABLE."
     )
 
 

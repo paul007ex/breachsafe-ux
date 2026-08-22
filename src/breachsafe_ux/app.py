@@ -74,8 +74,8 @@ def _header_brand(descs):
     )
 
 
-_RUN_LABEL = "Run {id}"
-_BUSY_LABEL = "Running..."
+_RUN_LABEL = "{id}"  # fallback button label; descriptors set their own run_label
+_BUSY_LABEL = "Working…"
 _RADIO_MAX = 3  # <= this many enum choices render as radios, else a dropdown
 _HEAVY_TIMEOUT_S = 60  # a tool timeout at/above this serializes runs (concurrency_limit=1)
 

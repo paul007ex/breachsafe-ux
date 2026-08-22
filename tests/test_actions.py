@@ -71,4 +71,4 @@ def test_app_build_smoke():
     demo = build()
     assert demo is not None
     # sanity: descriptors actually loaded through the validated path
-    assert set(load_descriptors()) == {"qureddy", "mint-oscal"}
+    assert set(load_descriptors()) == {"qureddy", "qureddy-ssh", "mint-oscal"}
