@@ -39,6 +39,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Canonical argv model with an end-of-options guard: the engine now emits all options, then a
+  literal `--`, then positionals, so a leading-dash field value cannot be parsed as a flag by the
+  target tool (argument-injection hardening). Opt out with `run.no_end_of_options` (#9).
 - Badge correctness: a scan that exits 0 but produces an **empty/missing artifact**
   no longer badges VALID — it now reports "scan produced no output" (was a
   false-green). Also covered: nonzero exit, unresolved tokens, blind excepts.

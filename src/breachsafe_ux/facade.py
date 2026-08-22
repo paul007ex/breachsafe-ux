@@ -244,25 +244,30 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     run = desc["run"]
     if "argv" in run:
         return _render(run["argv"], mapping)
-    argv = list(run.get("base", []))
-    # DEFERRED wizard #9 (argument injection): shell=False stops SHELL injection but not ARGUMENT
-    # injection -- a leading-dash field value (e.g. host="--openssl=/tmp/x") lands in option
-    # position and the target tool may parse it as a flag. The fix (emit all options first, then a
-    # literal "--", then positionals) needs an argv-order change across descriptors and is tracked
-    # separately; qureddy is confirmed to honor "--". Not exploitable on the default loopback bind.
+    base = list(run.get("base", []))
+    options: list[str] = []
+    positionals: list[str] = []
     if run.get("positional_from"):                      # compose one positional, e.g. "{host}:{port}"
-        argv.append(run["positional_from"])             # template; resolved by _render below
+        positionals.append(run["positional_from"])      # template; resolved by _render below
     for spec in desc.get("inputs", []):
         v = params.get(spec["name"])
         if spec.get("positional"):
             if v not in (None, ""):
-                argv.append(str(v))
+                positionals.append(str(v))
         elif "flag" in spec:
             if v:
-                argv.append(spec["flag"])
+                options.append(spec["flag"])
         elif "arg" in spec:
             if v not in (None, "", False):
-                argv += [spec["arg"], str(v)]
+                options += [spec["arg"], str(v)]
+    argv = base + options
+    # wizard #9 (argument injection): emit all options first, then a literal "--", then the
+    # positionals, so everything after "--" is data. A leading-dash field value (e.g.
+    # host="--openssl=/tmp/x") can no longer be parsed as a flag by the target tool. A tool whose
+    # parser does not support "--" opts out with run.no_end_of_options (documented weaker posture).
+    if positionals and not run.get("no_end_of_options"):
+        argv.append("--")
+    argv += positionals
     return _render(argv, mapping)
 
 
