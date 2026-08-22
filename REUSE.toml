@@ -7,8 +7,7 @@ version = 1
 [[annotations]]
 path = [
   "src/**", "tests/**", "tools/**", "docs/**", "scripts/**", "CHANGELOG.md",
-  "README.md", "NOTICE", ".gitignore", ".python-version", "pyproject.toml", "uv.lock",
-  "assets/logo.png", "assets/favicon.png",
+  "README.md", "NOTICE", ".gitignore", ".dockerignore", ".python-version", "pyproject.toml", "uv.lock",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 BreachSAFE <https://www.breachsafe.io>"
@@ -16,7 +15,7 @@ SPDX-License-Identifier = "Apache-2.0"
 
 # Third-party: Lucide icon set (ISC) — kept under its original license, not relabelled.
 [[annotations]]
-path = ["assets/icons/**"]
+path = ["src/breachsafe_ux/assets/icons/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "Lucide Contributors <https://lucide.dev>"
 SPDX-License-Identifier = "ISC"

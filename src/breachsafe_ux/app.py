@@ -14,13 +14,13 @@ from __future__ import annotations
 
 import base64
 import os
+from pathlib import Path
 
 import gradio as gr
 
 from breachsafe_ux._render import _posture
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
-    ROOT,
     feature_enabled,
     load_descriptors,
     run_action,
@@ -31,7 +31,8 @@ from breachsafe_ux.facade import (
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
-_LOGO = ROOT / "assets" / "logo.png"
+_ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
+_LOGO = _ASSETS / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
 _HDR_DEFAULT = {
     "product": "BreachSAFE UX",
@@ -68,7 +69,7 @@ def _link(u, t):
 
 
 # lucide icons, the same set EnXemble uses (ISC). SVGs use currentColor so they inherit the badge colour.
-_ICON_DIR = ROOT / "assets" / "icons"
+_ICON_DIR = _ASSETS / "icons"
 
 
 def _svg(name, px=20):

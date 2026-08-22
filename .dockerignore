@@ -1,0 +1,18 @@
+# Keep the build context small + secret-free (only what `uv build` needs is COPYed anyway).
+.git
+.github
+.gitignore
+.venv
+dist
+build
+.ruff_cache
+.mypy_cache
+**/__pycache__
+*.pyc
+.claude
+.agents
+.playwright-cli
+tests
+docs
+tools
+*.egg-info
