@@ -12,6 +12,15 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Signed release pipeline (#34): publishing a GitHub Release now builds the wheel and sdist,
+  attests SLSA build provenance, cosign-signs each artifact with keyless OIDC, attaches the
+  signed artifacts to the Release, and runs a verify-signing job that fails the release unless
+  both the wheel and sdist carry a `.sigstore` bundle. Ported from breachsafe/qureddy.
+- TestPyPI publishing job (#19), guarded off by default. Enable it by registering a TestPyPI
+  trusted publisher and setting the repo variable `PUBLISH_TESTPYPI=true`. Real PyPI remains a
+  deliberate future step (Docker-first today).
+
 ## [0.3.3] - 2026-08-22
 
 ### Security
