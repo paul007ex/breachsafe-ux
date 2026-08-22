@@ -23,8 +23,9 @@ from jsonschema import Draft202012Validator
 
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
 from breachsafe_ux.resolve import (
+    _resolve,
     _run,
-    _search_path,
+    _run_env,
     _tool_source,
     _tool_version,
     _tools_dir,
@@ -36,6 +37,23 @@ RUN_ROOT = Path(
 )
 # Substitution grammar (#50): `{{`/`}}` are literal braces; `{name}` is a token.
 _SUBST = re.compile(r"\{\{|\}\}|\{([a-zA-Z0-9_]+)\}")
+_RUN_KEEP = 20  # #121: cap RUN_ROOT at the most-recent N per-run workdirs
+
+
+def _prune_run_root(keep: int = _RUN_KEEP) -> None:
+    """Bound RUN_ROOT growth (#121): keep the `keep` most-recently-modified per-run workdirs and
+    remove older ones, so an every-run-mints-a-dir engine does not grow RUN_ROOT unboundedly.
+    Best-effort and fail-safe — any error here is swallowed so housekeeping never breaks a run.
+    """
+    try:
+        runs = [d for d in RUN_ROOT.iterdir() if d.is_dir()]
+        if len(runs) <= keep:
+            return
+        runs.sort(key=lambda d: d.stat().st_mtime, reverse=True)
+        for stale in runs[keep:]:
+            shutil.rmtree(stale, ignore_errors=True)
+    except OSError:
+        return
 
 
 class _DescriptorError(Exception):
@@ -136,14 +154,15 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
     """Run a tool's own version/verify command for a user-supplied path (the 'Verify' button).
 
     argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns
-    (ok, one-line summary). Never raises; a bad path reports (False, reason). Uses plain
-    shutil.which (not _resolve): the value is a user-supplied path, not the descriptor's tool.
+    (ok, one-line summary). Never raises; a bad path reports (False, reason). Resolves via
+    _resolve + runs with _run_env so a bare tool name a user types resolves against the same
+    augmented tool PATH (per-tool shims -> PATH) the engine uses to run the descriptor (#116).
     """
     argv = [(value if a == "{value}" else a) for a in argv_template]
     if not argv or not argv[0].strip():
         return (False, "no path set")
-    resolved = shutil.which(argv[0]) or argv[0]
-    p = _run([resolved, *argv[1:]], timeout=10)
+    resolved = _resolve(argv[0]) or argv[0]
+    p = _run([resolved, *argv[1:]], timeout=10, env=_run_env())
     if p is None:
         return (False, "cannot run")
     line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
@@ -167,7 +186,9 @@ def run_action(action: dict, params: dict) -> tuple[bool, str]:
         return (False, str(e))
     if not argv or not argv[0].strip():
         return (False, "no command")
-    p = _run(argv, input_="", timeout=action.get("timeout_s", 10))
+    # #116: run against the augmented tool PATH so a bare argv[0] resolves via the per-tool bin
+    # shims, consistent with run_descriptor (subprocess resolves argv[0] from env's PATH).
+    p = _run(argv, input_="", timeout=action.get("timeout_s", 10), env=_run_env())
     if p is None:
         return (False, "could not run")
     combined = p.stdout + p.stderr
@@ -279,10 +300,10 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     ).hex[:12]
     workdir = RUN_ROOT / f"{desc['id']}-{key}"
     workdir.mkdir(parents=True, exist_ok=True)
+    _prune_run_root()  # #121: bound RUN_ROOT growth (keep the most-recent runs, incl. this one)
     artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
 
-    env = dict(os.environ)
-    env["PATH"] = _search_path()
+    env = _run_env()  # #116: augmented tool PATH (per-tool bin shims -> ambient PATH)
     mapping = dict(params) | {
         "share": str(workdir),
         "workdir": str(workdir),
@@ -402,10 +423,16 @@ def _validate(
         "python": sys.executable,
     }
     argv = _render(v["argv"], mapping)
-    if not shutil.which(argv[0]):
+    if not _resolve(argv[0]):  # #116: resolve via the augmented tool PATH, like the tool itself
         return ("unavailable", f"validator '{argv[0]}' not installed")
     try:
-        out = subprocess.run(argv, capture_output=True, text=True, timeout=v.get("timeout_s", 180))
+        out = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=v.get("timeout_s", 180),
+            env=_run_env(),  # #116: run the validator against the same augmented tool PATH
+        )
     except Exception as e:
         return ("unavailable", f"validator error: {type(e).__name__}")
     text = out.stdout + out.stderr

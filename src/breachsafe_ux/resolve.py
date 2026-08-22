@@ -44,12 +44,23 @@ def _resolve(cmd: str) -> str | None:
     return shutil.which(cmd, path=_search_path()) if cmd else None
 
 
+def _run_env() -> dict[str, str]:
+    """Subprocess environment carrying the tool-resolution PATH (per-tool bin shims -> ambient
+    PATH), so a child resolves the same binaries the engine's resolver does (#116). subprocess
+    computes a bare argv[0]'s candidates from this env's PATH (os.get_exec_path), matching
+    run_descriptor, verify_path, run_action, and _validate on one PATH."""
+    return {**os.environ, "PATH": _search_path()}
+
+
 def _run(
-    argv: list[str], *, timeout: float, input_: str = ""
+    argv: list[str], *, timeout: float, input_: str = "", env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str] | None:
-    """Run argv (no shell), capture text output; None on launch failure or timeout (#86)."""
+    """Run argv (no shell), capture text output; None on launch failure or timeout (#86). Pass
+    `env` (e.g. _run_env()) to resolve/run against the augmented tool PATH; None inherits."""
     try:
-        return subprocess.run(argv, input=input_, capture_output=True, text=True, timeout=timeout)
+        return subprocess.run(
+            argv, input=input_, capture_output=True, text=True, timeout=timeout, env=env
+        )
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
 

@@ -7,6 +7,7 @@ markup app.py hands to gr.HTML/gr.Markdown. Split from app.py so the controller 
 from __future__ import annotations
 
 import base64
+import html
 from pathlib import Path
 
 _ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
@@ -73,9 +74,12 @@ def _posture_md(posture: dict | None) -> str:
     if not posture:
         return ""
     color = _LEVEL_COLOR.get(posture.get("level", ""), "#475569")
+    # #121: escape the interpolated text (artifact-derived in principle) so it can never inject
+    # markup into the banner; the static styling we build around it is left untouched.
+    text = html.escape(str(posture.get("text", "")))
     return (
         f'<div style="border-left:5px solid {color};padding:8px 14px;margin:0 0 12px">'
-        f'<span style="color:{color};font-weight:800">{posture.get("text", "")}</span></div>\n\n'
+        f'<span style="color:{color};font-weight:800">{text}</span></div>\n\n'
     )
 
 
@@ -89,8 +93,13 @@ def _badge(state: str, detail: str, hi: tuple = (), head_text: str | None = None
         'display:inline-flex;align-items:center;gap:8px">'
         f"{_STATUS_SVG.get(state, '')}{head_text or _HEAD.get(state, state.upper())}</span>"
     )
-    body = f"\n\n{detail}" if detail else ""
-    h = "\n".join(f"- **{x['label']}:** `{x['value']}`" for x in hi)
+    # #121: `detail` (validator output) and the highlight label/value (artifact-derived) are
+    # untrusted strings; escape them before they land in the markdown/HTML the UI renders, so a
+    # `<script>`-ish artifact value cannot inject markup. The static markup here is left as-is.
+    body = f"\n\n{html.escape(detail)}" if detail else ""
+    h = "\n".join(
+        f"- **{html.escape(str(x['label']))}:** `{html.escape(str(x['value']))}`" for x in hi
+    )
     return f"### {head}{body}" + (f"\n\n{h}" if h else "")
 
 
