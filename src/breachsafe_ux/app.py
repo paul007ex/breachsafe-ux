@@ -5,7 +5,7 @@ The type->widget map is written ONCE here; every tool is a YAML. Adding a tool =
 UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
   * persistent labels + `info=` hints (placeholders are examples only);
   * progressive disclosure (advanced params behind an Accordion);
-  * honest, never-green-on-failure 3-state badge (icon + word + colour, never colour alone);
+  * never-green-on-failure 3-state badge (icon + word + colour, never colour alone);
   * long-run feedback (queue + Progress + Run-button busy state) for 30s-2min scans;
   * per-run data lives in `gr.State`, never in a module global that could leak across users.
 """
@@ -32,7 +32,7 @@ from breachsafe_ux.facade import (
 _LOGO = ROOT / "assets" / "logo.png"
 _B64 = base64.b64encode(_LOGO.read_bytes()).decode() if _LOGO.exists() else ""
 _HDR_DEFAULT = {"product": "BreachSAFE UX", "version": "0.1.0",
-                "url": "https://www.breachsafe.ai", "repo": ""}
+                "url": BRAND["url"], "repo": BRAND["repo"]}
 
 
 def _header_brand(descs):
@@ -89,7 +89,7 @@ def _badge(state, detail, hi=(), head_text=None):
 def _empty(desc):
     """Pre-run empty state: say what the tool does and what a result looks like (not blank)."""
     return (f"### Ready\nRun **{desc['id']}** to produce `{desc['run'].get('artifact_name', 'artifact.json')}`. "
-            f"The verdict below is the real result of an external validator, reported honestly as one of "
+            f"The verdict below is the real result of an external validator, reported as one of "
             f"**VALID / INVALID / VALIDATOR-UNAVAILABLE**. "
             f"It is never a fabricated green on an empty or failed run.")
 
@@ -129,7 +129,7 @@ def _collect(desc, vals):
 
 
 def _result(desc, res):
-    """(badge_md, artifact_json, raw_log_md, artifact_path). Honest on every branch.
+    """(badge_md, artifact_json, raw_log_md, artifact_path). Defined result on every branch.
 
     The badge_md is a readiness-posture banner (from the findings, #1) followed by the evidence
     badge, whose word can be reworded per state so a green badge states what was checked rather
@@ -165,7 +165,7 @@ def _chain_handler(chain, descs):
 
     def run(artifact_path, progress=gr.Progress()):
         if not artifact_path:
-            # Pre-run guard (no artifact yet): mirror _empty()'s honest, emoji-free surface
+            # Pre-run guard (no artifact yet): mirror _empty()'s emoji-free surface
             # rather than a validator verdict — nothing has been validated to badge.
             return ("### Nothing to convert yet\nRun the tool above first, then use this "
                     "button to convert its output.", None, "", None)
@@ -212,7 +212,7 @@ def build():
                         f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{hdr["product"]} '
                         f'<span style="color:#16c7d8">v{hdr["version"]}</span></div>'
                         f'<div style="color:#64748b;font-size:12px">'
-                        f'{_link(hdr["url"], "breachsafe.ai")} &nbsp;&middot;&nbsp; '
+                        f'{_link(hdr["url"], "breachsafe.io")} &nbsp;&middot;&nbsp; '
                         f'{_link(hdr["repo"], "GitHub")} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>')
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
@@ -279,7 +279,7 @@ def build():
                     target = descs.get(chain["to"])
                     clabel = chain.get("label", chain["to"])
                     if target is None or not tool_available(target):
-                        # W-5: honest, not a dead button. Disable it and say why it cannot run
+                        # W-5: reflect the real state, not a dead button. Disable it and say why it cannot run
                         # (e.g. a qureddy-only [ui] install has no mint-oscal for OSCAL conversion).
                         need = (target or {}).get("run", {}).get("base", [chain["to"]])[0]
                         gr.Button(f"{clabel} (unavailable)", variant="secondary",
@@ -302,7 +302,7 @@ def build():
         gr.HTML(
             '<div class="bs-footer">'
             f'<span>{hdr["product"]} v{hdr["version"]}</span>'
-            f'{_link(hdr["url"], "breachsafe.ai")}'
+            f'{_link(hdr["url"], "breachsafe.io")}'
             f'{_link(hdr["repo"], "GitHub")}'
             f'<span>{_LICENSE}</span></div>')
     return demo

@@ -1,18 +1,20 @@
-"""Honesty / safety pressure tests for the breachsafe-ux engine.
+"""Badge-state / safety pressure tests for the breachsafe-ux engine.
 
 These exercise the REAL pipeline end-to-end through :func:`run_descriptor` — the real
 `mint-oscal` tool (run from source via the ``tools/mint-oscal/bin`` wrapper) and its real
 external validator (`oscal-cli` in Docker). Nothing here is mocked; the whole point is to
-prove the 3-state badge is honest:
+prove the 3-state badge is accurate:
 
   * validator ran and blessed the artifact        -> ``valid``
   * validator ran and rejected the artifact        -> ``invalid``   (NOT a fabricated green)
   * validator could not run (infra/absent)         -> ``unavailable`` (NOT a fabricated green)
 
-Requirements to run green: Docker up + ``ghcr.io/metaschema-framework/oscal-cli:latest``
-pulled, and the tool source trees at ``/Users/paul/claude/{qureddy,breachsafe-oscal}/src``.
-Docker Desktop on macOS can only bind-mount paths under ``/Users``; the engine's default run
-root (``~/mint-proof/wizard-runs``) already lives there, so we do NOT override it.
+Requirements to run: the ``mint-oscal`` tool reachable on PATH (locally, via a
+``tools/mint-oscal/bin`` shim you provide — see tools/README.md), Docker up, and the
+``ghcr.io/metaschema-framework/oscal-cli:latest`` image pulled. When those are absent (e.g. a
+fresh clone or CI), the whole module SKIPS rather than failing — it is a live integration
+suite, not a unit test. Docker Desktop on macOS can only bind-mount paths under the home
+directory; the engine's default run root already lives there, so we do NOT override it.
 """
 from __future__ import annotations
 
@@ -24,7 +26,14 @@ from pathlib import Path
 
 import pytest
 
-from breachsafe_ux.facade import load_descriptors, run_descriptor
+from breachsafe_ux.facade import load_descriptors, run_descriptor, tool_available
+
+# Live integration: skip cleanly unless the mint-oscal tool is resolvable AND docker is present.
+_MINT = load_descriptors().get("mint-oscal")
+pytestmark = pytest.mark.skipif(
+    not (_MINT and tool_available(_MINT) and shutil.which("docker")),
+    reason="live integration: requires the mint-oscal tool on PATH + docker (oscal-cli image)",
+)
 
 # A minimal, well-formed QuReddy scan.v1 document with a tz-aware timestamp. mint-oscal's
 # ``qureddy`` adapter turns this into an OSCAL POA&M that oscal-cli accepts.
@@ -85,8 +94,8 @@ def test_t2_oscal_invalid_timestamp_is_invalid(mint, fixtures_dir):
 
     (The prototype used a *naive* timestamp; the current mint-oscal normalizes naive values
     to UTC, so that case now legitimately passes. Year 0001 is outside OSCAL's supported
-    dateTime range, so it exercises the same honesty property: the external validator RAN
-    and rejected the artifact — an honest ``invalid``, never ``unavailable`` or a fake green.)
+    dateTime range, so it exercises the same property: the external validator RAN
+    and rejected the artifact — an ``invalid``, never ``unavailable`` or a fake green.)
     """
     bad = copy.deepcopy(GOOD_SCAN)
     bad["scan"]["completed_at"] = "0001-01-01T00:00:00"
@@ -106,7 +115,7 @@ def test_t3_source_injection_is_argv_safe(mint, fixtures_dir):
 
 
 def test_t4_absent_validator_is_unavailable(mint, fixtures_dir):
-    """If the validator binary does not exist, the badge is honestly ``unavailable`` — not green."""
+    """If the validator binary does not exist, the badge is ``unavailable`` — not green."""
     broken = copy.deepcopy(mint)
     broken["validate"]["argv"][0] = "nonexistent-validator-xyz"
     src = _write(fixtures_dir, "good.json", GOOD_SCAN)
@@ -121,7 +130,7 @@ def test_t5_malformed_input_is_not_valid(mint, fixtures_dir):
     assert res["badge"][0] != "valid", res["badge"]
 
 
-# --- Unit-level honesty guards (no Docker / no tool source needed). Regressions for
+# --- Unit-level badge-state guards (no Docker / no tool source needed). Regressions for
 #     the two engine bugs found on the [ui] track: breachsafe/qureddy#182, #183. ---
 
 from breachsafe_ux import facade
@@ -155,10 +164,10 @@ def test_t6b_validate_still_valid_on_wellformed_rule(tmp_path):
 
 
 def test_t7_nul_param_is_unavailable_not_traceback():
-    """#183: a NUL byte in a param must degrade to an honest ``unavailable`` badge, never raise.
+    """#183: a NUL byte in a param must degrade to an ``unavailable`` badge, never raise.
 
     ``subprocess.run`` raises ``ValueError: embedded null byte``; the engine must catch it and
-    return the honest dict so the UI shows a badge, not a raw traceback.
+    return the result dict so the UI shows a badge, not a raw traceback.
     """
     desc = {"id": "t2", "run": {"base": ["echo"], "positional_from": "{host}"},
             "inputs": [{"name": "host", "type": "text"}]}

@@ -11,7 +11,7 @@ BRAND = {
     "company": "BreachSAFE",
     "product": "EnXemble",
     "ai": "Aurelius",
-    "url": "https://www.breachsafe.ai",
+    "url": "https://www.breachsafe.io",
     "repo": "https://github.com/paul007ex/breachsafe-ux",
     "tagline": "The unified security posture platform, starting with the post-quantum transition.",
 }

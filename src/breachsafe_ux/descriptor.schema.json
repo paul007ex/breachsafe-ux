@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://breachsafe.ai/schemas/breachsafe-ux/descriptor/v1.json",
+  "$id": "https://breachsafe.io/schemas/breachsafe-ux/descriptor/v1.json",
   "title": "breachsafe-ux tool descriptor",
   "description": "One tool = one YAML under tools/<id>/<id>.yaml. The host renders it, builds a no-shell argv, runs the tool, runs an external validator, and derives the 3-state badge. See docs/adr/0002-host-descriptor-boundary.md.",
   "type": "object",

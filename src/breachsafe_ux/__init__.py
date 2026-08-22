@@ -1,8 +1,8 @@
-"""breachsafe-ux — a config-driven, honest single-tool UX harness.
+"""breachsafe-ux — a config-driven single-tool UX host.
 
 One tool = one YAML descriptor under ``tools/<name>/<name>.yaml``. The engine
 (:mod:`breachsafe_ux.facade`) builds a typed argv (no shell), runs the tool,
-runs its external validator, and derives an honest 3-state badge
+runs its external validator, and derives a 3-state badge
 (``valid`` / ``invalid`` / ``unavailable``). The Gradio shell
 (:mod:`breachsafe_ux.app`) renders every descriptor as widgets.
 """

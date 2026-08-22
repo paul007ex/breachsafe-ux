@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.ai>
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
 """Single-source version tooling for breachsafe-ux.
 
