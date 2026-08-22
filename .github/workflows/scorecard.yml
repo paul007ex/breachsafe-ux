@@ -1,0 +1,67 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Requires the repository to be PUBLIC (or GitHub Advanced Security). breachsafe-ux is
+# going public as the OSS shared dependency of qureddy[ux]; until then these workflows will
+# not produce results.
+#
+# OpenSSF Scorecard weekly assessment.
+#
+# Scorecard scans the repo for OSS supply-chain best practices and
+# publishes a score. We target the OpenSSF Best Practices Badge:
+# OpenSSF Scorecard evidence is collected on every main-branch change.
+#
+# Reference: https://github.com/ossf/scorecard-action
+
+name: OpenSSF Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    # Mondays 06:00 UTC. Weekly cadence; not on every PR.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions: read-all
+
+
+concurrency:
+  group: scorecard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # for SARIF upload
+      id-token: write         # for publish_results
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          # Publish results to https://api.securityscorecards.dev so the
+          # README badge stays current. Requires repo to be public.
+          publish_results: true
+
+      - name: Upload SARIF artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scorecard-sarif
+          path: scorecard-results.sarif
+          retention-days: 90
+
+      - name: Upload to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          sarif_file: scorecard-results.sarif
