@@ -263,6 +263,7 @@ dependencies = [
 dev = [
     { name = "allure-pytest" },
     { name = "bandit" },
+    { name = "defusedxml" },
     { name = "deptry" },
     { name = "diff-cover" },
     { name = "import-linter" },
@@ -285,6 +286,7 @@ requires-dist = [
     { name = "allure-pytest", marker = "extra == 'dev'", specifier = ">=2.13" },
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7" },
     { name = "cyclonedx-python-lib", extras = ["json-validation"], specifier = ">=11,<12" },
+    { name = "defusedxml", marker = "extra == 'dev'", specifier = ">=0.7" },
     { name = "deptry", marker = "extra == 'dev'", specifier = ">=0.20" },
     { name = "diff-cover", marker = "extra == 'dev'", specifier = ">=9.0" },
     { name = "gradio", specifier = ">=6" },

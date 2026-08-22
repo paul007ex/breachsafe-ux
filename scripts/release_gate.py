@@ -46,7 +46,22 @@ def _gates(uv: Path) -> None:
     _run("bandit", [*run, "bandit", "-c", "pyproject.toml", "-r", "-ll", "src", "scripts"])
     _run("pip-audit", [*run, "pip-audit"])
     _run("deptry", [*run, "deptry", "."])
-    _run("tests", [*run, "pytest", "tests/", "-q", "--cov=breachsafe_ux", "--cov-fail-under=70"])
+    # -m "not live" + JUnit output mirrors CI exactly (#29 parity) and feeds the no-skipped gate.
+    _run(
+        "tests",
+        [
+            *run,
+            "pytest",
+            "tests/",
+            "-q",
+            "-m",
+            "not live",
+            "--cov=breachsafe_ux",
+            "--cov-fail-under=70",
+            "--junitxml=pytest-results.xml",
+        ],
+    )
+    _run("no-skipped", [*run, "python", "scripts/check_no_skipped_tests.py", "pytest-results.xml"])
     _run("file-size", [*run, "python", "scripts/check_size_policy.py"])
     _run("version", [*run, "python", "scripts/bump_version.py", "--check"])
     _run("reuse", [*run, "reuse", "lint"])

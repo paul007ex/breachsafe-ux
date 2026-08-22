@@ -11,8 +11,9 @@ prove the 3-state badge is accurate:
 
 Requirements to run: the ``mint-oscal`` tool reachable on PATH (locally, via a
 ``tools/mint-oscal/bin`` shim you provide — see tools/README.md), Docker up, and the
-``ghcr.io/metaschema-framework/oscal-cli:latest`` image pulled. When those are absent (e.g. a
-fresh clone or CI), the whole module SKIPS rather than failing — it is a live integration
+``ghcr.io/metaschema-framework/oscal-cli:latest`` image pulled. The module is marked ``live``
+so CI DESELECTS it (``-m "not live"``); locally, when those dependencies are absent (e.g. a
+fresh clone), the ``skipif`` net skips it rather than failing — it is a live integration
 suite, not a unit test. Docker Desktop on macOS can only bind-mount paths under the home
 directory; the engine's default run root already lives there, so we do NOT override it.
 """
@@ -31,12 +32,18 @@ from breachsafe_ux import facade
 from breachsafe_ux.facade import load_descriptors, run_descriptor
 from breachsafe_ux.resolve import tool_available
 
-# Live integration: skip cleanly unless the mint-oscal tool is resolvable AND docker is present.
+# Live integration. `live` lets CI DESELECT the module (`-m "not live"`) so it never shows up as
+# a skip — that keeps the no-skipped-tests gate honest (#90). The `skipif` remains a local safety
+# net: run the full suite without `-m`, and the module still skips cleanly when its live
+# dependencies (the mint-oscal tool on PATH + docker) are absent.
 _MINT = load_descriptors().get("mint-oscal")
-pytestmark = pytest.mark.skipif(
-    not (_MINT and tool_available(_MINT) and shutil.which("docker")),
-    reason="live integration: requires the mint-oscal tool on PATH + docker (oscal-cli image)",
-)
+pytestmark = [
+    pytest.mark.live,
+    pytest.mark.skipif(
+        not (_MINT and tool_available(_MINT) and shutil.which("docker")),
+        reason="live integration: requires the mint-oscal tool on PATH + docker (oscal-cli image)",
+    ),
+]
 
 # A minimal, well-formed QuReddy scan.v1 document with a tz-aware timestamp. mint-oscal's
 # ``qureddy`` adapter turns this into an OSCAL POA&M that oscal-cli accepts.
