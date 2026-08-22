@@ -1,13 +1,18 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
 schema_version: 1
 order: 1
 id: qureddy
 standalone: true
-title: "Quantum Audit"
-run_label: "Quantum Audit"
+title: "HNDL Audit (TLS)"
+run_label: "HNDL Audit (TLS)"
 description: >
-  Scans a TLS endpoint and reports which key exchanges it offers and whether they are
-  post-quantum, hybrid, or classical. Output is a CycloneDX 1.7 CBOM. A full scan runs
-  several handshakes and takes 30 seconds to 2 minutes.
+  Measures harvest-now-decrypt-later exposure at a TLS endpoint: whether the key exchange
+  it offers is post-quantum, hybrid, or classical-only. Traffic captured today can be
+  decrypted later once a cryptographically relevant quantum computer exists, so
+  classical-only key exchange is a present-day confidentiality risk. Also reports the
+  certificate signature algorithm and any legacy protocol offers. Output is a CycloneDX 1.7
+  CBOM. A full scan runs several handshakes and takes 30 seconds to 2 minutes.
 brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)

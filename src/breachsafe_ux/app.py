@@ -189,7 +189,7 @@ def _chain_handler(chain: dict[str, Any], descs: dict[str, Any]) -> Callable[...
 
 
 def _run_label(desc: dict[str, Any]) -> str:
-    # Descriptor-set run-button label (e.g. "Run quantum audit"), else "Run <id>". Lets two
+    # Descriptor-set run-button label (e.g. "HNDL Audit (TLS)"), else "Run <id>". Lets two
     # tabs backed by the same tool (qureddy TLS + SSH) read distinctly, not "Run qureddy" twice.
     return desc.get("run_label") or _RUN_LABEL.format(id=desc["id"])
 
