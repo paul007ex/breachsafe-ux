@@ -9,6 +9,6 @@ runs its external validator, and derives an honest 3-state badge
 
 __version__ = "0.1.0"
 
-from breachsafe_ux.facade import load_descriptors, run_descriptor  # noqa: E402,F401
+from breachsafe_ux.facade import load_descriptors, run_descriptor
 
 __all__ = ["__version__", "load_descriptors", "run_descriptor"]

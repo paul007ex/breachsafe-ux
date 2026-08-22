@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -125,7 +124,7 @@ def test_t5_malformed_input_is_not_valid(mint, fixtures_dir):
 # --- Unit-level honesty guards (no Docker / no tool source needed). Regressions for
 #     the two engine bugs found on the [ui] track: breachsafe/qureddy#182, #183. ---
 
-from breachsafe_ux import facade  # noqa: E402
+from breachsafe_ux import facade
 
 
 @pytest.mark.parametrize("rule", [

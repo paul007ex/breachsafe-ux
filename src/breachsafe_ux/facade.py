@@ -5,8 +5,16 @@ typed argv (no shell), runs the tool, runs its external validator, and derives a
 3-state badge (valid / invalid / validator-unavailable). Zero tool-specific logic lives here.
 """
 from __future__ import annotations
-import json, os, re, shutil, subprocess, sys, uuid
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import uuid
 from pathlib import Path
+
 import yaml
 
 PKG = Path(__file__).resolve().parent

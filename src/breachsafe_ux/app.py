@@ -10,14 +10,21 @@ UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
   * per-run data lives in `gr.State`, never in a module global that could leak across users.
 """
 from __future__ import annotations
+
 import base64
 import os
-from pathlib import Path
+
 import gradio as gr
+
+from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
-    load_descriptors, run_descriptor, tool_available, verify_path, test_connection, ROOT,
+    ROOT,
+    load_descriptors,
+    run_descriptor,
+    test_connection,
+    tool_available,
+    verify_path,
 )
-from breachsafe_ux.brand import THEME, CSS, BRAND
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.

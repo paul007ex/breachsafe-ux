@@ -18,3 +18,10 @@ packages = ["src/breachsafe_ux"]
 
 [dependency-groups]
 dev = ["pytest>=8"]
+[tool.ruff.lint]
+# Intentional patterns in the UX host (revisit in the quality pass):
+#  B008  gradio uses gr.Progress() as an arg default (framework idiom)
+#  BLE001 validator/artifact paths deliberately catch broadly to fail CLOSED (unavailable)
+#  PLW1510 subprocess results are inspected manually (badge logic), never via check=
+#  SIM102/ISC004 kept for readability of the badge/render code
+ignore = ["B008", "BLE001", "PLW1510", "SIM102", "ISC004"]
