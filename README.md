@@ -1,6 +1,6 @@
 # breachsafe-ux
 
-[![Version](https://img.shields.io/badge/version-0.3.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.2-blue?style=flat-square)](CHANGELOG.md)
 
 BreachSAFE EnXemble is a config-driven UX host for command-line tools. Declare a tool's
 parameters in one YAML file and it renders a web tab, runs the tool, validates the output with
