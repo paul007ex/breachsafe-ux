@@ -1,0 +1,142 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Signed release pipeline (#34). On a published GitHub Release: build the wheel + sdist,
+# `twine check`, attest SLSA build provenance, cosign-sign each artifact (keyless OIDC), upload
+# the signed artifacts to the Release, then a verify-signing job re-reads the Release and FAILS
+# unless the wheel and sdist each carry a .sigstore bundle — so "the signing step silently did
+# not run" can never ship quietly (adapted from breachsafe/qureddy, #219/#232).
+#
+# Release flow: bump version (PR) -> `git push` tag vX.Y.Z (builds the qureddy-ux image) ->
+# `gh release create vX.Y.Z` (or the Releases UI) -> this workflow signs + attaches artifacts.
+#
+# TestPyPI publish (#19) is included but GUARDED OFF by default. To enable it:
+#   1. On https://test.pypi.org, register a pending publisher:
+#      owner=paul007ex  project=breachsafe-ux  workflow=release.yml  environment=testpypi
+#   2. Set the repo variable PUBLISH_TESTPYPI=true (Settings -> Secrets and variables ->
+#      Actions -> Variables), or `gh variable set PUBLISH_TESTPYPI --body true`.
+# Real PyPI stays a deliberate future flip (see the commented `pypi` job at the bottom).
+name: release
+
+on:
+  release:
+    types: [published]     # cut a GitHub Release -> auto-sign + publish
+  workflow_dispatch:        # or run it by hand from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build wheel + sdist (signed)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # upload signed artifacts as GitHub Release assets
+      id-token: write        # OIDC for the SLSA provenance attestation + cosign keyless
+      attestations: write    # write the attestation to the repo's attestation store
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify canonical release repository
+        # GitHub org/repo names are case-insensitive; GITHUB_REPOSITORY preserves the canonical
+        # display casing, so lower-case before comparing.
+        run: test "$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" = "paul007ex/breachsafe-ux"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Build distributions
+        run: uv build   # -> dist/*.whl + dist/*.tar.gz
+      - name: Check with twine
+        run: uv tool run --from "twine==6.2.0" twine check dist/*
+      # SLSA build provenance for the wheel + sdist. Verifiable with
+      # `gh attestation verify <file> --repo paul007ex/breachsafe-ux`.
+      - name: Attest build provenance for the distributions
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*"
+      # Hand the pristine dist/ to the TestPyPI job before any signature bundles land in dist/,
+      # so twine/publish never tries to upload a .sigstore file.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+      # Signed-Releases: cosign keyless OIDC signature bundles attached to the GitHub Release so
+      # OpenSSF Scorecard can discover a signature next to each asset. Only meaningful on
+      # `release: published` (workflow_dispatch has no release tag).
+      - name: Install cosign
+        if: github.event_name == 'release'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign distributions with cosign (keyless OIDC)
+        if: github.event_name == 'release'
+        run: |
+          for f in dist/*; do
+            cosign sign-blob --yes --bundle "$f.sigstore" "$f"
+          done
+      - name: Upload signed distributions to the GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+
+  # Enforcement: a signing STEP existing in the build job does NOT prove it RAN. This job runs
+  # AFTER build has signed + uploaded, re-reads the just-published GitHub Release, and FAILS the
+  # workflow unless the wheel and sdist each carry a .sigstore bundle.
+  verify-signing:
+    name: verify release is signed
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # gh release view / download + gh attestation verify
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify the published release is actually signed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify_release_signed.sh "${{ github.event.release.tag_name }}" "${{ github.repository }}"
+
+  testpypi:
+    name: publish to TestPyPI (OIDC)
+    needs: build
+    # Guarded OFF until the TestPyPI pending publisher is registered (see header). A skipped job
+    # is green, so this never red-fails a release before publishing is set up. Set the repo
+    # variable PUBLISH_TESTPYPI=true to enable (#19).
+    if: vars.PUBLISH_TESTPYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: testpypi     # must match the TestPyPI pending-publisher "Environment name"
+    permissions:
+      id-token: write         # OIDC — this is what enables tokenless publishing
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true      # don't fail if this version is already on TestPyPI
+
+  # Enable once a real-PyPI Trusted Publisher (environment: pypi) is registered AND the platform
+  # approves publishing breachsafe-ux to public PyPI (today: Docker-first, TestPyPI only):
+  # pypi:
+  #   name: publish to PyPI (OIDC)
+  #   needs: testpypi
+  #   runs-on: ubuntu-latest
+  #   environment: pypi
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+  #       with:
+  #         name: dist
+  #         path: dist/
+  #     - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
