@@ -40,6 +40,7 @@
       "properties": {
         "product": { "type": "string" },
         "version": { "type": "string" },
+        "version_cmd": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Display-only: run this to derive the shown version from the installed tool (single-source, #51); falls back to `version`. Env single-sourcing also works via version: \"${VAR}\"." },
         "url": { "type": "string" },
         "repo": { "type": "string" }
       }

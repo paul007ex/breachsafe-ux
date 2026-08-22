@@ -26,6 +26,7 @@ TOOLS = ROOT / "tools"
 RUN_ROOT = Path(os.environ.get("BREACHSAFE_UX_RUN_ROOT", os.path.expanduser("~/mint-proof/wizard-runs")))
 # Substitution grammar (#50): `{{`/`}}` are literal braces; `{name}` is a token.
 _SUBST = re.compile(r"\{\{|\}\}|\{([a-zA-Z0-9_]+)\}")
+_VER_RE = re.compile(r"\d+\.\d+(?:\.\d+)?(?:[-.\w]+)?")   # first version-looking token (#51)
 
 
 class _DescriptorError(Exception):
@@ -92,6 +93,11 @@ def load_descriptors() -> dict:
             # brand only: run/validate argv never expand env, to avoid env injection into a command.
             d["brand"] = {k: (os.path.expandvars(v) if isinstance(v, str) else v)
                           for k, v in d["brand"].items()}
+            # Single-source the shown version from the installed tool (#51): if brand.version_cmd
+            # is set, run it and use the parsed version; fall back to the literal `version`.
+            vcmd = d["brand"].pop("version_cmd", None)
+            if vcmd:
+                d["brand"]["version"] = _tool_version(vcmd) or d["brand"].get("version", "")
         for inp in d.get("inputs", []):
             # Pre-populate a field from the environment, e.g. default: "${QUREDDY_BIN}", so a host
             # can show a resolved path the user then edits. Expands the DEFAULT value only, before
@@ -106,6 +112,20 @@ def load_descriptors() -> dict:
 
 def _bin_path() -> str:
     return os.pathsep.join(str(p) for p in _tools_dir().glob("*/bin"))
+
+
+def _tool_version(argv: list[str]) -> str | None:
+    """Display-only (#51): run a tool's own version command and return the first version-looking
+    token, so a descriptor's shown version can be single-sourced from the installed tool instead
+    of a drifting literal. Resolves argv[0] against the tool bin shims. Never raises."""
+    path = f"{_bin_path()}{os.pathsep}{os.environ.get('PATH', '')}"
+    exe = shutil.which(argv[0], path=path) or argv[0]
+    try:
+        p = subprocess.run([exe, *argv[1:]], input="", capture_output=True, text=True, timeout=5)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    m = _VER_RE.search((p.stdout or "") + (p.stderr or ""))
+    return m.group(0) if m else None
 
 
 def tool_available(desc: dict) -> bool:

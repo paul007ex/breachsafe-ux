@@ -34,6 +34,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Generic descriptor-declared `actions[]` buttons (label + argv + `ok_if`), replacing the
   hardcoded openssl "Test connection" preflight with a descriptor-supplied argv; the engine no
   longer contains any protocol-specific button code (#5, #21).
+- `brand.version_cmd`: single-source the shown version from the installed tool (e.g.
+  `["qureddy", "--version"]`) instead of a drifting literal; falls back to `version` (#51).
 
 ### Fixed
 
