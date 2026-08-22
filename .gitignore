@@ -12,5 +12,6 @@ pytest-results.xml
 htmlcov/
 .mypy_cache/
 .pytest_cache/
+.cache/
 tools/*/bin/
 .claude/worktrees/
