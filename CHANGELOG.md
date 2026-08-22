@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.3-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.4-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,26 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.4] - 2026-08-22
+
+### Changed
+- The audit tabs now name the threat they measure instead of the technology involved:
+  **"Quantum Audit" -> "HNDL Audit (TLS)"** and **"SSH Audit" -> "HNDL Audit (SSH)"**
+  (Harvest Now, Decrypt Later). Traffic captured today can be decrypted once a
+  cryptographically relevant quantum computer exists, so an endpoint offering classical-only
+  key exchange is a present-day confidentiality risk. The posture banner already said
+  "harvest-now, decrypt-later risk" for the top-severity case; the tab label now agrees with
+  the result. Both tabs were renamed together so one no longer names a threat while the other
+  names a protocol. (#140)
+- Tab descriptions lead with why the finding matters, and state the axes that are **not**
+  harvest-now-decrypt-later — certificate signature algorithms are an authentication concern
+  and legacy protocol offers are classical hygiene — so the HNDL label does not over-claim
+  what the scan covers. (#140)
+
+### Fixed
+- `tools/qureddy/qureddy.yaml` was missing its SPDX header while the SSH descriptor carried
+  one. (#17)
 
 ### Added
 - Signed release pipeline (#34): publishing a GitHub Release now builds the wheel and sdist,
