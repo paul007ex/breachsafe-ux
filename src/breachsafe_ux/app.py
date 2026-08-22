@@ -222,7 +222,7 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                     f'<div style="color:#64748b;font-size:12px">'
                     f"{_link(hdr['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
                     f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE} "
-                    f"&nbsp;&middot;&nbsp; {BRAND['product']} UX v{_HOST_VERSION}</div></div></div>"
+                    f"&nbsp;&middot;&nbsp; {BRAND['name']} v{_HOST_VERSION}</div></div></div>"
                 )
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
@@ -351,7 +351,7 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
         gr.HTML(
             '<div class="bs-footer">'
             f"<span>{hdr['product']} v{hdr['version']}</span>"
-            f"<span>{BRAND['product']} UX v{_HOST_VERSION}</span>"
+            f"<span>{BRAND['name']} v{_HOST_VERSION}</span>"
             f"{_link(hdr['url'], 'breachsafe.io')}"
             f"{_link(hdr['repo'], 'GitHub')}"
             f"<span>{_LICENSE}</span></div>"
