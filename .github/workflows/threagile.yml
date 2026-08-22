@@ -1,0 +1,81 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Threagile threat-model gate (#110).
+#
+# Runs Threagile on threat-model/threagile.yaml whenever the model changes. Threagile itself
+# validates the model (it exits non-zero on a schema/parse error or orphaned risk tracking), then
+# emits risks.json. The gate step FAILS the build on any HIGH- or CRITICAL-severity risk that is
+# not consciously handled, i.e. whose risk_status is `unchecked` or `in-discussion`. Risks that
+# are `accepted` / `mitigated` / `in-progress` / `false-positive` in the model's risk_tracking
+# block pass the gate (see ADR-0002 section 3 for the accepted operator-boundary auth risks).
+#
+# Threagile has no first-party pinned Action, so it is run via its official container image,
+# pinned by digest. Update THREAGILE_IMAGE deliberately (see threat-model/README.md).
+
+name: threagile
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "threat-model/**"
+      - ".github/workflows/threagile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: threagile-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  threat-model:
+    name: Threagile threat-model gate
+    runs-on: ubuntu-latest
+    env:
+      # threagile/threagile:latest == v1.0.0 (20240730113903), pinned by digest.
+      THREAGILE_IMAGE: threagile/threagile@sha256:abb9eccb111a2059c4876759a24245db02ad295b1608d3a4634ec250f38d9640
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Run Threagile (validate model + generate risks)
+        run: |
+          mkdir -p threagile-out
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}/threat-model:/model:ro" \
+            -v "${GITHUB_WORKSPACE}/threagile-out:/out" \
+            "${THREAGILE_IMAGE}" \
+            -model /model/threagile.yaml \
+            -output /out \
+            -generate-report-pdf=false \
+            -generate-risks-excel=false \
+            -generate-tags-excel=false \
+            -generate-data-asset-diagram=false \
+            -generate-data-flow-diagram=false \
+            -generate-technical-assets-json=false \
+            -generate-stats-json=false
+
+      - name: Gate on HIGH-severity unmitigated risks
+        run: python3 scripts/threagile_gate.py threagile-out/risks.json
+
+      - name: Upload risks.json
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: threagile-risks
+          path: threagile-out/risks.json
+          retention-days: 30
+          if-no-files-found: warn

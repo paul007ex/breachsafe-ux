@@ -1,0 +1,535 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Threagile threat model of the EnXemble UX host (breachsafe-ux / qureddy-ux).
+# Encodes the trust-boundary reasoning of ADR-0002 (host <-> descriptor boundary,
+# operator-owned exposure, no in-image auth) and ADR-0003 (self-contained tool image,
+# run.image docker fallback). Regenerate/validate with threat-model/README.md.
+# Schema: Threagile 1.0.0 (`docker run threagile/threagile -list-types`).
+
+threagile_version: 1.0.0
+
+title: EnXemble UX host (breachsafe-ux / qureddy-ux)
+
+date: 2026-08-22
+
+author:
+  name: BreachSAFE
+  homepage: https://www.breachsafe.io
+
+management_summary_comment: >
+  breachsafe-ux is a generic Gradio host that turns any BreachSAFE CLI tool into a web UX by
+  reading a YAML descriptor and running the tool as a no-shell subprocess. It ships as the
+  self-contained qureddy-ux image (ADR-0003). The security posture is deliberately thin and
+  operator-owned (ADR-0002 section 3): the host binds loopback by default, carries no in-image
+  authentication, and treats the operator's port mapping / reverse proxy as the trust boundary.
+  Reaching the UI equals reaching a process spawner, so exposure is a deployment decision. The
+  host hardens the execution path instead: descriptor-declared argv is run without a shell, an
+  end-of-options `--` guard prevents leading-dash argument injection, and the result badge is a
+  fail-closed 3-state machine that never shows a green verdict without a validator.
+
+business_criticality: important
+
+business_overview:
+  description: >
+    Source-available (Apache-2.0) UX host shared by BreachSAFE tools; the flagship consumer is
+    QuReddy (PQC readiness scanner). Runs mostly as a local, single-operator Docker container.
+
+technical_overview:
+  description: >
+    Gradio web app (facade.py / app.py) -> descriptor-driven argv -> no-shell subprocess tool
+    runner -> external validator -> fail-closed badge. Optional run.image docker backend runs a
+    tool image when the local binary is not on PATH (ADR-0003 fallback).
+
+questions:
+  Will a hosted multi-tenant surface ever expose this host beyond a single operator?: >
+    Not in this component. If it happens, authentication belongs in that control plane
+    (ADR-004 Phase 4), not in this single-tool host (ADR-0002 section 3).
+
+abuse_cases:
+  Argument injection via descriptor input: >
+    An operator-supplied field value beginning with a dash is smuggled to the underlying tool as
+    a flag. Mitigated by the canonical argv model: all options first, then a literal `--`, then
+    positionals (ADR-0002 section 2d).
+  Shell injection via descriptor input: >
+    A field value containing shell metacharacters is interpreted by a shell. Mitigated because
+    the host execs an argv list directly, never through a shell.
+  False green verdict: >
+    A tool run with no validator, or an unhandled format/exit-code, is rendered as a passing
+    (green) badge. Mitigated by the fail-closed 3-state badge: no validator -> badge state
+    `none`, never a green (ADR-0002 sections 2b/2c).
+  Unauthenticated access to the process spawner: >
+    A network peer reaches the UI and drives the tool runner. Accepted risk under the
+    operator-boundary posture: loopback bind by default, exposure is the operator's explicit
+    `-p` / reverse proxy (ADR-0002 section 3).
+  Malicious or tampered tool image: >
+    The run.image docker fallback pulls and runs an untrusted image. Constrained to the official
+    digest-pinned tool image; in the shipped qureddy-ux image the local binary always resolves,
+    so the docker path is not exercised (ADR-0003).
+
+security_requirements:
+  No shell execution: Descriptor argv is exec'd as an argv list, never via a shell.
+  End-of-options guard: Options are emitted before a literal `--`, then positionals (ADR-0002 2d).
+  Fail-closed verdict: The badge is `none` when no validator applies; green requires a validator.
+  Operator-owned exposure: Loopback default; exposure and authentication are the operator's boundary.
+  Pinned tool image: The docker fallback runs only a digest-pinned official tool image.
+
+tags_available:
+  - docker
+  - gradio
+  - enxemble
+  - qureddy
+  - operator-boundary
+  - no-shell
+  - fail-closed
+
+data_assets:
+
+  Tool descriptors:
+    id: tool-descriptors
+    description: >
+      Per-tool YAML descriptors (tools/<name>/<name>.yaml) declaring argv templates, input
+      bindings, validators, badge rules and headline text. They define what the host executes,
+      so their integrity is the highest concern (a tampered descriptor changes the command run).
+    usage: devops
+    tags:
+      - enxemble
+    origin: BreachSAFE (in-repo, reviewed)
+    owner: BreachSAFE
+    quantity: very-few
+    confidentiality: internal
+    integrity: critical
+    availability: operational
+    justification_cia_rating: >
+      Integrity critical because descriptors drive subprocess argv assembly; confidentiality only
+      internal (declarations, not secrets); availability operational (bundled in the image).
+
+  Scan artifacts and CBOM:
+    id: scan-artifacts
+    description: >
+      Tool output written to stdout or a file: scan results and the CycloneDX CBOM crypto
+      inventory of scanned endpoints, plus validator input. Reveals the crypto posture of the
+      operator's targets, so it is treated as restricted.
+    usage: business
+    tags:
+      - qureddy
+    origin: Produced by the tool runner from a scan
+    owner: BreachSAFE operator
+    quantity: few
+    confidentiality: restricted
+    integrity: important
+    availability: operational
+    justification_cia_rating: >
+      Confidentiality restricted (discloses a target's cryptographic weaknesses); integrity
+      important (drives the badge verdict); availability operational (re-runnable).
+
+  Subprocess argv:
+    id: subprocess-argv
+    description: >
+      The assembled argument vector passed to the tool subprocess, including operator-supplied
+      input values (target host/port, file paths). The primary injection surface, guarded by
+      no-shell exec and the end-of-options `--` boundary.
+    usage: business
+    tags:
+      - no-shell
+    origin: Assembled by the host from descriptor + operator input
+    owner: BreachSAFE
+    quantity: few
+    confidentiality: internal
+    integrity: critical
+    availability: operational
+    justification_cia_rating: >
+      Integrity critical (command-construction surface); confidentiality internal (may carry a
+      target address, not a secret); availability operational.
+
+technical_assets:
+
+  Operator:
+    id: operator
+    description: >
+      The human running the UX, via a browser. On a local run this is same-machine (loopback);
+      when exposed, the operator reaches the host across the operator's own network boundary.
+    type: external-entity
+    usage: business
+    used_as_client_by_human: true
+    out_of_scope: false
+    size: system
+    technology: browser
+    tags:
+      - operator-boundary
+    internet: false
+    machine: physical
+    encryption: none
+    owner: BreachSAFE operator
+    confidentiality: internal
+    integrity: operational
+    availability: operational
+    justification_cia_rating: The trusted local operator driving the tool.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - scan-artifacts
+    communication_links:
+      Open the UX:
+        target: enxemble-host
+        description: >
+          Operator opens the web UI and submits inputs. No in-image authentication: exposure and
+          any auth are the operator's boundary (reverse proxy / -p mapping / VPN), ADR-0002 s3.
+        protocol: https
+        authentication: none
+        authorization: none
+        tags:
+          - operator-boundary
+        vpn: false
+        ip_filtered: false
+        readonly: false
+        usage: business
+        data_assets_sent:
+          - subprocess-argv
+        data_assets_received:
+          - scan-artifacts
+
+  EnXemble host:
+    id: enxemble-host
+    description: >
+      The generic Gradio host (facade.py / app.py). Renders descriptor-declared widgets, assembles
+      argv, spawns the tool runner and validator without a shell, and renders the fail-closed
+      3-state badge. Owns transport and truth; owns no tool-specific meaning (ADR-0002 s1). Binds
+      loopback by default; binds 0.0.0.0 inside the container so the operator can map the port.
+    type: process
+    usage: business
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: application
+    technology: web-application
+    tags:
+      - gradio
+      - enxemble
+      - docker
+    internet: false
+    machine: container
+    encryption: none
+    owner: BreachSAFE
+    confidentiality: restricted
+    integrity: critical
+    availability: operational
+    justification_cia_rating: >
+      Integrity critical (assembles the command and the verdict); confidentiality restricted (sees
+      scan artifacts); availability operational (single-operator local tool).
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: true
+    data_assets_processed:
+      - tool-descriptors
+      - subprocess-argv
+      - scan-artifacts
+    data_assets_stored:
+      - tool-descriptors
+    data_formats_accepted:
+      - json
+      - file
+    communication_links:
+      Spawn tool runner:
+        target: subprocess-tool-runner
+        description: >
+          Exec the descriptor-declared argv as an argv list, never via a shell; options first,
+          then a literal `--`, then positionals (end-of-options guard, ADR-0002 s2d); with a
+          timeout. This is the primary injection-hardening control.
+        protocol: container-spawning
+        authentication: none
+        authorization: technical-user
+        tags:
+          - no-shell
+        vpn: false
+        ip_filtered: false
+        readonly: false
+        usage: business
+        data_assets_sent:
+          - subprocess-argv
+        data_assets_received:
+          - scan-artifacts
+      Spawn validator:
+        target: external-validator
+        description: >
+          Run the descriptor-selected validator over the artifact. Validator is chosen by input
+          value and fails closed: if no validator applies, the badge is `none`, never green
+          (ADR-0002 s2b/s2c).
+        protocol: container-spawning
+        authentication: none
+        authorization: technical-user
+        tags:
+          - fail-closed
+        vpn: false
+        ip_filtered: false
+        readonly: true
+        usage: business
+        data_assets_sent:
+          - scan-artifacts
+      Docker fallback:
+        target: docker-backend
+        description: >
+          Optional: when the local tool binary is not on PATH, the engine runs the tool via
+          `docker run --pull=always <run.image>` (ADR-0003 fallback). Not exercised in the shipped
+          qureddy-ux image, where the binary always resolves.
+        protocol: container-spawning
+        authentication: none
+        authorization: technical-user
+        tags:
+          - docker
+        vpn: false
+        ip_filtered: false
+        readonly: false
+        usage: devops
+        data_assets_sent:
+          - subprocess-argv
+        data_assets_received:
+          - scan-artifacts
+
+  Subprocess tool runner:
+    id: subprocess-tool-runner
+    description: >
+      The tool binary (e.g. qureddy) run as a no-shell subprocess on PATH. Connects out to the
+      operator-specified endpoint to probe its cryptography (TLS via openssl s_client, or SSH),
+      and emits scan artifacts / CBOM.
+    type: process
+    usage: business
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: service
+    technology: cli
+    tags:
+      - qureddy
+      - no-shell
+    internet: false
+    machine: container
+    encryption: none
+    owner: BreachSAFE
+    confidentiality: restricted
+    integrity: important
+    availability: operational
+    justification_cia_rating: >
+      Produces the scan artifact that drives the verdict; runs with the operator's inputs.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - subprocess-argv
+      - scan-artifacts
+    communication_links:
+      Probe endpoint:
+        target: scanned-endpoint
+        description: >
+          Outbound, read-only cryptographic probe of the operator-directed target (TLS handshake
+          via openssl s_client, or SSH). The runner observes the endpoint's crypto config; it does
+          not modify it.
+        protocol: ssh
+        authentication: none
+        authorization: none
+        tags: []
+        vpn: false
+        ip_filtered: false
+        readonly: true
+        usage: business
+        data_assets_received:
+          - scan-artifacts
+
+  External validator:
+    id: external-validator
+    description: >
+      The descriptor-declared validator subprocess (validate.argv). Consumes the artifact/stdout
+      and returns an exit code or match that the host maps to the badge state. Selection is by
+      input value with a fail-closed default.
+    type: process
+    usage: business
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: component
+    technology: cli
+    tags:
+      - fail-closed
+    internet: false
+    machine: container
+    encryption: none
+    owner: BreachSAFE
+    confidentiality: restricted
+    integrity: critical
+    availability: operational
+    justification_cia_rating: >
+      Integrity critical: its result becomes the operator-visible verdict.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - scan-artifacts
+
+  Docker backend:
+    id: docker-backend
+    description: >
+      Optional run.image backend (ADR-0003 general fallback). When the local binary is absent it
+      runs the tool via `docker run --pull=always <image>`. Requires a docker socket, so it is a
+      more privileged path and is disabled in the self-contained shipped image.
+    type: process
+    usage: devops
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: service
+    technology: container-platform
+    tags:
+      - docker
+    internet: false
+    machine: container
+    encryption: none
+    owner: BreachSAFE
+    confidentiality: internal
+    integrity: important
+    availability: operational
+    justification_cia_rating: >
+      Optional, higher-privilege execution path; not used in the shipped image.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - subprocess-argv
+      - scan-artifacts
+    communication_links:
+      Run tool image:
+        target: tool-image
+        description: >
+          Pull and run the descriptor's run.image. Constrained to the official, digest-pinned tool
+          image (ADR-0003). The host <-> tool-image boundary.
+        protocol: container-spawning
+        authentication: none
+        authorization: technical-user
+        tags:
+          - docker
+        vpn: false
+        ip_filtered: false
+        readonly: false
+        usage: devops
+        data_assets_sent:
+          - subprocess-argv
+        data_assets_received:
+          - scan-artifacts
+
+  Scanned endpoint:
+    id: scanned-endpoint
+    description: >
+      The external network endpoint the operator points the scanner at (a TLS or SSH service).
+      Not owned or trusted by the host; it can return adversarial handshake data.
+    type: external-entity
+    usage: business
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: system
+    technology: web-server
+    tags: []
+    internet: true
+    machine: physical
+    encryption: transparent
+    owner: Third party (operator-directed target)
+    confidentiality: restricted
+    integrity: operational
+    availability: operational
+    justification_cia_rating: >
+      Untrusted external target; its crypto configuration is the subject of the scan.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - scan-artifacts
+
+  Tool image:
+    id: tool-image
+    description: >
+      The official BreachSAFE tool container image pulled and run by the docker fallback
+      (ghcr.io/breachsafe/qureddy). Third-party-hosted registry content, pinned by digest.
+    type: external-entity
+    usage: devops
+    used_as_client_by_human: false
+    out_of_scope: false
+    size: service
+    technology: cli
+    tags:
+      - docker
+    internet: true
+    machine: container
+    encryption: none
+    owner: BreachSAFE (registry-hosted)
+    confidentiality: internal
+    integrity: critical
+    availability: operational
+    justification_cia_rating: >
+      Executed code pulled from a registry; integrity critical, hence digest pinning.
+    multi_tenant: false
+    redundant: false
+    custom_developed_parts: false
+    data_assets_processed:
+      - subprocess-argv
+      - scan-artifacts
+
+trust_boundaries:
+
+  Operator network exposure:
+    id: operator-exposure
+    description: >
+      The operator-owned network boundary: the explicit `-p` port mapping, reverse proxy, docker
+      network or VPN through which the UI is (or is not) reachable. Loopback by default; the host
+      adds no auth or host-header middleware here (ADR-0002 section 3). Operator <-> host.
+    type: network-cloud-security-group
+    tags:
+      - operator-boundary
+    trust_boundaries_nested:
+      - host-runtime
+
+  Host runtime (container):
+    id: host-runtime
+    description: >
+      The execution environment of the qureddy-ux container: the Gradio host and the tool runner,
+      validator and docker backend it spawns. In the shipped image these run in-process with no
+      docker socket (ADR-0003).
+    type: execution-environment
+    tags:
+      - docker
+    technical_assets_inside:
+      - enxemble-host
+      - subprocess-tool-runner
+      - external-validator
+      - docker-backend
+
+  Tool image sandbox:
+    id: tool-image-sandbox
+    description: >
+      Separate execution environment for a tool image run by the docker fallback. Host <-> tool
+      image boundary; only a digest-pinned official image is run here (ADR-0003).
+    type: execution-environment
+    tags:
+      - docker
+    technical_assets_inside:
+      - tool-image
+
+risk_tracking:
+  # The two authentication risks are the operator-boundary posture accepted in ADR-0002 section 3
+  # (#7/#22 wontfix), tracked here so they are consciously handled rather than silently unchecked.
+  # IDs are the Threagile 1.0.0 synthetic_ids from a local run (see threat-model/README.md); the
+  # current model generates no HIGH/CRITICAL risks, so the CI fail-on-high gate is green. Re-seed
+  # these IDs (they encode asset/link names) if the model's assets or links are renamed.
+
+  missing-authentication@operator>open-the-ux@operator@enxemble-host:
+    status: accepted
+    justification: >
+      Operator-boundary trust posture (ADR-0002 section 3): loopback bind by default, exposure and
+      authentication are the operator's `-p` / reverse proxy / VPN. In-image auth is wontfix for
+      this single-operator local host (#7, #22).
+    ticket: "110"
+    date: 2026-08-22
+    checked_by: BreachSAFE
+
+  missing-authentication-second-factor@operator>open-the-ux@operator@enxemble-host:
+    status: accepted
+    justification: >
+      Same operator-boundary posture as missing-authentication: no in-image auth, so no second
+      factor in this host (ADR-0002 section 3; #7/#22 wontfix).
+    ticket: "110"
+    date: 2026-08-22
+    checked_by: BreachSAFE
