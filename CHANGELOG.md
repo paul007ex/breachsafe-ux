@@ -23,6 +23,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - CI (ruff / pytest / build / reuse) and this changelog + release discipline.
+- Formal JSON Schema for tool descriptors (`descriptor.schema.json`) with fail-closed
+  load-time validation: a malformed descriptor now fails at load with the offending file and
+  JSON path, instead of a silent drop or a mid-run surprise (#48).
 
 ### Fixed
 

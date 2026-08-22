@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breachsafe.ai/schemas/breachsafe-ux/descriptor/v1.json",
+  "title": "breachsafe-ux tool descriptor",
+  "description": "One tool = one YAML under tools/<id>/<id>.yaml. The host renders it, builds a no-shell argv, runs the tool, runs an external validator, and derives the 3-state badge. See docs/adr/0002-host-descriptor-boundary.md.",
+  "type": "object",
+  "required": ["id", "run"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Descriptor schema version. Absent is treated as 1 (see #49)."
+    },
+    "order": { "type": "integer", "description": "Tab sort order (lower first)." },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Slug; must match the tools/<id>/<id>.yaml directory and file name."
+    },
+    "standalone": {
+      "type": "boolean",
+      "description": "false = chain-only (reached via another tool's action button; no own tab)."
+    },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "brand": { "$ref": "#/$defs/brand" },
+    "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" } },
+    "run": { "$ref": "#/$defs/run" },
+    "validate": { "$ref": "#/$defs/validate" },
+    "render": { "$ref": "#/$defs/render" },
+    "preflight": { "$ref": "#/$defs/preflight" },
+    "chains": { "type": "array", "items": { "$ref": "#/$defs/chain" } }
+  },
+  "$defs": {
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Display-only header/footer metadata. String values may reference env vars (e.g. ${QUREDDY_VERSION}); expanded before render, never in run/validate argv.",
+      "properties": {
+        "product": { "type": "string" },
+        "version": { "type": "string" },
+        "url": { "type": "string" },
+        "repo": { "type": "string" }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "description": "A form field. It maps to argv by AT MOST ONE of positional/flag/arg; an input with none is a token-only value referenced via {name} in run.positional_from / run.argv / validate.argv (e.g. host, port composed into positional_from).",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["text", "int", "float", "bool", "enum", "file"] },
+        "label": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "info": { "type": "string" },
+        "required": { "type": "boolean" },
+        "default": {},
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "widget": { "enum": ["slider"] },
+        "choices": { "type": "array" },
+        "group": { "enum": ["advanced"] },
+        "arg": { "type": "string" },
+        "flag": { "type": "string" },
+        "positional": { "type": "boolean" },
+        "verify_argv": { "type": "array", "items": { "type": "string" } },
+        "accept": { "type": "array", "items": { "type": "string" } }
+      },
+      "allOf": [
+        { "not": { "required": ["arg", "flag"] } },
+        { "not": { "required": ["arg", "positional"] } },
+        { "not": { "required": ["flag", "positional"] } },
+        {
+          "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] },
+          "then": { "required": ["choices"] }
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the tool is executed (no shell). Exactly one of base/argv.",
+      "properties": {
+        "base": { "type": "array", "items": { "type": "string" }, "description": "Fixed command prefix, e.g. [qureddy, scan, tls]. Options + positionals are appended." },
+        "argv": { "type": "array", "items": { "type": "string" }, "description": "Fully static argv (with {tokens}); no input-driven assembly." },
+        "positional_from": { "type": "string", "description": "Compose one positional from a template, e.g. {host}:{port}." },
+        "artifact_from": { "enum": ["stdout"], "description": "Where the artifact comes from; omit if the tool writes the artifact file itself." },
+        "artifact_name": { "type": "string" },
+        "image": { "type": "string", "description": "Docker image; the tool binary is the ENTRYPOINT. Pin by @sha256." },
+        "timeout_s": { "type": "integer", "minimum": 1 },
+        "trust_artifact_on_nonzero": { "type": "boolean", "description": "Opt in: a nonzero exit may still badge from the artifact (default: nonzero -> unavailable)." },
+        "no_end_of_options": { "type": "boolean", "description": "Opt out of the '--' end-of-options guard (weaker posture; for tools whose parser does not support '--')." }
+      },
+      "oneOf": [
+        { "required": ["base"] },
+        { "required": ["argv"] }
+      ]
+    },
+    "validate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "badge_rule"],
+      "description": "External validator: runs its own process against the artifact and yields the honest verdict.",
+      "properties": {
+        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "timeout_s": { "type": "integer", "minimum": 1 },
+        "badge_rule": { "$ref": "#/$defs/badge_rule" }
+      }
+    },
+    "badge_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Maps validator output to a badge state. Fail-closed: an empty/unknown condition never passes.",
+      "properties": {
+        "unavailable_if": { "$ref": "#/$defs/condition" },
+        "pass_if": { "$ref": "#/$defs/condition" },
+        "fail_if": { "$ref": "#/$defs/condition" },
+        "otherwise": { "enum": ["valid", "invalid", "unavailable", "none"] },
+        "fail_detail_grep": { "type": "string" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "All present sub-conditions must hold (AND). An empty condition is rejected (fail-closed).",
+      "properties": {
+        "stdout_contains": { "type": "string" },
+        "stdout_contains_any": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "stdout_not_contains": { "type": "string" },
+        "exit": { "type": "integer" }
+      }
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": { "enum": ["json"] },
+        "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } }
+      }
+    },
+    "highlight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "find_prop": { "type": "string" }
+      }
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional 'Test connection' button. Fields name the inputs it reads.",
+      "properties": {
+        "host": { "type": "string" },
+        "port": { "type": "string" },
+        "openssl": { "type": "string" }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["to"],
+      "description": "Hand this tool's artifact to another descriptor via a button.",
+      "properties": {
+        "to": { "type": "string" },
+        "label": { "type": "string" },
+        "pass_artifact_as": { "type": "string" },
+        "with": { "type": "object" }
+      }
+    }
+  }
+}
