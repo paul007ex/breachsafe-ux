@@ -1,0 +1,4 @@
+interface:
+  display_name: "BreachSAFE Docs"
+  short_description: "Make repository docs match shipped product truth"
+  default_prompt: "Use $breachsafe-docs to reconcile repository documentation with the current product and release evidence."

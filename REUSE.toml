@@ -20,3 +20,14 @@ path = ["assets/icons/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "Lucide Contributors <https://lucide.dev>"
 SPDX-License-Identifier = "ISC"
+
+# Canonical BreachSAFE skills (installed from breachsafe-skills, issue #37). These are
+# first-party BreachSAFE tooling under the standing PolyForm-Noncommercial default and keep
+# that origin license, so they carry PolyForm-Noncommercial-1.0.0 while the host repo is
+# Apache-2.0. Copied verbatim for both agent layouts (.claude + .agents). "aggregate"
+# precedence lets any file with its own inline SPDX header keep it; this fills the rest.
+[[annotations]]
+path = [".claude/skills/**", ".agents/skills/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 BreachSAFE"
+SPDX-License-Identifier = "PolyForm-Noncommercial-1.0.0"
