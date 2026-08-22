@@ -157,7 +157,7 @@ def _handler(desc):
         badge, art, raw, path = _result(desc, res)
         # Reset the Run button here, atomic with the result, so it always clears "Running…"
         # (a trailing .then could be skipped; _result never raises, so this return always runs).
-        reset = gr.update(value=_RUN_LABEL.format(id=desc["id"]), interactive=True)
+        reset = gr.update(value=_run_label(desc), interactive=True)
         return badge, art, raw, path, reset
 
     return run
@@ -186,12 +186,14 @@ def _chain_handler(chain, descs):
     return run
 
 
+def _run_label(desc):
+    # Descriptor-set run-button label (e.g. "Run quantum audit"), else "Run <id>". Lets two
+    # tabs backed by the same tool (qureddy TLS + SSH) read distinctly, not "Run qureddy" twice.
+    return desc.get("run_label") or _RUN_LABEL.format(id=desc["id"])
+
+
 def _busy(_did):
     return gr.update(value=_BUSY_LABEL, interactive=False)
-
-
-def _idle(did):
-    return gr.update(value=_RUN_LABEL.format(id=did), interactive=True)
 
 
 def _verify_md(value, argv_template):
@@ -281,7 +283,7 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                     ar = gr.Markdown()
                     ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
 
-                run_btn = gr.Button(_RUN_LABEL.format(id=did), variant="primary", icon=_ICON["run"])
+                run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
                 badge = gr.Markdown(_empty(desc))
                 dl = gr.DownloadButton("Download output", visible=False)
                 with gr.Accordion("Raw log", open=False):

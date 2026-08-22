@@ -2,7 +2,8 @@ schema_version: 1
 order: 1
 id: qureddy
 standalone: true
-title: "QuReddy: post-quantum TLS readiness"
+title: "Quantum Audit"
+run_label: "Run quantum audit"
 description: >
   Find out whether a TLS endpoint is ready for the post-quantum transition. QuReddy runs a
   live handshake and reports exactly which key exchanges the server offers, whether any are
