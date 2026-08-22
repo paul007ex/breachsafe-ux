@@ -53,14 +53,17 @@ The image is self-contained (QuReddy + openssl inside), multi-arch, and public �
 your browser opens on it:
 
 ```
-docker run -d --rm --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
+docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
+docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
 sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
-`--pull=always` fetches the newest image first, so copy-paste always runs the latest. The
-**HNDL Audit (TLS)** tab opens with the host prefilled — click **Run**. No login, no docker socket,
-works on Intel and Apple Silicon. Stop it with `docker stop enxemble`. (`:edge` tracks the tip of
-`main`; `:latest` is the newest release.)
+Copy-paste the three lines. The first clears any container already holding port 7860 (so a
+re-run never fails with "port is already allocated"); `--pull=always` fetches the newest image,
+so it always runs the latest; the third opens your browser once it is up. The
+**HNDL Audit (TLS)** tab opens with the host prefilled — click **HNDL Audit (TLS)** to scan. No
+login, no docker socket, works on Intel and Apple Silicon. Stop it with `docker stop enxemble`.
+(`:edge` tracks the tip of `main`; `:latest` is the newest release.)
 
 ### From source (Python 3.12)
 
