@@ -17,6 +17,7 @@ import sys
 import uuid
 import warnings
 from pathlib import Path
+from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -105,6 +106,27 @@ def _validate_descriptor(doc: dict, path: Path) -> None:
         raise _DescriptorError(f"{path.name}: invalid descriptor at '{loc}': {errs[0].message}")
 
 
+def _expand_brand(d: dict) -> None:
+    """Expand `${ENV}` in display-only brand metadata and, if brand.version_cmd is set, single-
+    source the version from the tool (#51). Scoped to brand only — run/validate argv never expand
+    env, to avoid env injection into a command."""
+    brand: dict[str, Any] = {
+        k: (os.path.expandvars(v) if isinstance(v, str) else v) for k, v in d["brand"].items()
+    }
+    vcmd = brand.pop("version_cmd", None)
+    if vcmd:
+        brand["version"] = _tool_version(vcmd) or brand.get("version", "")
+    d["brand"] = brand
+
+
+def _expand_input_defaults(d: dict) -> None:
+    """Expand `${ENV}` in each input's DEFAULT value only (e.g. default: "${QUREDDY_BIN}"); the
+    value a user submits is passed as a single argv element, never expanded."""
+    for inp in d.get("inputs", []):
+        if isinstance(inp.get("default"), str):
+            inp["default"] = os.path.expandvars(inp["default"])
+
+
 def load_descriptors() -> dict:
     """Discover every <tools_dir>/<name>/<name>.yaml, ordered by `order` then id."""
     ds = []
@@ -115,24 +137,8 @@ def load_descriptors() -> dict:
         if flag and not feature_enabled(flag):
             continue  # #67: gated off for this deployment (e.g. mint_oscal in the OSS base edition)
         if isinstance(d.get("brand"), dict):
-            # Display-only metadata may reference env vars, e.g. version: "${QUREDDY_VERSION}",
-            # so a host can single-source the version instead of duplicating it here. Scoped to
-            # brand only: run/validate argv never expand env, to avoid env injection into a command.
-            d["brand"] = {
-                k: (os.path.expandvars(v) if isinstance(v, str) else v)
-                for k, v in d["brand"].items()
-            }
-            # Single-source the shown version from the installed tool (#51): if brand.version_cmd
-            # is set, run it and use the parsed version; fall back to the literal `version`.
-            vcmd = d["brand"].pop("version_cmd", None)
-            if vcmd:
-                d["brand"]["version"] = _tool_version(vcmd) or d["brand"].get("version", "")
-        for inp in d.get("inputs", []):
-            # Pre-populate a field from the environment, e.g. default: "${QUREDDY_BIN}", so a host
-            # can show a resolved path the user then edits. Expands the DEFAULT value only, before
-            # the widget renders; the value a user submits is passed as a single argv element.
-            if isinstance(inp.get("default"), str):
-                inp["default"] = os.path.expandvars(inp["default"])
+            _expand_brand(d)
+        _expand_input_defaults(d)
         d["_dir"] = str(y.parent)
         ds.append(d)
     ds.sort(key=lambda d: (d.get("order", 99), d["id"]))
@@ -153,10 +159,9 @@ def feature_enabled(flag: str) -> bool:
 def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
     """Run a tool's own version/verify command for a user-supplied path (the 'Verify' button).
 
-    argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns
-    (ok, one-line summary). Never raises; a bad path reports (False, reason). Resolves via
-    _resolve + runs with _run_env so a bare tool name a user types resolves against the same
-    augmented tool PATH (per-tool shims -> PATH) the engine uses to run the descriptor (#116).
+    argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns (ok, one-line
+    summary); never raises. Resolves + runs via _resolve/_run_env so a bare tool name resolves
+    against the same augmented tool PATH the engine uses to run the descriptor (#116).
     """
     argv = [(value if a == "{value}" else a) for a in argv_template]
     if not argv or not argv[0].strip():
@@ -170,18 +175,14 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
 
 
 def run_action(action: dict, params: dict) -> tuple[bool, str]:
-    """Run a descriptor-declared action button (#5): render its argv from the current input
-    values, run it (no shell, stdin closed so a tool that reads stdin can't hang, timeout), and
-    report (ok, one-line summary) per the action's `ok_if` condition (default: exit 0).
-
-    This is the generic replacement for what used to be the hardcoded openssl `test_connection`
-    preflight: a 'Test connection' button is now just an action whose argv is `openssl s_client`
-    declared in the descriptor (ADR-0002 §2a / #21). Returns (ok, output) where output is the
-    tool's own captured stdout+stderr (trimmed) so the UI can show the actual result, not a canned
-    line (#97). Never raises.
+    """Run a descriptor-declared action button (#5): render its argv from the current inputs, run
+    it (no shell, stdin closed so a tool can't hang, timeout), and report (ok, output) per the
+    action's `ok_if` condition (default: exit 0). output is the tool's own captured stdout+stderr
+    so the UI shows the actual result (#97), not a canned line. The generic replacement for the old
+    hardcoded openssl `test_connection` preflight (ADR-0002 §2a / #21). Never raises.
     """
     try:
-        argv = _render(action["argv"], dict(params))
+        argv = _render(action["argv"], params.copy())
     except _DescriptorError as e:
         return (False, str(e))
     if not argv or not argv[0].strip():
@@ -237,24 +238,30 @@ def _match(cond: dict, text: str, returncode: int) -> bool:
     """
     if not cond or (set(cond) - _COND_KEYS):
         return False
-    ok = True
-    if "stdout_contains" in cond:
-        ok = ok and cond["stdout_contains"] in text
-    if "stdout_contains_any" in cond:
-        ok = ok and any(s in text for s in cond["stdout_contains_any"])
-    if "stdout_not_contains" in cond:
-        ok = ok and cond["stdout_not_contains"] not in text
-    if "exit" in cond:
-        ok = ok and returncode == cond["exit"]
-    return ok
+    checks = (
+        "stdout_contains" not in cond or cond["stdout_contains"] in text,
+        "stdout_contains_any" not in cond or any(s in text for s in cond["stdout_contains_any"]),
+        "stdout_not_contains" not in cond or cond["stdout_not_contains"] not in text,
+        "exit" not in cond or returncode == cond["exit"],
+    )
+    return all(checks)
+
+
+def _input_argv(spec: dict, params: dict) -> tuple[list[str], list[str]]:
+    """One input's (options, positionals) contribution: at most one of positional (value), flag
+    (token if truthy), or arg (['--x', value] when set). Values are single argv elements."""
+    v = params.get(spec["name"])
+    if spec.get("positional"):
+        return ([], [str(v)] if v not in (None, "") else [])
+    if "flag" in spec:
+        return ([spec["flag"]] if v else [], [])
+    if "arg" in spec:
+        return ([spec["arg"], str(v)] if v not in (None, "", False) else [], [])
+    return ([], [])
 
 
 def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
-    """Static `run.argv`, or build from `run.base` + each input's argv mapping.
-
-    An input maps to argv by at most one of: positional (value), flag (token if truthy),
-    arg (['--x', value] when set). Values are single argv elements — never a shell string.
-    """
+    """Static `run.argv`, or build from `run.base` + each input's argv mapping."""
     run = desc["run"]
     if "argv" in run:
         return _render(run["argv"], mapping)
@@ -264,16 +271,9 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     if run.get("positional_from"):  # compose one positional, e.g. "{host}:{port}"
         positionals.append(run["positional_from"])  # template; resolved by _render below
     for spec in desc.get("inputs", []):
-        v = params.get(spec["name"])
-        if spec.get("positional"):
-            if v not in (None, ""):
-                positionals.append(str(v))
-        elif "flag" in spec:
-            if v:
-                options.append(spec["flag"])
-        elif "arg" in spec:
-            if v not in (None, "", False):
-                options += [spec["arg"], str(v)]
+        opts, poss = _input_argv(spec, params)
+        options += opts
+        positionals += poss
     argv = base + options
     # wizard #9 (argument injection): emit all options first, then a literal "--", then the
     # positionals, so everything after "--" is data. A leading-dash field value (e.g.
@@ -285,26 +285,98 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     return _render(argv, mapping)
 
 
-def run_descriptor(desc: dict, params: dict) -> dict:
-    """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
-
-    Builds a no-shell argv from the descriptor + params, runs the tool, then its external
-    validator, and derives the badge. Returns a dict whose `badge` is a (state, detail)
-    tuple with state in valid / invalid / unavailable / none; a successful run also carries
-    `artifact` (parsed JSON or None), `artifact_path`, and `highlights`. A launch, timeout,
-    nonzero-exit, or descriptor error returns `error` + an `unavailable` badge and never raises
-    to the UI.
-    """
+def _run_workdir(desc: dict, params: dict) -> Path:
+    """Deterministic per-run workdir under RUN_ROOT (keyed by id+params), pruned to the most-recent
+    N so the engine never grows RUN_ROOT unboundedly (#121)."""
     key = uuid.uuid5(
         uuid.NAMESPACE_URL, desc["id"] + json.dumps(params, sort_keys=True, default=str)
     ).hex[:12]
     workdir = RUN_ROOT / f"{desc['id']}-{key}"
     workdir.mkdir(parents=True, exist_ok=True)
     _prune_run_root()  # #121: bound RUN_ROOT growth (keep the most-recent runs, incl. this one)
-    artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
+    return workdir
 
+
+def _launch(
+    argv: list[str], run: dict, workdir: Path, env: dict[str, str]
+) -> subprocess.CompletedProcess[str] | dict:
+    """Run the tool argv (no shell); return the CompletedProcess, or an error-result dict for a
+    missing tool / timeout / launch failure — always a badge, never a traceback (#183)."""
+    try:
+        return subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=run.get("timeout_s", 120),
+            env=env,
+            cwd=str(workdir),
+        )
+    except FileNotFoundError:
+        return {
+            "error": f"tool not found: {argv[0]}",
+            "badge": ("unavailable", f"'{argv[0]}' is not installed or not on PATH"),
+        }
+    except subprocess.TimeoutExpired:
+        return {"error": "tool timed out", "badge": ("unavailable", "tool timed out")}
+    except (OSError, ValueError) as e:  # NUL byte, E2BIG, bad fd, permission — launch itself failed
+        return {
+            "error": f"could not launch tool: {e}",
+            "badge": ("unavailable", "tool could not be launched"),
+        }
+
+
+def _nonzero_exit_result(proc: subprocess.CompletedProcess[str]) -> dict:
+    """wizard #10 badge for a nonzero exit: surface the tool's own last diagnostic line."""
+    _err = proc.stderr.strip()
+    _reason = _err.splitlines()[-1][:160] if _err else f"scan failed (exit {proc.returncode})"
+    return {"error": (_err[:2000] or f"exit {proc.returncode}"), "badge": ("unavailable", _reason)}
+
+
+def _postprocess(
+    desc: dict, workdir: Path, artifact: Path, proc: subprocess.CompletedProcess[str], params: dict
+) -> dict:
+    """Persist stdout, enforce the false-green guards (#10/#15), then badge via the validator."""
+    run = desc["run"]
+    # #50/#44: always capture stdout to the workdir so a validator can inspect it (artifact:optional).
+    (workdir / "stdout.txt").write_text(proc.stdout or "")
+    if run.get("artifact_from") == "stdout":
+        artifact.write_text(proc.stdout)
+    # wizard #10 (false-green): a nonzero exit is never VALID even if a schema-shaped artifact was
+    # written (the validator checks SHAPE, not success); a tool opts in via trust_artifact_on_nonzero.
+    if proc.returncode != 0 and not run.get("trust_artifact_on_nonzero"):
+        return _nonzero_exit_result(proc)
+    # wizard #15 (false-green): exit 0 with an empty/missing artifact must not badge VALID.
+    if not artifact.exists() or artifact.stat().st_size == 0:
+        return {
+            "error": "tool produced no output",
+            "badge": ("unavailable", "scan produced no output"),
+        }
+    try:
+        art_json = json.loads(artifact.read_text())
+    except (json.JSONDecodeError, OSError, ValueError):
+        # wizard #11: a non-JSON/unreadable artifact is "no structured highlights"; badge still
+        # comes from the external validator below, not this parse.
+        art_json = None
+    return {
+        "artifact": art_json,
+        "artifact_path": str(artifact),
+        "badge": _validate(desc, workdir, artifact, params),
+        "highlights": _highlights(desc, art_json),
+    }
+
+
+def run_descriptor(desc: dict, params: dict) -> dict:
+    """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
+
+    Builds a no-shell argv, runs the tool then its external validator, and derives the badge. The
+    `badge` is a (state, detail) tuple with state in valid / invalid / unavailable / none; a
+    successful run also carries `artifact` (parsed JSON or None), `artifact_path`, and `highlights`.
+    Any launch/timeout/nonzero-exit/descriptor error returns `error` + `unavailable`, never raising.
+    """
+    workdir = _run_workdir(desc, params)
+    artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
     env = _run_env()  # #116: augmented tool PATH (per-tool bin shims -> ambient PATH)
-    mapping = dict(params) | {
+    mapping = params | {
         "share": str(workdir),
         "workdir": str(workdir),
         "artifact": str(artifact),
@@ -316,78 +388,14 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         # wizard #8: a malformed descriptor is an 'unavailable' badge, never a silent bad scan.
         return {"error": str(e), "badge": ("unavailable", f"descriptor error: {e}")}
     if _tool_source(desc["run"])[0] == "image":
-        # Docker backend (W-3/W-4): the local binary isn't on PATH, so run the tool as its image.
-        # The tool is the image ENTRYPOINT, so drop argv[0] (the tool name in run.base) and hand
-        # the rest to `docker run`. --pull=always keeps the tool current (the qureddy image ships
-        # often); a stdout-artifact tool needs no mount (docker captures stdout). Missing docker ->
-        # FileNotFoundError below -> unavailable, never a false verdict.
+        # Docker backend (W-3/W-4): local binary absent, so run the tool as its image. The tool is
+        # the image ENTRYPOINT, so drop argv[0] and hand the rest to `docker run`; --pull=always
+        # keeps it current. Missing docker -> FileNotFoundError -> unavailable, never a false green.
         argv = ["docker", "run", "--rm", "--pull=always", desc["run"]["image"], *argv[1:]]
-
-    try:
-        proc = subprocess.run(
-            argv,
-            capture_output=True,
-            text=True,
-            timeout=desc["run"].get("timeout_s", 120),
-            env=env,
-            cwd=str(workdir),
-        )
-    except FileNotFoundError:
-        return {
-            "error": f"tool not found: {argv[0]}",
-            "badge": ("unavailable", f"'{argv[0]}' is not installed or not on PATH"),
-        }
-    except subprocess.TimeoutExpired:
-        return {"error": "tool timed out", "badge": ("unavailable", "tool timed out")}
-    except (OSError, ValueError) as e:
-        # NUL byte in a param, E2BIG, bad fd, permission — the launch itself failed.
-        # A badge, never a traceback to the UI (#183). FileNotFoundError is caught above.
-        return {
-            "error": f"could not launch tool: {e}",
-            "badge": ("unavailable", "tool could not be launched"),
-        }
-
-    # First-class {stdout_file} (#50): always capture stdout to the workdir, regardless of exit
-    # code, so a validator can inspect it (needed by artifact:optional, #44).
-    (workdir / "stdout.txt").write_text(proc.stdout or "")
-    if desc["run"].get("artifact_from") == "stdout":
-        artifact.write_text(proc.stdout)
-    # wizard #10 (false-green): a nonzero exit must never badge VALID, even when the tool still
-    # wrote a schema-shaped artifact. The validator checks artifact SHAPE (e.g. CycloneDX
-    # conformance), not whether the scan actually succeeded, so a partial/failed run that emits a
-    # well-formed CBOM would otherwise pass. Any nonzero exit is a non-valid state; a tool
-    # whose contract legitimately exits nonzero with a trustworthy artifact opts in explicitly.
-    if proc.returncode != 0 and not desc["run"].get("trust_artifact_on_nonzero"):
-        _err = proc.stderr.strip()
-        # Surface the tool's own last diagnostic line (e.g. "OpenSSL 3.5 LTS not found") so the
-        # badge says what actually failed, not a generic "tool run failed".
-        _reason = _err.splitlines()[-1][:160] if _err else f"scan failed (exit {proc.returncode})"
-        return {
-            "error": (_err[:2000] or f"exit {proc.returncode}"),
-            "badge": ("unavailable", _reason),
-        }
-
-    # wizard #15 (false-green): exit 0 with an empty/missing artifact must not badge VALID.
-    # The validator checks SHAPE; a zero-byte or absent artifact means the tool produced nothing.
-    if not artifact.exists() or artifact.stat().st_size == 0:
-        return {
-            "error": "tool produced no output",
-            "badge": ("unavailable", "scan produced no output"),
-        }
-
-    try:
-        art_json = json.loads(artifact.read_text())
-    except (json.JSONDecodeError, OSError, ValueError):
-        # wizard #11: narrowed from bare Exception. A non-JSON or unreadable artifact is a
-        # legitimate "no structured highlights" case; the badge still comes from the external
-        # validator below, not this parse. A wider catch would mask real bugs.
-        art_json = None
-    return {
-        "artifact": art_json,
-        "artifact_path": str(artifact),
-        "badge": _validate(desc, workdir, artifact, params),
-        "highlights": _highlights(desc, art_json),
-    }
+    proc = _launch(argv, desc["run"], workdir, env)
+    if isinstance(proc, dict):
+        return proc  # launch failed — error-result badge, never a traceback (#183)
+    return _postprocess(desc, workdir, artifact, proc, params)
 
 
 def _select_validator(v: dict, params: dict) -> dict | None:
@@ -403,6 +411,39 @@ def _select_validator(v: dict, params: dict) -> dict | None:
     return cases[key] if key in cases else v.get("default")
 
 
+def _validate_mapping(workdir: Path, artifact: Path) -> dict[str, str]:
+    """Token namespace for a validator's argv: workdir/artifact paths + {python} + {stdout_file}."""
+    return {
+        "share": str(workdir),
+        "workdir": str(workdir),
+        "artifact": str(artifact),
+        "artifact_name": artifact.name,
+        "stdout_file": str(workdir / "stdout.txt"),
+        "python": sys.executable,
+    }
+
+
+def _fail_detail(rule: dict, text: str) -> str:
+    """Extract the validator's own diagnostic lines for the badge detail via `fail_detail_grep`."""
+    g = rule.get("fail_detail_grep")
+    if not g:
+        return ""
+    return "\n".join(ln.strip() for ln in text.splitlines() if g in ln)[:1500]
+
+
+def _apply_badge_rule(rule: dict, text: str, rc: int) -> tuple[str, str]:
+    """Badge state machine (fail CLOSED, #182): infra → unavailable; blessed → valid; else the
+    rule's `otherwise` (default invalid)."""
+    if "unavailable_if" in rule and _match(rule["unavailable_if"], text, rc):
+        return ("unavailable", "validator could not run (infrastructure)")
+    if "pass_if" in rule and _match(rule["pass_if"], text, rc):
+        return ("valid", "validator accepted the artifact")
+    detail = _fail_detail(rule, text)
+    if "fail_if" in rule and _match(rule["fail_if"], text, rc):
+        return ("invalid", detail or "validator rejected the artifact")
+    return (rule.get("otherwise", "invalid"), detail or "validator ran; artifact not accepted")
+
+
 def _validate(
     desc: dict, workdir: Path, artifact: Path, params: dict | None = None
 ) -> tuple[str, str]:
@@ -411,18 +452,10 @@ def _validate(
         return ("none", "no external validator declared")
     v = _select_validator(v, params or {})
     if not v:
-        # #43 fail-closed: a variant with no validator (unmatched selector or explicit null) is
-        # a "none" badge, never a green. e.g. qureddy format=json/rich has no schema validator.
+        # #43 fail-closed: a variant with no validator (unmatched selector or explicit null) is a
+        # "none" badge, never a green (e.g. qureddy format=json/rich has no schema validator).
         return ("none", "no validator for this output")
-    mapping = {
-        "share": str(workdir),
-        "workdir": str(workdir),
-        "artifact": str(artifact),
-        "artifact_name": artifact.name,
-        "stdout_file": str(workdir / "stdout.txt"),
-        "python": sys.executable,
-    }
-    argv = _render(v["argv"], mapping)
+    argv = _render(v["argv"], _validate_mapping(workdir, artifact))
     if not _resolve(argv[0]):  # #116: resolve via the augmented tool PATH, like the tool itself
         return ("unavailable", f"validator '{argv[0]}' not installed")
     try:
@@ -433,23 +466,10 @@ def _validate(
             timeout=v.get("timeout_s", 180),
             env=_run_env(),  # #116: run the validator against the same augmented tool PATH
         )
-    except Exception as e:
+    except Exception as e:  # any validator launch failure is an 'unavailable' badge, never a raise
         return ("unavailable", f"validator error: {type(e).__name__}")
-    text = out.stdout + out.stderr
-    rule = v["badge_rule"]
-    rc = out.returncode
-
-    # state machine: infra failure → unavailable; ran + blessed → valid; ran + not blessed → invalid
-    if "unavailable_if" in rule and _match(rule["unavailable_if"], text, rc):
-        return ("unavailable", "validator could not run (infrastructure)")
-    if "pass_if" in rule and _match(rule["pass_if"], text, rc):
-        return ("valid", "validator accepted the artifact")
-    g = rule.get("fail_detail_grep")
-    detail = "\n".join(ln.strip() for ln in text.splitlines() if g and g in ln)[:1500] if g else ""
-    if "fail_if" in rule and _match(rule["fail_if"], text, rc):
-        return ("invalid", detail or "validator rejected the artifact")
-    return (rule.get("otherwise", "invalid"), detail or "validator ran; artifact not accepted")
+    return _apply_badge_rule(v["badge_rule"], out.stdout + out.stderr, out.returncode)
 
 
-# _find_prop / _highlights / _posture live in _render.py (kept the engine under the size ceiling).
-# Re-exported here so `facade._highlights` / `facade._posture` remain importable (app + tests).
+# _find_prop / _highlights / _posture live in _render.py (size ceiling); _highlights is imported
+# above and re-exported so `facade._highlights` stays importable (app + tests).

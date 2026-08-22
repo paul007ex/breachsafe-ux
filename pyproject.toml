@@ -29,6 +29,15 @@ dev = [
     "pip-audit>=2.7",
     "deptry>=0.20",
     "reuse[charset-normalizer]>=4.0",
+    # MAX code-quality + architecture gates (#127). All fail-closed; all run via `uv run --locked`.
+    "import-linter>=2.0",   # architecture: MVC layering + engine/model UI-free contracts
+    "xenon>=0.9",           # cyclomatic-complexity ceiling (radon-backed)
+    "refurb>=2.0",          # modernization / idiom lint (fails on any finding)
+    "vulture>=2.11",        # dead-code detection (min-confidence 80 + allowlist)
+    "pylint>=3.0",          # duplicate-code (R0801) cross-file clone detection
+    "interrogate>=1.7",     # docstring-coverage floor
+    "diff-cover>=9.0",      # changed-line coverage gate (vs origin/main)
+    "allure-pytest>=2.13",  # rich test-report artifact
 ]
 
 [tool.ruff]
@@ -117,7 +126,14 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers", "--strict-config", "--reruns=3", "--reruns-delay=1"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--reruns=3",
+    "--reruns-delay=1",
+    "--alluredir=.allure-results",  # #127: rich test-report artifact (uploaded in CI)
+]
 
 [tool.coverage.run]
 branch = true
@@ -152,4 +168,44 @@ package_module_name_map = { "breachsafe-ux" = "breachsafe_ux", "pyyaml" = "yaml"
 # DEP002 = declared-but-not-imported. These are CLI dev tools, plus cyclonedx-python-lib
 # which the qureddy descriptor's validator imports at RUNTIME via `{python} -c ...` (subprocess),
 # not from any src module.
-DEP002 = ["ruff", "mypy", "bandit", "pip-audit", "deptry", "reuse", "pytest", "pytest-cov", "pytest-rerunfailures", "cyclonedx-python-lib"]
+DEP002 = ["ruff", "mypy", "bandit", "pip-audit", "deptry", "reuse", "pytest", "pytest-cov", "pytest-rerunfailures", "cyclonedx-python-lib", "import-linter", "xenon", "refurb", "vulture", "pylint", "interrogate", "diff-cover", "allure-pytest"]
+
+# --- Architecture contract (#127): import-linter. `uv run --locked lint-imports`. -----------
+# Encodes the repo's MVC + engine/theme layering (see CLAUDE.md "Repo map"): the model
+# (resolve.py, _render.py) must not import the view (render.py) or the controller (app.py), and
+# the engine/model layer must stay Gradio-free (only app.py + brand.py may import gradio).
+[tool.importlinter]
+root_package = "breachsafe_ux"
+include_external_packages = true  # required to forbid the external `gradio` below the UI edge
+
+[[tool.importlinter.contracts]]
+name = "MVC layering: model < engine < view/theme < controller"
+type = "layers"
+# Highest first. A higher layer may import lower ones; a lower layer may never import a higher
+# one, and modules joined with ` | ` are independent (may not import each other).
+layers = [
+    "breachsafe_ux.app",                          # controller (top)
+    "breachsafe_ux.render | breachsafe_ux.brand",  # view | theme
+    "breachsafe_ux.facade",                       # engine
+    "breachsafe_ux.resolve | breachsafe_ux._render",  # model (bottom)
+]
+
+[[tool.importlinter.contracts]]
+name = "Engine and model stay UI-free (no gradio below the controller/theme edge)"
+type = "forbidden"
+source_modules = [
+    "breachsafe_ux.facade",
+    "breachsafe_ux.resolve",
+    "breachsafe_ux._render",
+    "breachsafe_ux.render",
+]
+forbidden_modules = ["gradio"]
+
+# --- Docstring coverage (#127): interrogate. `uv run --locked interrogate src/breachsafe_ux`. -
+[tool.interrogate]
+# Floor pinned at the current level (74.7% after the #127 helper-extraction refactor added
+# docstrings). Ratchet upward alongside the coverage floor (#89); never lower it.
+fail-under = 74
+ignore-init-method = true
+ignore-module = false
+ignore-nested-functions = false
