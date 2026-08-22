@@ -143,7 +143,9 @@ exclude_dirs = ["tests"]
 skips = ["B202"]
 
 [tool.deptry]
-known_first_party = ["breachsafe_ux"]
+# _release_support is the shared script-local helper module (scripts/_release_support.py),
+# imported by release_gate.py and run_secret_scan.py; it is first-party, not a dependency.
+known_first_party = ["breachsafe_ux", "_release_support"]
 package_module_name_map = { "breachsafe-ux" = "breachsafe_ux", "pyyaml" = "yaml" }
 
 [tool.deptry.per_rule_ignores]
