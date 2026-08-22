@@ -1,3 +1,4 @@
+schema_version: 1
 order: 2
 id: mint-oscal
 standalone: false   # reached via the QuReddy 'Convert to OSCAL' button, not its own tab

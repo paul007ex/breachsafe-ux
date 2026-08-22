@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+import warnings
 from pathlib import Path
 
 import yaml
@@ -58,10 +59,30 @@ def _validator() -> Draft202012Validator:
     return Draft202012Validator(json.loads(_SCHEMA_PATH.read_text()))
 
 
+SUPPORTED_SCHEMA_VERSION = 1
+
+
+def _check_schema_version(doc: dict, path: Path) -> None:
+    """Version handshake (#49). A descriptor may declare `schema_version`; absent means 1
+    (back-compat, warned once per file). A version newer than this build understands fails
+    CLOSED with a clear 'needs a newer breachsafe-ux' message, rather than a confusing
+    structural error from a schema that predates those fields."""
+    ver = doc.get("schema_version") if isinstance(doc, dict) else None
+    if ver is None:
+        warnings.warn(f"{path.name}: no schema_version; assuming {SUPPORTED_SCHEMA_VERSION}",
+                      stacklevel=2)
+        return
+    if isinstance(ver, int) and ver > SUPPORTED_SCHEMA_VERSION:
+        raise _DescriptorError(
+            f"{path.name}: schema_version {ver} needs a newer breachsafe-ux "
+            f"(this build supports up to {SUPPORTED_SCHEMA_VERSION})")
+
+
 def _validate_descriptor(doc: dict, path: Path) -> None:
     """Fail closed (#48): a descriptor that does not match descriptor.schema.json must not
     render. Raise naming the file and the JSON path of the first problem, so a typo is a clear
     load-time error, not a silent drop or a mid-run surprise."""
+    _check_schema_version(doc, path)   # #49: version first, so a too-new descriptor says so
     errs = sorted(_validator().iter_errors(doc), key=lambda e: list(e.path))
     if errs:
         loc = "/".join(map(str, errs[0].path)) or "<root>"
