@@ -1,13 +1,15 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
 schema_version: 1
-order: 1
-id: qureddy
+order: 2
+id: qureddy-ssh
 standalone: true
-title: "Quantum Audit"
-run_label: "Quantum Audit"
+title: "SSH Audit"
+run_label: "SSH Audit"
 description: >
-  Scans a TLS endpoint and reports which key exchanges it offers and whether they are
-  post-quantum, hybrid, or classical. Output is a CycloneDX 1.7 CBOM. A full scan runs
-  several handshakes and takes 30 seconds to 2 minutes.
+  Scans an SSH endpoint and reports which key exchanges it offers and whether they are
+  post-quantum, hybrid, or classical. Output is a CycloneDX 1.7 CBOM. The scan reads the
+  server's KEXINIT offer and completes in a few seconds.
 brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)
@@ -18,17 +20,17 @@ inputs:
   - name: host
     type: text
     label: "host"
-    default: "pq.cloudflareresearch.com"
-    placeholder: "pq.cloudflareresearch.com"
-    info: "Required. Hostname, URL, or IP of the TLS endpoint."
+    default: "github.com"
+    placeholder: "github.com"
+    info: "Required. Hostname, URL, or IP of the SSH endpoint."
     required: true
   - name: port
     type: int
     label: "port"
-    default: 443
+    default: 22
     min: 1
     max: 65535
-    info: "TLS port. Defaults to 443."
+    info: "SSH port. Defaults to 22."
   - name: format
     type: enum
     label: "output format"
@@ -42,36 +44,9 @@ inputs:
     widget: slider
     min: 1
     max: 300
-    default: 30
-    info: "Seconds per probe (1 to 300, default 30). A full scan runs several probes, so total time is a multiple of this."
+    default: 8
+    info: "Seconds per probe (1 to 300, default 8)."
     arg: "--timeout"
-  - name: sni
-    type: text
-    label: "SNI override"
-    placeholder: "one.one.one.one"
-    info: "Optional. Recommended for name-based virtual hosts and IP targets."
-    group: advanced
-    arg: "--sni"
-  - name: retries
-    type: int
-    label: "retries"
-    widget: slider
-    min: 0
-    max: 3
-    default: 0
-    info: "Extra retry attempts on transient failure (0 to 3, default 0)."
-    group: advanced
-    arg: "--retries"
-  - name: retry_delay
-    type: float
-    label: "retry delay (s)"
-    widget: slider
-    min: 0.0
-    max: 10.0
-    default: 1.0
-    info: "Seconds between retries (0.0 to 10.0, default 1.0)."
-    group: advanced
-    arg: "--retry-delay"
   - name: reproducible
     type: bool
     label: "reproducible"
@@ -87,22 +62,20 @@ inputs:
     group: advanced
     flag: "-v"
 run:
-  base: [qureddy, scan, tls]
+  base: [qureddy, scan, ssh]
   positional_from: "{host}:{port}"
   artifact_from: stdout
   artifact_name: cbom.json
   timeout_s: 180
 validate:
-  # The external check depends on the output format (#43): only a CBOM has a schema to validate.
-  # json (raw scan) and rich (console) have no schema validator, so they badge 'none' —
-  # "no external validator", never a false green/red from running a CBOM validator on non-CBOM.
+  # Same as the TLS descriptor (#43): only a CBOM has a schema to validate. json (raw scan) has
+  # no schema validator, so it badges 'none' — never a false green/red from validating non-CBOM.
   by: [format]
   cases:
     json: null    # raw scan JSON: no external schema validator
     cbom:
-      # CycloneDX 1.7 schema-conformance. Run under the same interpreter as the app (has
-      # cyclonedx), not a bare 'python' that may be absent. exit 0 = valid, 1 = rejected,
-      # 3 = validator could not run (missing dep / error) -> unavailable, never a false verdict.
+      # CycloneDX 1.7 schema-conformance under the app's interpreter (has cyclonedx).
+      # exit 0 = valid, 1 = rejected, 3 = validator could not run -> unavailable.
       argv:
         - "{python}"
         - -c
@@ -114,9 +87,7 @@ validate:
         otherwise: unavailable
 render:
   primary: json
-  # #1: readiness posture comes from the scan FINDINGS, shown separately from the evidence badge.
-  # A schema-valid CBOM (green badge) does NOT mean the endpoint is PQC-ready — this banner says
-  # what the scan actually found. Values are the qureddy Readiness enum.
+  # #1: readiness posture from the scan FINDINGS, separate from the evidence badge.
   posture:
     from: "qureddy:scan.readiness"
     cases:
@@ -127,7 +98,6 @@ render:
       unknown:             { text: "Readiness unknown: the probe was inconclusive", level: unknown }
       not_applicable:      { text: "Readiness not applicable to this target", level: unknown }
     default: { text: "Readiness could not be determined", level: unknown }
-  # The evidence badge checks CBOM shape, not readiness — word it so green can't read as "secure".
   badge_text:
     valid: "Evidence: CBOM is well-formed (CycloneDX 1.7)"
     invalid: "Evidence: CBOM failed schema validation"
@@ -136,10 +106,9 @@ render:
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
 actions:
-  # Preflight, now descriptor-declared argv instead of a hardcoded engine function (#5, #21).
-  # stdin is closed by the engine so s_client does not hang; exit 0 = handshake completed.
+  # SSH connection test: read the server's host keys with ssh-keyscan (shows the actual offer).
   - label: "Test connection"
-    argv: ["openssl", "s_client", "-connect", "{host}:{port}"]
+    argv: ["ssh-keyscan", "-T", "5", "-p", "{port}", "{host}"]
     ok_if: { exit: 0 }
     timeout_s: 8
 chains:

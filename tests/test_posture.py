@@ -12,7 +12,7 @@ import json
 import yaml
 
 from breachsafe_ux._render import _posture
-from breachsafe_ux.facade import ROOT
+from breachsafe_ux.resolve import ROOT
 
 FIXTURE = ROOT / "tests" / "fixtures" / "qureddy_cbom.sample.json"
 

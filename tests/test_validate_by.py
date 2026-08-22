@@ -74,12 +74,13 @@ def test_schema_rejects_validate_with_both_argv_and_by():
     assert list(_validator().iter_errors(d)), "oneOf should reject singular+by mixed"
 
 
-def test_qureddy_json_and_rich_have_no_validator():
+def test_qureddy_json_has_no_validator():
     import yaml
 
-    from breachsafe_ux.facade import ROOT
+    from breachsafe_ux.resolve import ROOT
 
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cases = q["validate"]["cases"]
-    assert cases["json"] is None and cases["rich"] is None
+    assert cases["json"] is None  # raw scan JSON: no external schema validator
+    assert "rich" not in cases  # rich format dropped (#69)
     assert cases["cbom"]["argv"]  # cbom keeps a real validator

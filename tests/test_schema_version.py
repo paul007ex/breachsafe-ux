@@ -13,11 +13,11 @@ import pytest
 import yaml
 
 from breachsafe_ux.facade import (
-    ROOT,
     SUPPORTED_SCHEMA_VERSION,
     _DescriptorError,
     _validate_descriptor,
 )
+from breachsafe_ux.resolve import ROOT
 
 
 def _ok() -> dict:

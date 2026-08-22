@@ -28,7 +28,8 @@ from pathlib import Path
 import pytest
 
 from breachsafe_ux import facade
-from breachsafe_ux.facade import load_descriptors, run_descriptor, tool_available
+from breachsafe_ux.facade import load_descriptors, run_descriptor
+from breachsafe_ux.resolve import tool_available
 
 # Live integration: skip cleanly unless the mint-oscal tool is resolvable AND docker is present.
 _MINT = load_descriptors().get("mint-oscal")

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import yaml
 
-from breachsafe_ux.facade import ROOT, feature_enabled, load_descriptors
+from breachsafe_ux.facade import feature_enabled, load_descriptors
+from breachsafe_ux.resolve import ROOT
 
 
 def test_default_on(monkeypatch):

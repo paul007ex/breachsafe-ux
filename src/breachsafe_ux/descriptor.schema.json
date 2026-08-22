@@ -27,6 +27,7 @@
       "description": "Gate this descriptor behind env BREACHSAFE_UX_<FLAG> (default ON). Off => not loaded (no tab). Hides Pro features in the OSS base edition (#67, e.g. mint_oscal)."
     },
     "title": { "type": "string" },
+    "run_label": { "type": "string", "description": "Run-button label (e.g. 'Run quantum audit'). Absent => 'Run <id>'." },
     "description": { "type": "string" },
     "brand": { "$ref": "#/$defs/brand" },
     "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" } },
