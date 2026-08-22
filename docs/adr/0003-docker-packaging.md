@@ -2,10 +2,55 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR-0003 — Docker packaging: a base host image, tool images build FROM it
 
-- **Status:** Accepted
+- **Status:** Accepted, **Updated 2026-08-22** (see "Update" below — the base+socket two-layer
+  model was superseded by a self-contained multi-arch image before first release).
 - **Date:** 2026-08-22
 - **Deciders:** BreachSAFE (paul)
-- **Related:** ADR-0001 (facade), ADR-0002 (host↔descriptor boundary + trust posture), #35, #67.
+- **Related:** ADR-0001 (facade), ADR-0002 (host↔descriptor boundary + trust posture), #35, #67, #120.
+
+## Update — 2026-08-22: self-contained, multi-arch `qureddy-ux` image
+
+The original Decision below (a host-only BASE image, with each tool's product image building
+`FROM` it, and the tool reached via a mounted docker socket or a pip install) never shipped. The
+released packaging (v0.3.1) is a **single self-contained, multi-arch `qureddy-ux` image**:
+
+```
+  official tool image (multi-arch)              breachsafe-ux repo (this repo)
+ ┌───────────────────────────────┐   FROM      ┌────────────────────────────────────┐
+ │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/paul007ex/qureddy-ux       │
+ │  qureddy + python + openssl   │             │  + EnXemble host wheel (gradio+eng) │
+ │  (amd64 + arm64)              │             │  + tools/qureddy, tools/qureddy-ssh │
+ └───────────────────────────────┘             │  + openssh-client (SSH tab)        │
+                                                │  = the product a user runs         │
+                                                └────────────────────────────────────┘
+                                                 docker run -p 7860:7860 …  (no socket)
+```
+
+- **Built FROM the official multi-arch `ghcr.io/breachsafe/qureddy:latest`** (qureddy, python,
+  and openssl already inside), then adds the EnXemble host wheel and the TLS/SSH descriptors.
+  See `Dockerfile.qureddy-ux` and `.github/workflows/qureddy-ux-image.yml`.
+- **Scans run in-process.** qureddy is on `PATH` in the image, so the local-binary backend is
+  taken; there is **no docker socket mount** and no in-container docker daemon. The workflow's
+  smoke test asserts exactly this ("one command, no socket, serves + resolves tools").
+- **Multi-arch** (`linux/amd64,linux/arm64`) via buildx + QEMU, so one image runs on Intel and
+  Apple Silicon. Published as `:edge` on `main` and `:latest` + version tag on release.
+- **One command, any arch, no socket, tool stays in its maintained image.** Building `FROM` the
+  official qureddy image means qureddy is upgraded by rebuilding on a new base, not vendored or
+  re-packaged here.
+
+**Why the pivot.** The two-layer base+consumer model plus a docker-socket (or pip-install) path
+added operator setup and a privileged socket mount for no gain now that the product ships as one
+image per tool-UX. Building `FROM` the tool's own official image keeps the tool in the place its
+maintainers already ship and test it, gives in-process scans with no socket, and makes
+`docker run …` a single copy-paste on any architecture.
+
+**What is preserved.** The engine's `run.image` docker backend (originally W-3) still exists as
+the **general fallback**: a descriptor may declare `run.image`, and the engine runs the local
+binary when it resolves on `PATH` and falls back to `docker run --pull=always <image>` otherwise
+(`src/breachsafe_ux/facade.py`, `resolve.py`; README §6). In the shipped `qureddy-ux` image the
+local binary always resolves, so the image path is not exercised there.
+
+The original context and decision are kept below unchanged as the historical record.
 
 ## Context
 
