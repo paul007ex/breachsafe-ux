@@ -96,25 +96,6 @@ def _empty(desc: dict) -> str:
     )
 
 
-def _env_line(rows: list[dict]) -> str:
-    """Header sub-line (A): the tool row of the environment model, one line (#75)."""
-    tool = next((r for r in rows if r["role"] == "tool"), None)
-    if not tool or not tool["cmd"]:
-        return ""
-    if tool["ok"]:
-        ver = f" {tool['version']}" if tool["version"] else ""
-        return (
-            '<div style="color:#64748b;font-size:11px;margin-top:3px">'
-            f"tool: <b>{tool['cmd']}{ver}</b> &middot; <code>{tool['path']}</code> "
-            '&middot; <span style="color:#0ba0b6">on PATH</span></div>'
-        )
-    return (
-        '<div style="color:#b45309;font-size:11px;margin-top:3px">'
-        f"tool: <b>{tool['cmd']}</b> &middot; not found on PATH "
-        "(install it or add a tools/&lt;id&gt;/bin shim)</div>"
-    )
-
-
 _CHIP = (
     "background:rgba(148,163,184,.14);padding:1px 7px;border-radius:5px;"
     "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px"

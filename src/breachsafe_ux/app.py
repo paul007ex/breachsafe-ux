@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import os
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 import gradio as gr
 
@@ -35,12 +37,16 @@ from breachsafe_ux.render import (
     _diag_md,
     _empty,
     _env_advanced_md,
-    _env_line,
     _env_panel_md,
     _link,
     _posture_md,
 )
 from breachsafe_ux.resolve import environment, tool_available
+
+try:
+    _HOST_VERSION = _pkg_version("breachsafe-ux")  # the EnXemble UX host's own version (#95)
+except PackageNotFoundError:  # running from a source tree without an installed dist
+    _HOST_VERSION = "0.0.0"
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
@@ -201,8 +207,6 @@ def _action_md(desc, action, vals):
 def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
     descs = load_descriptors()
     hdr = _header_brand(descs)
-    primary = next((d for d in descs.values() if d.get("standalone") is not False), None)
-    env_line = _env_line(environment(primary)) if primary else ""
     with gr.Blocks(title=BRAND["name"]) as demo:
         img = (
             f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>'
@@ -217,8 +221,8 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                     f'<span style="color:#16c7d8">v{hdr["version"]}</span></div>'
                     f'<div style="color:#64748b;font-size:12px">'
                     f"{_link(hdr['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
-                    f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div>"
-                    f"{env_line}</div></div>"
+                    f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE} "
+                    f"&nbsp;&middot;&nbsp; {BRAND['product']} UX v{_HOST_VERSION}</div></div></div>"
                 )
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
@@ -347,6 +351,7 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
         gr.HTML(
             '<div class="bs-footer">'
             f"<span>{hdr['product']} v{hdr['version']}</span>"
+            f"<span>{BRAND['product']} UX v{_HOST_VERSION}</span>"
             f"{_link(hdr['url'], 'breachsafe.io')}"
             f"{_link(hdr['repo'], 'GitHub')}"
             f"<span>{_LICENSE}</span></div>"
