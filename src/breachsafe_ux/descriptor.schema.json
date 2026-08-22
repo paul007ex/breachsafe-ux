@@ -29,7 +29,7 @@
     "run": { "$ref": "#/$defs/run" },
     "validate": { "$ref": "#/$defs/validate" },
     "render": { "$ref": "#/$defs/render" },
-    "preflight": { "$ref": "#/$defs/preflight" },
+    "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
     "chains": { "type": "array", "items": { "$ref": "#/$defs/chain" } }
   },
   "$defs": {
@@ -150,14 +150,16 @@
         "find_prop": { "type": "string" }
       }
     },
-    "preflight": {
+    "action": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Optional 'Test connection' button. Fields name the inputs it reads.",
+      "required": ["label", "argv"],
+      "description": "A descriptor-declared button that runs its own argv against the inputs and shows OK/FAIL. Generalizes the old preflight/'Test connection' button (argv, not a host function).",
       "properties": {
-        "host": { "type": "string" },
-        "port": { "type": "string" },
-        "openssl": { "type": "string" }
+        "label": { "type": "string" },
+        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Action argv template. Same token namespace as run.argv (see docs/descriptor-tokens.md); stdin is closed." },
+        "ok_if": { "$ref": "#/$defs/condition" },
+        "timeout_s": { "type": "integer", "minimum": 1 }
       }
     },
     "chain": {

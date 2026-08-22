@@ -20,8 +20,8 @@ from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     ROOT,
     load_descriptors,
+    run_action,
     run_descriptor,
-    test_connection,
     tool_available,
     verify_path,
 )
@@ -171,8 +171,9 @@ def _verify_md(value, argv_template):
     return _diag_md(ok, line)
 
 
-def _preflight_md(host, port, openssl=""):
-    ok, msg = test_connection(host, port, openssl or "openssl")
+def _action_md(desc, action, vals):
+    # A descriptor-declared action button (#5): run its argv against the current inputs.
+    ok, msg = run_action(action, _collect(desc, vals))
     return _diag_md(ok, msg)
 
 
@@ -208,8 +209,7 @@ def build():
                         name2widget[spec["name"]] = w
                 # Progressive disclosure: advanced params collapsed by default (NN/g).
                 adv_specs = [s for s in desc.get("inputs", []) if s.get("group") == "advanced"]
-                pf = desc.get("preflight")
-                if adv_specs or pf:
+                if adv_specs:
                     with gr.Accordion("Advanced options", open=False):
                         for spec in adv_specs:
                             # The field is directly editable (pre-populated); `verify_argv` adds a
@@ -221,20 +221,19 @@ def build():
                                 vb = gr.Button("Verify", size="sm", variant="secondary")
                                 vr = gr.Markdown()
                                 vb.click(lambda v, t=spec["verify_argv"]: _verify_md(v, t), w, vr)
-                        # `preflight` -> a "Test connection" button: openssl s_client to host:port.
-                        if pf and pf.get("host") in name2widget and pf.get("port") in name2widget:
-                            tb = gr.Button("Test connection", size="sm", variant="secondary")
-                            tr = gr.Markdown()
-                            ins = [name2widget[pf["host"]], name2widget[pf["port"]]]
-                            if pf.get("openssl") in name2widget:
-                                ins.append(name2widget[pf["openssl"]])
-                            tb.click(_preflight_md, ins, tr)
                 # widgets must be ordered to match desc["inputs"] for _collect's zip.
                 ordered = []
                 adv_iter = iter(advanced_widgets)
                 basic_iter = iter(widgets)
                 for spec in desc.get("inputs", []):
                     ordered.append(next(adv_iter) if spec.get("group") == "advanced" else next(basic_iter))
+
+                # Descriptor-declared action buttons (#5): each runs its own argv against the
+                # inputs and shows OK/FAIL. Replaces the old hardcoded 'Test connection' preflight.
+                for action in desc.get("actions", []):
+                    ab = gr.Button(action["label"], size="sm", variant="secondary")
+                    ar = gr.Markdown()
+                    ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
 
                 run_btn = gr.Button(_RUN_LABEL.format(id=did), variant="primary", icon=_ICON["run"])
                 badge = gr.Markdown(_empty(desc))
