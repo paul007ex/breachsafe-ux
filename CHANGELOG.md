@@ -46,6 +46,10 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with no validator no longer false-badges. QuReddy `format=json/rich` now report "no external
   validator" instead of a bogus INVALID/UNAVAILABLE (#43, closes #16); mint-oscal's badge now
   requires validator exit 0, closing a nonzero-exit false-green (#14).
+- Result headline no longer false-greens: readiness posture is now a separate banner derived
+  from the scan findings (`render.posture`), and the evidence badge can be reworded per state
+  (`render.badge_text`) so a schema-valid CBOM reads "Evidence: CBOM well-formed", never as a
+  security verdict. A quantum-vulnerable endpoint no longer renders green (#1).
 - Badge correctness: a scan that exits 0 but produces an **empty/missing artifact**
   no longer badges VALID — it now reports "scan produced no output" (was a
   false-green). Also covered: nonzero exit, unresolved tokens, blind excepts.
