@@ -1,10 +1,9 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
 #
-# Build + publish the qureddy-ux CONSUMER image (base host + QuReddy descriptors) to GHCR.
-# The QuReddy tool is not baked in; the descriptors declare run.image, so the host runs the
-# official qureddy image on demand (docker run --pull=always). Builds FROM the base image this
-# repo publishes (container.yml). See ADR-0003 + Dockerfile.qureddy-ux.
+# Build + publish the SELF-CONTAINED, multi-arch qureddy-ux image to GHCR. Built FROM the
+# official multi-arch qureddy image (qureddy + python + openssl inside) plus the EnXemble host
+# wheel and the TLS/SSH descriptors — one command to run, no docker socket. See Dockerfile.qureddy-ux.
 name: qureddy-ux-image
 
 on:
@@ -14,6 +13,9 @@ on:
     paths:
       - "Dockerfile.qureddy-ux"
       - "Dockerfile.qureddy-ux.dockerignore"
+      - "src/**"
+      - "pyproject.toml"
+      - "uv.lock"
       - "tools/qureddy/**"
       - "tools/qureddy-ssh/**"
       - ".github/workflows/qureddy-ux-image.yml"
@@ -29,7 +31,6 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/qureddy-ux
-  BASE: ghcr.io/${{ github.repository_owner }}/breachsafe-ux:edge
 
 jobs:
   build-push:
@@ -38,19 +39,46 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Build the EnXemble host wheel
+        run: uv build --wheel --out-dir dist
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Build (load, amd64) for smoke test
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: Dockerfile.qureddy-ux
+          load: true
+          tags: qureddy-ux:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test — one command, no socket, serves + resolves tools
+        run: |
+          docker run -d --name qux -p 7860:7860 qureddy-ux:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:7860/ >/dev/null 2>&1 && { echo "up after ${i}s"; break; }
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7860/ >/dev/null || { echo "did not serve"; docker logs qux; exit 1; }
+          docker exec qux breachsafe-ux --check
+          docker rm -f qux
+
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build + push (edge on main; version tag on release)
+      - name: Build + push multi-arch (edge on main; version tag on release)
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: Dockerfile.qureddy-ux
-          build-args: BASE=${{ env.BASE }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && github.ref_name || 'edge' }}
