@@ -95,11 +95,12 @@ def _widget(spec):
 
 
 def _collect(desc, vals):
+    # gr.File (Gradio 6, type="filepath") already yields the uploaded file's path as a str, like
+    # every other widget yields its value — so a file input needs no special handling. (The old
+    # `.name` assumed the pre-6 file-object return and broke manual upload on the mint-oscal tab.)
     params = {}
     for spec, v in zip(desc.get("inputs", []), vals, strict=False):
-        params[spec["name"]] = (
-            v.name if (v is not None and spec["type"] == "file") else (v if v is not None else "")
-        )
+        params[spec["name"]] = v if v is not None else ""
     return params
 
 
