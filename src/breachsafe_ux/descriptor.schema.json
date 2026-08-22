@@ -156,7 +156,34 @@
       "additionalProperties": false,
       "properties": {
         "primary": { "enum": ["json"] },
-        "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } }
+        "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } },
+        "posture": { "$ref": "#/$defs/posture" },
+        "badge_text": {
+          "type": "object",
+          "propertyNames": { "enum": ["valid", "invalid", "unavailable", "none"] },
+          "additionalProperties": { "type": "string" },
+          "description": "Per-badge-state headline override, so a green badge states what was checked (e.g. 'Evidence: CBOM well-formed') rather than implying a security verdict (#1)."
+        }
+      }
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "cases"],
+      "description": "Readiness banner derived from the artifact findings, decoupled from the evidence badge (#1). The host reads `from` out of the artifact and maps the value to a banner; it never computes the verdict itself.",
+      "properties": {
+        "from": { "type": "string", "description": "find_prop into the artifact for the posture value." },
+        "cases": { "type": "object", "additionalProperties": { "$ref": "#/$defs/posture_case" } },
+        "default": { "$ref": "#/$defs/posture_case" }
+      }
+    },
+    "posture_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "level"],
+      "properties": {
+        "text": { "type": "string" },
+        "level": { "enum": ["high", "medium", "ok", "unknown"] }
       }
     },
     "highlight": {

@@ -19,6 +19,7 @@ import gradio as gr
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     ROOT,
+    _posture,
     load_descriptors,
     run_action,
     run_descriptor,
@@ -57,11 +58,28 @@ _RUN_LABEL = "Run {id}"
 _BUSY_LABEL = "Running..."
 
 
-def _badge(state, detail, hi=(), raw=""):
-    """Render the honest 3-state verdict. Never emits green markup for a non-`valid` state."""
+# Readiness-posture banner (#1): severity colour for a verdict derived from the scan findings,
+# shown ABOVE and separate from the evidence badge so a green badge never reads as "secure".
+_LEVEL_COLOR = {"high": "#b91c1c", "medium": "#b45309", "ok": "#0ba0b6", "unknown": "#475569"}
+
+
+def _posture_md(posture):
+    """A readiness banner from the findings, or "" when the descriptor declares none."""
+    if not posture:
+        return ""
+    color = _LEVEL_COLOR.get(posture.get("level"), "#475569")
+    return (f'<div style="border-left:5px solid {color};padding:8px 14px;margin:0 0 12px">'
+            f'<span style="color:{color};font-weight:800">{posture.get("text", "")}</span>'
+            f'</div>\n\n')
+
+
+def _badge(state, detail, hi=(), head_text=None):
+    """Render the 3-state evidence verdict. Never emits green markup for a non-`valid` state.
+    `head_text` overrides the state word so a descriptor can say what was actually checked
+    (e.g. "Evidence: CBOM well-formed") instead of a bare "VALID" that implies security (#1)."""
     color = _COLOR.get(state, "#b45309")
     head = (f'<span style="color:{color};font-weight:800;display:inline-flex;align-items:center;gap:8px">'
-            f'{_STATUS_SVG.get(state, "")}{_HEAD.get(state, state.upper())}</span>')
+            f'{_STATUS_SVG.get(state, "")}{head_text or _HEAD.get(state, state.upper())}</span>')
     body = f"\n\n{detail}" if detail else ""
     h = "\n".join(f"- **{x['label']}:** `{x['value']}`" for x in hi)
     md = f"### {head}{body}" + (f"\n\n{h}" if h else "")
@@ -111,14 +129,20 @@ def _collect(desc, vals):
 
 
 def _result(desc, res):
-    """(badge_md, artifact_json, raw_log_md, artifact_path). Honest on every branch."""
+    """(badge_md, artifact_json, raw_log_md, artifact_path). Honest on every branch.
+
+    The badge_md is a readiness-posture banner (from the findings, #1) followed by the evidence
+    badge, whose word can be reworded per state so a green badge states what was checked rather
+    than implying a security verdict.
+    """
     state, detail = res["badge"]
+    head_text = desc.get("render", {}).get("badge_text", {}).get(state)
     if "error" in res:
-        # detail now carries the specific reason (which tool, or the tool's own error line);
-        # show it directly. The full stderr is in the Raw log below.
+        # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
         raw = f"```\n{res['error']}\n```"
-        return _badge(state, detail), None, raw, None
-    return (_badge(state, detail, res.get("highlights", [])),
+        return _badge(state, detail, head_text=head_text), None, raw, None
+    banner = _posture_md(_posture(desc, res.get("artifact")))
+    return (banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
             res.get("artifact"), "", res.get("artifact_path"))
 
 

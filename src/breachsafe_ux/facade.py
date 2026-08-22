@@ -423,3 +423,18 @@ def _highlights(desc: dict, art) -> list[dict]:
         if val is not None:
             out.append({"label": h["label"], "value": val})
     return out
+
+
+def _posture(desc: dict, art) -> dict | None:
+    """Readiness banner derived from the scan FINDINGS, decoupled from the evidence badge (#1).
+
+    Reads `render.posture.from` out of the artifact and maps the value to a {text, level} case.
+    Returns None when no posture is declared or there is no artifact — the host never invents a
+    readiness verdict, and a green 'evidence valid' badge no longer stands in for 'secure'."""
+    p = desc.get("render", {}).get("posture")
+    if not p or art is None:
+        return None
+    val = _find_prop(art, p["from"])
+    if val is None:
+        return p.get("default")
+    return p.get("cases", {}).get(str(val)) or p.get("default")

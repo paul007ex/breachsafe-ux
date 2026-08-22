@@ -117,6 +117,25 @@ validate:
         otherwise: unavailable
 render:
   primary: json
+  # #1: readiness posture comes from the scan FINDINGS, shown separately from the evidence badge.
+  # A schema-valid CBOM (green badge) does NOT mean the endpoint is PQC-ready — this banner says
+  # what the scan actually found. Values are the qureddy Readiness enum.
+  posture:
+    from: "qureddy:scan.readiness"
+    cases:
+      quantum_vulnerable:  { text: "Quantum-vulnerable: classical-only key exchange (harvest-now, decrypt-later risk)", level: high }
+      classically_weak:    { text: "Classically weak: broken or legacy primitives in use", level: high }
+      transitional_hybrid: { text: "Transitional: hybrid post-quantum + classical key exchange", level: medium }
+      quantum_safe:        { text: "Quantum-safe: post-quantum key exchange in use", level: ok }
+      unknown:             { text: "Readiness unknown: the probe was inconclusive", level: unknown }
+      not_applicable:      { text: "Readiness not applicable to this target", level: unknown }
+    default: { text: "Readiness could not be determined", level: unknown }
+  # The evidence badge checks CBOM shape, not readiness — word it so green can't read as "secure".
+  badge_text:
+    valid: "Evidence: CBOM is well-formed (CycloneDX 1.7)"
+    invalid: "Evidence: CBOM failed schema validation"
+    unavailable: "Evidence: validator could not run"
+    none: "Evidence: no external validator for this output"
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
 actions:

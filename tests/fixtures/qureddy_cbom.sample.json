@@ -1,0 +1,19 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "metadata": {
+    "timestamp": "2026-08-22T00:00:00+00:00",
+    "properties": [
+      { "name": "qureddy:scan.status", "value": "completed" },
+      { "name": "qureddy:scan.readiness", "value": "quantum_vulnerable" },
+      { "name": "qureddy:target.host", "value": "example.com" }
+    ]
+  },
+  "components": [
+    { "name": "TLSv1.2", "properties": [
+      { "name": "qureddy:readiness", "value": "quantum_vulnerable" },
+      { "name": "qureddy:severity", "value": "low" }
+    ] }
+  ],
+  "annotations": []
+}
