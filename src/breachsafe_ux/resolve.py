@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
-"""Model: locate the binaries a descriptor needs, resolve them on this system, and probe
-versions. Pure Python, no Gradio. facade.py runs/validates a descriptor; this answers
-"where is the tool + its deps, and what versions" — the environment() model behind the UI
-provenance (#75) and the single resolver (#84/#86). Split from facade.py for the size gate.
+"""Model: locate the binaries a descriptor needs, resolve them, and probe versions.
+
+Pure Python, no Gradio. facade.py runs/validates a descriptor; this answers "where is the tool +
+its deps, and what versions" — the environment() model behind the UI provenance (#75) and the
+single resolver (#84/#86). Split from facade.py for the size gate.
 """
 
 from __future__ import annotations
@@ -39,24 +40,30 @@ def _search_path() -> str:
 
 
 def _resolve(cmd: str) -> str | None:
-    """Absolute path of a command the way the engine runs it (shims -> PATH). Cross-platform
-    (shutil.which honours PATHEXT/.exe). None if empty or not found (#84)."""
+    """Absolute path of a command the way the engine runs it (shims -> PATH).
+
+    Cross-platform (shutil.which honours PATHEXT/.exe). None if empty or not found (#84).
+    """
     return shutil.which(cmd, path=_search_path()) if cmd else None
 
 
 def _run_env() -> dict[str, str]:
-    """Subprocess environment carrying the tool-resolution PATH (per-tool bin shims -> ambient
-    PATH), so a child resolves the same binaries the engine's resolver does (#116). subprocess
-    computes a bare argv[0]'s candidates from this env's PATH (os.get_exec_path), matching
-    run_descriptor, verify_path, run_action, and _validate on one PATH."""
+    """Subprocess environment carrying the tool-resolution PATH (per-tool bin shims -> PATH).
+
+    A child resolves the same binaries the engine's resolver does (#116). subprocess computes a
+    bare argv[0]'s candidates from this env's PATH (os.get_exec_path), matching run_descriptor,
+    verify_path, run_action, and _validate on one PATH.
+    """
     return os.environ | {"PATH": _search_path()}
 
 
 def _run(
     argv: list[str], *, timeout: float, input_: str = "", env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str] | None:
-    """Run argv (no shell), capture text output; None on launch failure or timeout (#86). Pass
-    `env` (e.g. _run_env()) to resolve/run against the augmented tool PATH; None inherits."""
+    """Run argv (no shell), capture text output; None on launch failure or timeout (#86).
+
+    Pass `env` (e.g. _run_env()) to resolve/run against the augmented tool PATH; None inherits.
+    """
     try:
         return subprocess.run(
             argv, input=input_, capture_output=True, text=True, timeout=timeout, env=env
@@ -77,8 +84,10 @@ def _tool_version(argv: list[str]) -> str | None:
 
 @functools.lru_cache(maxsize=64)
 def _probe_version(exe: str) -> str:
-    """First version-looking token from a resolved binary (try --version then version). Cached
-    per exe — surfaces which openssl/python/docker a dependency actually is (#75)."""
+    """First version-looking token from a resolved binary (try --version then version).
+
+    Cached per exe — surfaces which openssl/python/docker a dependency actually is (#75).
+    """
     for flag in ("--version", "version"):
         p = _run([exe, flag], timeout=5)
         if p is not None:
@@ -89,7 +98,8 @@ def _probe_version(exe: str) -> str:
 
 
 def _tool_source(run: dict[str, Any]) -> tuple[str, str | None]:
-    """How a descriptor's tool runs here, preferring a local binary over the image:
+    """How a descriptor's tool runs here, preferring a local binary over the image.
+
     ("local", resolved_path) if run.base[0] is on PATH, ("image", image_ref) if run.image is
     declared (docker fallback), ("local", None) when no tool is declared, else ("missing", None).
     Single source of truth for run_descriptor, tool_available, and environment (#75).
@@ -106,8 +116,11 @@ def _tool_source(run: dict[str, Any]) -> tuple[str, str | None]:
 
 
 def tool_available(desc: dict[str, Any]) -> bool:
-    """Best-effort: can this descriptor's tool run here? Local binary, or the docker image as a
-    fallback when docker is present (W-5 chain-button state)."""
+    """Best-effort check: can this descriptor's tool run here?
+
+    True for a local binary, or the docker image as a fallback when docker is present (W-5
+    chain-button state).
+    """
     mode, _ = _tool_source(desc.get("run", {}))
     if mode == "image":
         return _resolve("docker") is not None
@@ -191,11 +204,13 @@ def _action_rows(desc: dict[str, Any], seen: set[str]) -> list[dict[str, Any]]:
 
 
 def environment(desc: dict[str, Any]) -> list[dict[str, Any]]:
-    """Every binary this descriptor resolves on THIS system — tool + validator dep(s) + each
-    action/preflight — as rows {role, cmd, version, path, ok}. Single source of truth for
-    provenance (#75): the header line and Environment panel are thin views of this. Derives from
-    existing descriptor fields (no YAML), resolves via _resolve (no re-resolution), probes each
-    dependency's version, names no tool -> tool-agnostic + cross-platform.
+    """Every binary this descriptor resolves on THIS system, as provenance rows.
+
+    Covers the tool + validator dep(s) + each action/preflight as rows {role, cmd, version, path,
+    ok}. Single source of truth for provenance (#75): the header line and Environment panel are
+    thin views of this. Derives from existing descriptor fields (no YAML), resolves via _resolve
+    (no re-resolution), probes each dependency's version, names no tool -> tool-agnostic +
+    cross-platform.
     """
     run = desc.get("run", {})
     seen: set[str] = set()

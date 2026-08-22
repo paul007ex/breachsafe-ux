@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
-"""View: pure HTML/markdown string builders. No Gradio, no logic — given model data, return the
-markup app.py hands to gr.HTML/gr.Markdown. Split from app.py so the controller stays wiring-only.
+"""View: pure HTML/markdown string builders.
+
+No Gradio, no logic — given model data, return the markup app.py hands to gr.HTML/gr.Markdown.
+Split from app.py so the controller stays wiring-only.
 """
 
 from __future__ import annotations
@@ -9,6 +11,10 @@ from __future__ import annotations
 import base64
 import html
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
 _LOGO = _ASSETS / "logo.png"
@@ -61,15 +67,18 @@ def _diag_md(ok: bool, text: str) -> str:
 
 
 def _action_output_md(ok: bool, output: str) -> str:
-    """Action result (#97): the OK/FAILED verdict plus the tool's actual captured output in a code
-    block, so 'Test connection' shows the real openssl handshake — not a canned one-liner."""
+    """Render an action result (#97): the OK/FAILED verdict plus the tool's captured output.
+
+    The tool's actual captured output is shown in a code block, so 'Test connection' shows the
+    real openssl handshake — not a canned one-liner.
+    """
     color = "#0ba0b6" if ok else "#b45309"
     verdict = "OK" if ok else "FAILED"
     fence = output.replace("```", "'''")  # keep tool output from breaking the code fence
     return f'<span style="color:{color};font-weight:700">{verdict}</span>\n\n```\n{fence}\n```'
 
 
-def _posture_md(posture: dict | None) -> str:
+def _posture_md(posture: dict[str, Any] | None) -> str:
     """Readiness banner from the findings, or "" when the descriptor declares none (#1)."""
     if not posture:
         return ""
@@ -83,9 +92,16 @@ def _posture_md(posture: dict | None) -> str:
     )
 
 
-def _badge(state: str, detail: str, hi: tuple = (), head_text: str | None = None) -> str:
-    """3-state evidence verdict; never green markup for a non-valid state. head_text overrides the
-    state word so a descriptor states what was checked, not a bare VALID that implies security (#1).
+def _badge(
+    state: str,
+    detail: str,
+    hi: Sequence[dict[str, Any]] = (),
+    head_text: str | None = None,
+) -> str:
+    """Render the 3-state evidence verdict; never green markup for a non-valid state.
+
+    head_text overrides the state word so a descriptor states what was checked, not a bare VALID
+    that implies security (#1).
     """
     color = _COLOR.get(state, "#b45309")
     head = (
@@ -103,7 +119,7 @@ def _badge(state: str, detail: str, hi: tuple = (), head_text: str | None = None
     return f"### {head}{body}" + (f"\n\n{h}" if h else "")
 
 
-def _empty(desc: dict) -> str:
+def _empty(desc: dict[str, Any]) -> str:
     """Pre-run empty state: what the tool produces + how to read the verdict."""
     artifact = desc["run"].get("artifact_name", "artifact.json")
     return (
@@ -118,10 +134,13 @@ _CHIP = (
 )
 
 
-def _env_advanced_md(rows: list[dict]) -> str:
-    """Environment provenance as greyed, read-only lines for the Advanced accordion — the binary,
-    version, and resolved path behind each descriptor role (#75). Muted so it reads as reference,
-    not editable input; the tool row also appears at-a-glance in the header (_env_line)."""
+def _env_advanced_md(rows: list[dict[str, Any]]) -> str:
+    """Environment provenance as greyed, read-only lines for the Advanced accordion (#75).
+
+    Shows the binary, version, and resolved path behind each descriptor role. Muted so it reads
+    as reference, not editable input; the tool row also appears at-a-glance in the header
+    (_env_line).
+    """
     if not rows:
         return ""
     head = (
@@ -152,9 +171,12 @@ def _env_advanced_md(rows: list[dict]) -> str:
     return "".join(out)
 
 
-def _env_panel_md(rows: list[dict]) -> str:
-    """Environment model as a plaintext table for `breachsafe-ux --check` (terminal/CI/HEALTHCHECK).
-    The UI uses _env_advanced_md; this stays text so the CLI output is readable (#75)."""
+def _env_panel_md(rows: list[dict[str, Any]]) -> str:
+    """Environment model as a plaintext table for `breachsafe-ux --check`.
+
+    Used for terminal/CI/HEALTHCHECK output. The UI uses _env_advanced_md; this stays text so the
+    CLI output is readable (#75).
+    """
     if not rows:
         return "(no tool declared for this descriptor)"
     header = "| role | binary | version | path | status |\n|---|---|---|---|---|\n"

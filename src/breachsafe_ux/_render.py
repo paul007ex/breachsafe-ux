@@ -53,6 +53,9 @@ def _posture(desc: dict[str, Any], art: Any) -> dict[str, Any] | None:
     if not p or art is None:
         return None
     val = _find_prop(art, p["from"])
+    result: dict[str, Any] | None
     if val is None:
-        return p.get("default")
-    return p.get("cases", {}).get(str(val)) or p.get("default")
+        result = p.get("default")
+    else:
+        result = p.get("cases", {}).get(str(val)) or p.get("default")
+    return result

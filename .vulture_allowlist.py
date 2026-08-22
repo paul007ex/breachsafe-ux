@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
-"""Vulture allowlist (#127): names that are intentionally kept but can read as "dead" to static
-dead-code analysis. Passed to vulture as a scan target so these references count as usage:
+"""Vulture allowlist (#127) of names intentionally kept but that read as "dead".
+
+Passed to vulture as a scan target so these references count as usage:
 
     uv run --locked vulture --min-confidence 80 src/breachsafe_ux .vulture_allowlist.py
 

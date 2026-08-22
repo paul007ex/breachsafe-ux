@@ -36,6 +36,7 @@ _BADGE = re.compile(r"version-[0-9][^-\s)]*-blue")
 
 
 def current_version() -> str:
+    """Return the single-source version from `pyproject.toml [project].version`."""
     return tomllib.loads(PYPROJECT.read_text())["project"]["version"]
 
 
@@ -49,6 +50,7 @@ def _changelog_has(version: str) -> bool:
 
 
 def check() -> int:
+    """Verify the README and CHANGELOG match pyproject; return 0 on match, 1 otherwise."""
     v = current_version()
     errs: list[str] = []
     if README.exists() and f"version-{v}-blue" not in README.read_text():
@@ -74,6 +76,7 @@ def _sync_badge(path: Path, version: str) -> None:
 
 
 def set_version(version: str) -> int:
+    """Set the pyproject version and sync the README/CHANGELOG badges; return an exit code."""
     if not _SEMVER.match(version):
         print(f"not a semver: {version}", file=sys.stderr)
         return 2
@@ -90,6 +93,7 @@ def set_version(version: str) -> int:
 
 
 def main() -> int:
+    """Parse --check/--set and dispatch to the matching command; return its exit code."""
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true")
