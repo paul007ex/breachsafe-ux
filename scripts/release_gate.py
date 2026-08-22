@@ -125,8 +125,12 @@ def _gates(uv: Path) -> None:
     run = [str(uv), "run", "--locked", "--python", "3.12"]
     _run("sync", [str(uv), "sync", "--locked", "--python", "3.12"])
     _run("ruff", [*run, "ruff", "check", "src", "tests"])
+    _run("ruff-format", [*run, "ruff", "format", "--check", "."])
     _run("mypy", [*run, "mypy", "src"])
-    _run("tests", [*run, "pytest", "tests/", "-q"])
+    _run("bandit", [*run, "bandit", "-c", "pyproject.toml", "-r", "-ll", "src", "scripts"])
+    _run("pip-audit", [*run, "pip-audit"])
+    _run("deptry", [*run, "deptry", "."])
+    _run("tests", [*run, "pytest", "tests/", "-q", "--cov=breachsafe_ux", "--cov-fail-under=70"])
     _run("file-size", [*run, "python", "scripts/check_size_policy.py"])
     _run("version", [*run, "python", "scripts/bump_version.py", "--check"])
     _run("reuse", [*run, "reuse", "lint"])
