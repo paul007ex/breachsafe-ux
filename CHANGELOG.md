@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.4-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.5-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,23 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.5] - 2026-08-22
+
+### Fixed
+- The `qureddy-ux` image now ships the **current** scanner. Its base was written as
+  `ghcr.io/breachsafe/qureddy:latest@sha256:80ebc9bd…` — the tag read "latest" but the digest
+  overrode it, freezing the image at **qureddy 0.2.34 / Python 3.12** while upstream reached
+  **0.2.40 / Python 3.14**. The digest is removed, the image workflow gained a daily schedule
+  so a new scanner release lands within 24h, and both build steps set `pull: true` so the
+  layer cache cannot rebuild on a stale base. Reproducibility is preserved by the immutable
+  per-release `qureddy-ux` version tags. (#138)
+
+### Changed
+- The badge-state guards that need no Docker or tool source (`t6`, `t6b`, `t7`) moved to
+  `tests/test_badge_guards.py`. They previously sat in a `live`-marked module, so they were
+  deselected in CI and in the release gate and executed in no pipeline at all. 120 passed ->
+  124 passed; coverage 89.74% -> 90.49%. (#142)
 
 ## [0.3.4] - 2026-08-22
 
