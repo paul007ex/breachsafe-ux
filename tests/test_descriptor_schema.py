@@ -54,7 +54,8 @@ def _q() -> dict:
         (lambda d: d["inputs"][2].__setitem__("postional", True), "inputs/2"),   # typo'd key
         (lambda d: d["inputs"][2].__setitem__("flag", "--x"), "inputs/2"),       # arg AND flag
         (lambda d: d.pop("id"), "<root>"),                                        # missing required
-        (lambda d: d["validate"]["badge_rule"].__setitem__("pass_if", {}), "validate/badge_rule/pass_if"),
+        (lambda d: d["validate"]["cases"]["cbom"]["badge_rule"].__setitem__("pass_if", {}),
+         "validate/cases/cbom"),   # oneOf collapses the deep path to the case
         (lambda d: d["run"].__setitem__("artifact_from", "stderr"), "run/artifact_from"),
         (lambda d: d["inputs"].append({"name": "z", "type": "enum"}), None),      # enum w/o choices
         (lambda d: d["run"].__setitem__("timeout_s", 0), "run/timeout_s"),        # timeout must be >=1
