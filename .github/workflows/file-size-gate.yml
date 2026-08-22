@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# File-size gate (#30) — enforces the repository-owned per-file line ceiling
+# over src/breachsafe_ux and tests via scripts/check_size_policy.py. A file that
+# breaches the ceiling must be refactored; the number is not to be raised.
+
+name: file-size-gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/check_size_policy.py"
+      - ".github/workflows/file-size-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: file-size-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Enforce repository-owned size policy
+        run: python scripts/check_size_policy.py
