@@ -42,8 +42,7 @@ _RUN_KEEP = 20  # #121: cap RUN_ROOT at the most-recent N per-run workdirs
 
 
 def _prune_run_root(keep: int = _RUN_KEEP) -> None:
-    """Bound RUN_ROOT growth (#121): keep the `keep` most-recent per-run workdirs, remove older
-    ones. Best-effort and fail-safe — any error is swallowed so housekeeping never breaks a run."""
+    """Bound RUN_ROOT growth (#121): keep the most-recent workdirs, drop older; best-effort."""
     try:
         runs = [d for d in RUN_ROOT.iterdir() if d.is_dir()]
         if len(runs) <= keep:
@@ -56,8 +55,9 @@ def _prune_run_root(keep: int = _RUN_KEEP) -> None:
 
 
 class _DescriptorError(Exception):
-    """A descriptor is malformed (e.g. an unresolved {token} in run argv). Surfaced as an
-    'unavailable' badge rather than shipped as literal text to the tool (wizard #8).
+    """A descriptor is malformed (e.g. an unresolved {token} in run argv).
+
+    Surfaced as an 'unavailable' badge rather than shipped as literal text to the tool (wizard #8).
     """
 
 
@@ -73,12 +73,8 @@ def _validator() -> Draft202012Validator:
 SUPPORTED_SCHEMA_VERSION = 1
 
 
-def _check_schema_version(doc: dict, path: Path) -> None:
-    """Version handshake (#49). A descriptor may declare `schema_version`; absent means 1
-    (back-compat, warned once per file). A version newer than this build understands fails
-    CLOSED with a clear 'needs a newer breachsafe-ux' message, rather than a confusing
-    structural error from a schema that predates those fields.
-    """
+def _check_schema_version(doc: dict[str, Any], path: Path) -> None:
+    """Version handshake (#49): a too-new schema_version fails CLOSED asking for a newer build."""
     ver = doc.get("schema_version") if isinstance(doc, dict) else None
     if ver is None:
         warnings.warn(
@@ -92,10 +88,11 @@ def _check_schema_version(doc: dict, path: Path) -> None:
         )
 
 
-def _validate_descriptor(doc: dict, path: Path) -> None:
-    """Fail closed (#48): a descriptor that does not match descriptor.schema.json must not
-    render. Raise naming the file and the JSON path of the first problem, so a typo is a clear
-    load-time error, not a silent drop or a mid-run surprise.
+def _validate_descriptor(doc: dict[str, Any], path: Path) -> None:
+    """Fail closed (#48): a descriptor that does not match descriptor.schema.json must not render.
+
+    Raise naming the file and the JSON path of the first problem, so a typo is a clear load-time
+    error, not a silent drop or a mid-run surprise.
     """
     _check_schema_version(doc, path)  # #49: version first, so a too-new descriptor says so
     errs = sorted(_validator().iter_errors(doc), key=lambda e: list(e.path))
@@ -104,10 +101,8 @@ def _validate_descriptor(doc: dict, path: Path) -> None:
         raise _DescriptorError(f"{path.name}: invalid descriptor at '{loc}': {errs[0].message}")
 
 
-def _expand_brand(d: dict) -> None:
-    """Expand `${ENV}` in display-only brand metadata and, if brand.version_cmd is set, single-
-    source the version from the tool (#51). Scoped to brand only — run/validate argv never expand
-    env, to avoid env injection into a command."""
+def _expand_brand(d: dict[str, Any]) -> None:
+    """Expand `${ENV}` in display-only brand metadata; single-source the version if set (#51)."""
     brand: dict[str, Any] = {
         k: (os.path.expandvars(v) if isinstance(v, str) else v) for k, v in d["brand"].items()
     }
@@ -117,15 +112,17 @@ def _expand_brand(d: dict) -> None:
     d["brand"] = brand
 
 
-def _expand_input_defaults(d: dict) -> None:
-    """Expand `${ENV}` in each input's DEFAULT value only (e.g. default: "${QUREDDY_BIN}"); the
-    value a user submits is passed as a single argv element, never expanded."""
+def _expand_input_defaults(d: dict[str, Any]) -> None:
+    """Expand `${ENV}` in each input's DEFAULT value only (e.g. default: "${QUREDDY_BIN}").
+
+    The value a user submits is passed as a single argv element, never expanded.
+    """
     for inp in d.get("inputs", []):
         if isinstance(inp.get("default"), str):
             inp["default"] = os.path.expandvars(inp["default"])
 
 
-def load_descriptors() -> dict:
+def load_descriptors() -> dict[str, Any]:
     """Discover every <tools_dir>/<name>/<name>.yaml, ordered by `order` then id."""
     ds = []
     for y in sorted(_tools_dir().glob("*/*.yaml")):
@@ -172,12 +169,14 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
     return (p.returncode == 0, line or f"exit {p.returncode}")
 
 
-def run_action(action: dict, params: dict) -> tuple[bool, str]:
-    """Run a descriptor-declared action button (#5): render its argv from the current inputs, run
-    it (no shell, stdin closed so a tool can't hang, timeout), and report (ok, output) per the
-    action's `ok_if` condition (default: exit 0). output is the tool's own captured stdout+stderr
-    so the UI shows the actual result (#97), not a canned line. The generic replacement for the old
-    hardcoded openssl `test_connection` preflight (ADR-0002 §2a / #21). Never raises.
+def run_action(action: dict[str, Any], params: dict[str, Any]) -> tuple[bool, str]:
+    """Run a descriptor-declared action button (#5) and report (ok, output).
+
+    Render its argv from the current inputs, run it (no shell, stdin closed so a tool can't hang,
+    timeout), and report (ok, output) per the action's `ok_if` condition (default: exit 0). output
+    is the tool's own captured stdout+stderr so the UI shows the actual result (#97), not a canned
+    line. The generic replacement for the old hardcoded openssl `test_connection` preflight
+    (ADR-0002 §2a / #21). Never raises.
     """
     try:
         argv = _render(action["argv"], params.copy())
@@ -196,17 +195,11 @@ def run_action(action: dict, params: dict) -> tuple[bool, str]:
     return (ok, output or f"exit {p.returncode}")
 
 
-def _render(argv: list[str], mapping: dict) -> list[str]:
-    """Substitute `{name}` tokens into each argv element (never a shell). `{{` and `}}` are
-    literal braces. An unresolved `{name}` is a descriptor bug and fails CLOSED with
-    _DescriptorError (wizard #8), so a mistyped token never ships as literal text and scans
-    garbage.
-
-    Token namespace (#50): engine-provided are `{share}` `{workdir}` `{artifact}`
-    `{artifact_name}` `{python}` (+ `{stdout_file}` in validate.argv); every other is an input."""
+def _render(argv: list[str], mapping: dict[str, Any]) -> list[str]:
+    """Substitute `{name}` tokens into each argv element (never a shell); unresolved fails CLOSED."""
     unresolved: set[str] = set()
 
-    def repl(m: re.Match) -> str:
+    def repl(m: re.Match[str]) -> str:
         whole = m.group(0)
         if whole == "{{":
             return "{"
@@ -227,11 +220,8 @@ def _render(argv: list[str], mapping: dict) -> list[str]:
 _COND_KEYS = {"stdout_contains", "stdout_contains_any", "stdout_not_contains", "exit"}
 
 
-def _match(cond: dict, text: str, returncode: int) -> bool:
-    """Evaluate a badge/action condition. Fail CLOSED (#182): an empty or all-unrecognized
-    condition never passes — a descriptor typo (e.g. stdout_has for stdout_contains) is a bug,
-    not a green. All present sub-conditions must hold (AND). Shared by _validate and run_action.
-    """
+def _match(cond: dict[str, Any], text: str, returncode: int) -> bool:
+    """Evaluate a badge/action condition, failing CLOSED (#182); all present sub-conditions AND."""
     if not cond or (set(cond) - _COND_KEYS):
         return False
     checks = (
@@ -243,9 +233,12 @@ def _match(cond: dict, text: str, returncode: int) -> bool:
     return all(checks)
 
 
-def _input_argv(spec: dict, params: dict) -> tuple[list[str], list[str]]:
-    """One input's (options, positionals) contribution: at most one of positional (value), flag
-    (token if truthy), or arg (['--x', value] when set). Values are single argv elements."""
+def _input_argv(spec: dict[str, Any], params: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """One input's (options, positionals) contribution to the argv.
+
+    At most one of positional (value), flag (token if truthy), or arg (['--x', value] when set).
+    Values are single argv elements.
+    """
     v = params.get(spec["name"])
     if spec.get("positional"):
         return ([], [str(v)] if v not in (None, "") else [])
@@ -256,7 +249,7 @@ def _input_argv(spec: dict, params: dict) -> tuple[list[str], list[str]]:
     return ([], [])
 
 
-def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
+def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str, Any]) -> list[str]:
     """Static `run.argv`, or build from `run.base` + each input's argv mapping."""
     run = desc["run"]
     if "argv" in run:
@@ -281,9 +274,12 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     return _render(argv, mapping)
 
 
-def _run_workdir(desc: dict) -> Path:
-    """Unique per-invocation workdir under RUN_ROOT (GHSA-6ffp-258g-fvp5): a fresh uuid4 dir each
-    run so no stale artifact is reused and no two runs share a dir; RUN_ROOT pruned to N (#121)."""
+def _run_workdir(desc: dict[str, Any]) -> Path:
+    """Unique per-invocation workdir under RUN_ROOT (GHSA-6ffp-258g-fvp5).
+
+    A fresh uuid4 dir each run so no stale artifact is reused and no two runs share a dir;
+    RUN_ROOT pruned to N (#121).
+    """
     workdir = RUN_ROOT / f"{desc['id']}-{uuid.uuid4().hex[:12]}"
     workdir.mkdir(parents=True, exist_ok=True)
     _prune_run_root()  # #121: bound RUN_ROOT growth (keep the most-recent runs, incl. this one)
@@ -291,10 +287,13 @@ def _run_workdir(desc: dict) -> Path:
 
 
 def _launch(
-    argv: list[str], run: dict, workdir: Path, env: dict[str, str]
-) -> subprocess.CompletedProcess[str] | dict:
-    """Run the tool argv (no shell); return the CompletedProcess, or an error-result dict for a
-    missing tool / timeout / launch failure — always a badge, never a traceback (#183)."""
+    argv: list[str], run: dict[str, Any], workdir: Path, env: dict[str, str]
+) -> subprocess.CompletedProcess[str] | dict[str, Any]:
+    """Run the tool argv (no shell) and return its CompletedProcess.
+
+    Return an error-result dict for a missing tool / timeout / launch failure — always a badge,
+    never a traceback (#183).
+    """
     try:
         return subprocess.run(
             argv,
@@ -318,16 +317,20 @@ def _launch(
         }
 
 
-def _nonzero_exit_result(proc: subprocess.CompletedProcess[str]) -> dict:
-    """wizard #10 badge for a nonzero exit: surface the tool's own last diagnostic line."""
+def _nonzero_exit_result(proc: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    """Build the wizard #10 badge for a nonzero exit from the tool's last diagnostic line."""
     _err = proc.stderr.strip()
     _reason = _err.splitlines()[-1][:160] if _err else f"scan failed (exit {proc.returncode})"
     return {"error": (_err[:2000] or f"exit {proc.returncode}"), "badge": ("unavailable", _reason)}
 
 
 def _postprocess(
-    desc: dict, workdir: Path, artifact: Path, proc: subprocess.CompletedProcess[str], params: dict
-) -> dict:
+    desc: dict[str, Any],
+    workdir: Path,
+    artifact: Path,
+    proc: subprocess.CompletedProcess[str],
+    params: dict[str, Any],
+) -> dict[str, Any]:
     """Persist stdout, enforce the false-green guards (#10/#15), then badge via the validator."""
     run = desc["run"]
     # #50/#44: always capture stdout to the workdir so a validator can inspect it (artifact:optional).
@@ -358,7 +361,7 @@ def _postprocess(
     }
 
 
-def run_descriptor(desc: dict, params: dict) -> dict:
+def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
     """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
 
     Builds a no-shell argv, runs the tool then its external validator, and derives the badge. The
@@ -391,12 +394,8 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     return _postprocess(desc, workdir, artifact, proc, params)
 
 
-def _select_validator(v: dict, params: dict) -> dict | None:
-    """Resolve validate.by (#43): choose the case whose key matches the current input values
-    (joined with '|' for multi-key). Fail CLOSED — an unmatched selector with no default, or an
-    explicit null case, yields None ('no validator'), never a green. A singular validate (no
-    'by') passes through unchanged (back-compat).
-    """
+def _select_validator(v: dict[str, Any], params: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve validate.by (#43) to the validator case for the current inputs; unmatched -> None."""
     if "by" not in v:
         return v
     key = "|".join(str(params.get(k, "")) for k in v["by"])
@@ -416,7 +415,7 @@ def _validate_mapping(workdir: Path, artifact: Path) -> dict[str, str]:
     }
 
 
-def _fail_detail(rule: dict, text: str) -> str:
+def _fail_detail(rule: dict[str, Any], text: str) -> str:
     """Extract the validator's own diagnostic lines for the badge detail via `fail_detail_grep`."""
     g = rule.get("fail_detail_grep")
     if not g:
@@ -424,18 +423,23 @@ def _fail_detail(rule: dict, text: str) -> str:
     return "\n".join(ln.strip() for ln in text.splitlines() if g in ln)[:1500]
 
 
-def _pass_if_valid(rule: dict, text: str, rc: int) -> bool:
-    """GHSA-6ffp-258g-fvp5: a `pass_if` match badges VALID only when the validator also exited 0
-    (unless pass_if pins `exit`, an opt-out) — else output merely containing "valid" false-greens."""
+def _pass_if_valid(rule: dict[str, Any], text: str, rc: int) -> bool:
+    """Decide whether a `pass_if` match badges VALID (GHSA-6ffp-258g-fvp5).
+
+    A `pass_if` match badges VALID only when the validator also exited 0 (unless pass_if pins
+    `exit`, an opt-out) — else output merely containing "valid" false-greens.
+    """
     pass_if = rule.get("pass_if")
     if not pass_if or not _match(pass_if, text, rc):
         return False
     return "exit" in pass_if or rc == 0
 
 
-def _apply_badge_rule(rule: dict, text: str, rc: int) -> tuple[str, str]:
-    """Badge state machine (fail CLOSED, #182): infra → unavailable; blessed → valid; else the
-    rule's `otherwise` (default invalid)."""
+def _apply_badge_rule(rule: dict[str, Any], text: str, rc: int) -> tuple[str, str]:
+    """Run the badge state machine (fail CLOSED, #182).
+
+    infra -> unavailable; blessed -> valid; else the rule's `otherwise` (default invalid).
+    """
     if "unavailable_if" in rule and _match(rule["unavailable_if"], text, rc):
         return ("unavailable", "validator could not run (infrastructure)")
     if _pass_if_valid(rule, text, rc):
@@ -447,7 +451,7 @@ def _apply_badge_rule(rule: dict, text: str, rc: int) -> tuple[str, str]:
 
 
 def _validate(
-    desc: dict, workdir: Path, artifact: Path, params: dict | None = None
+    desc: dict[str, Any], workdir: Path, artifact: Path, params: dict[str, Any] | None = None
 ) -> tuple[str, str]:
     v = desc.get("validate")
     if not v:

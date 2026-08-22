@@ -16,6 +16,7 @@ import os
 import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
+from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
@@ -44,6 +45,9 @@ from breachsafe_ux.render import (
 )
 from breachsafe_ux.resolve import environment, tool_available
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
 try:
     _HOST_VERSION = _pkg_version("breachsafe-ux")  # the EnXemble UX host's own version (#95)
 except PackageNotFoundError:  # running from a source tree without an installed dist
@@ -66,7 +70,7 @@ _DARK_ON_LOAD_JS = (
 )
 
 
-def _enum_widget(spec, lab, info):
+def _enum_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Component:
     # Radio for 2-3 options (all visible), Dropdown for more (GOV.UK / NN/g).
     choices = spec["choices"]
     if len(choices) <= _RADIO_MAX:
@@ -74,7 +78,7 @@ def _enum_widget(spec, lab, info):
     return gr.Dropdown(choices, value=spec.get("default"), label=lab, info=info)
 
 
-def _number_widget(spec, lab, info):
+def _number_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Component:
     t = spec["type"]
     if spec.get("widget") == "slider":
         step = 1 if t == "int" else 0.1
@@ -91,7 +95,7 @@ def _number_widget(spec, lab, info):
     )
 
 
-def _text_widget(spec, lab, info):
+def _text_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Component:
     return gr.Textbox(
         value=spec.get("default", ""),
         label=lab + (" *" if spec.get("required", False) else ""),
@@ -100,7 +104,7 @@ def _text_widget(spec, lab, info):
     )
 
 
-def _widget(spec):
+def _widget(spec: dict[str, Any]) -> gr.Component:
     t, lab, info = spec["type"], spec.get("label", spec["name"]), spec.get("info")
     if t == "file":
         # gr.File has no `info` kwarg in Gradio 6 — fold the hint into the label.
@@ -114,7 +118,7 @@ def _widget(spec):
     return _text_widget(spec, lab, info)
 
 
-def _collect(desc, vals):
+def _collect(desc: dict[str, Any], vals: Sequence[Any]) -> dict[str, Any]:
     # gr.File (Gradio 6, type="filepath") already yields the uploaded file's path as a str, like
     # every other widget yields its value — so a file input needs no special handling. (The old
     # `.name` assumed the pre-6 file-object return and broke manual upload on the mint-oscal tab.)
@@ -124,7 +128,7 @@ def _collect(desc, vals):
     return params
 
 
-def _result(desc, res):
+def _result(desc: dict[str, Any], res: dict[str, Any]) -> tuple[str, Any, str, str | None]:
     """(badge_md, artifact_json, raw_log_md, artifact_path). Defined result on every branch.
 
     The badge_md is a readiness-posture banner (from the findings, #1) followed by the evidence
@@ -146,8 +150,8 @@ def _result(desc, res):
     )
 
 
-def _handler(desc):
-    def run(*vals, progress=gr.Progress()):
+def _handler(desc: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
+    def run(*vals: Any, progress: Any = gr.Progress()) -> tuple[Any, ...]:
         progress(0, desc=f"running {desc['id']}…")
         params = _collect(desc, vals)
         res = run_descriptor(desc, params)
@@ -161,10 +165,10 @@ def _handler(desc):
     return run
 
 
-def _chain_handler(chain, descs):
+def _chain_handler(chain: dict[str, Any], descs: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
     target = descs[chain["to"]]
 
-    def run(artifact_path, progress=gr.Progress()):
+    def run(artifact_path: str | None, progress: Any = gr.Progress()) -> tuple[Any, ...]:
         if not artifact_path:
             # Pre-run guard (no artifact yet): mirror _empty()'s emoji-free surface
             # rather than a validator verdict — nothing has been validated to badge.
@@ -184,29 +188,29 @@ def _chain_handler(chain, descs):
     return run
 
 
-def _run_label(desc):
+def _run_label(desc: dict[str, Any]) -> str:
     # Descriptor-set run-button label (e.g. "HNDL Audit (TLS)"), else "Run <id>". Lets two
     # tabs backed by the same tool (qureddy TLS + SSH) read distinctly, not "Run qureddy" twice.
     return desc.get("run_label") or _RUN_LABEL.format(id=desc["id"])
 
 
-def _busy(_did):
+def _busy(_did: str) -> Any:
     return gr.update(value=_BUSY_LABEL, interactive=False)
 
 
-def _verify_md(value, argv_template):
+def _verify_md(value: str, argv_template: list[str]) -> str:
     ok, line = verify_path(value, argv_template)
     return _diag_md(ok, line)
 
 
-def _action_md(desc, action, vals):
+def _action_md(desc: dict[str, Any], action: dict[str, Any], vals: Sequence[Any]) -> str:
     # A descriptor-declared action button (#5): run its argv against the current inputs and show
     # the tool's actual output (#97), not a canned summary.
     ok, output = run_action(action, _collect(desc, vals))
     return _action_output_md(ok, output)
 
 
-def _header():
+def _header() -> None:
     """Brandbar row: logo + product/version + links, plus the Light/Dark toggle button."""
     img = (
         f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>'
@@ -228,7 +232,7 @@ def _header():
     theme_btn.click(fn=None, inputs=None, outputs=None, js=_THEME_TOGGLE_JS)
 
 
-def _footer():
+def _footer() -> None:
     """Footer HTML: product + version + brand/repo links + license."""
     gr.HTML(
         '<div class="bs-footer">'
@@ -239,7 +243,9 @@ def _footer():
     )
 
 
-def _order_widgets(desc, widgets, advanced_widgets):
+def _order_widgets(
+    desc: dict[str, Any], widgets: list[Any], advanced_widgets: list[Any]
+) -> list[Any]:
     """Interleave basic + advanced widgets back into desc['inputs'] order for _collect's zip."""
     ordered = []
     adv_iter = iter(advanced_widgets)
@@ -249,9 +255,12 @@ def _order_widgets(desc, widgets, advanced_widgets):
     return ordered
 
 
-def _render_inputs(desc, env_rows):
-    """Render a tab's editable widgets (basic inline, advanced behind an Accordion with the binary
-    provenance panel), returning the desc-ordered widget list for the handler wiring."""
+def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list[Any]:
+    """Render a tab's editable widgets and return them in descriptor order.
+
+    Basic widgets render inline, advanced behind an Accordion with the binary provenance panel.
+    Returns the desc-ordered widget list for the handler wiring.
+    """
     widgets, advanced_widgets = [], []
     for spec in desc.get("inputs", []):
         if spec.get("group") != "advanced":
@@ -274,18 +283,24 @@ def _render_inputs(desc, env_rows):
     return _order_widgets(desc, widgets, advanced_widgets)
 
 
-def _wire_actions(desc, ordered):
-    """Descriptor-declared action buttons (#5): each runs its own argv against the current inputs
-    and shows the tool's actual output. Replaces the old hardcoded 'Test connection' preflight."""
+def _wire_actions(desc: dict[str, Any], ordered: list[Any]) -> None:
+    """Wire the descriptor-declared action buttons (#5).
+
+    Each runs its own argv against the current inputs and shows the tool's actual output.
+    Replaces the old hardcoded 'Test connection' preflight.
+    """
     for action in desc.get("actions", []):
         ab = gr.Button(action["label"], size="sm", variant="secondary")
         ar = gr.Markdown()
         ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
 
 
-def _wire_run(desc, did, ordered):
-    """The primary Run button + result surfaces (badge/JSON/raw-log/download), wired so the button
-    reset is an atomic handler OUTPUT (no trailing .then that could leave it stuck on 'Running…')."""
+def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
+    """Wire the primary Run button + result surfaces (badge/JSON/raw-log/download).
+
+    The button reset is an atomic handler OUTPUT (no trailing .then that could leave it stuck on
+    'Running…').
+    """
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
     badge = gr.Markdown(_empty(desc))
     dl = gr.DownloadButton("Download output", visible=False)
@@ -308,9 +323,12 @@ def _wire_run(desc, did, ordered):
     return artifact_state
 
 
-def _wire_chain(chain, descs, artifact_state):
-    """One Convert-to-next-tool button (#5/W-5). Gated off -> hidden; target missing/unavailable ->
-    a disabled button that says why; otherwise wired to run the target on the upstream artifact."""
+def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: Any) -> None:
+    """Wire one Convert-to-next-tool button (#5/W-5).
+
+    Gated off -> hidden; target missing/unavailable -> a disabled button that says why; otherwise
+    wired to run the target on the upstream artifact.
+    """
     if chain.get("feature_flag") and not feature_enabled(chain["feature_flag"]):
         return  # #67: gated off -> hide the button entirely (OSS base edition)
     target = descs.get(chain["to"])
@@ -352,9 +370,12 @@ def _wire_chain(chain, descs, artifact_state):
     )
 
 
-def _build_tab(did, desc, descs):
-    """Render one descriptor as its own tab: description, inputs, actions, the Run surface, and
-    any Convert-to-next-tool chain buttons."""
+def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
+    """Render one descriptor as its own tab.
+
+    Renders the description, inputs, actions, the Run surface, and any Convert-to-next-tool chain
+    buttons.
+    """
     with gr.Tab(desc.get("title", did)):
         gr.Markdown(desc.get("description", ""))
         env_rows = environment(desc)
@@ -365,7 +386,8 @@ def _build_tab(did, desc, descs):
             _wire_chain(chain, descs, artifact_state)
 
 
-def build():
+def build() -> gr.Blocks:
+    """Build the Gradio Blocks app: a tab per standalone descriptor, plus header and footer."""
     descs = load_descriptors()
     with gr.Blocks(title=BRAND["name"]) as demo:
         _header()
@@ -380,10 +402,11 @@ def build():
 
 
 def _check() -> int:
-    """`breachsafe-ux --check`: resolve every descriptor's environment, print it, and exit nonzero
-    if any tool or validator is missing. A curl on `/` is false-healthy — the Gradio shell serves
-    even when the underlying tool is absent — so this is the real Docker HEALTHCHECK signal: it
-    verifies the binaries the descriptors declare actually resolve on this system (#75).
+    """Resolve every descriptor's environment, print it, and exit nonzero if any is missing.
+
+    `breachsafe-ux --check`. A curl on `/` is false-healthy — the Gradio shell serves even when
+    the underlying tool is absent — so this is the real Docker HEALTHCHECK signal: it verifies
+    the binaries the descriptors declare actually resolve on this system (#75).
     """
     ok = True
     for did, desc in load_descriptors().items():
@@ -396,6 +419,7 @@ def _check() -> int:
 
 
 def main() -> None:
+    """Entry point (`breachsafe-ux`): handle --check, else build and launch the Gradio app."""
     if "--check" in sys.argv[1:]:
         raise SystemExit(_check())
     demo = build()

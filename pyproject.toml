@@ -61,7 +61,7 @@ exclude = ["**/*.md"]
 select = [
     "E", "W", "F", "I", "B", "C4", "UP", "N", "S", "SIM", "TCH", "RUF", "PL", "PT",
     "RET", "ARG", "DTZ", "PTH", "ERA", "INP", "BLE", "SLF",
-    # "D" (pydocstyle/google) — adopted next for full qureddy parity; tracked in a follow-up.
+    "D",  # pydocstyle (Google convention) — full qureddy parity (#74).
 ]
 ignore = [
     "E501",     # line-too-long — handled by the formatter
@@ -78,6 +78,11 @@ ignore = [
 ]
 
 
+[tool.ruff.lint.pydocstyle]
+# Google-style docstrings (#74), matching qureddy. The google convention disables the
+# conflicting D rules (D203/D213/D215/D406/D407/D408/D409/D413) so it does not fight itself.
+convention = "google"
+
 [tool.ruff.lint.pylint]
 max-statements = 50
 
@@ -92,20 +97,18 @@ max-statements = 50
     "PLC0415",  # deliberate in-function imports (defer gradio import cost)
     "S108",     # /tmp paths are test literals, not real temp-file usage
     "PT006",    # parametrize name style is a matter of taste here
+    "D",        # tests don't need Google docstrings — test names document intent, and tests
+                # have no public-API surface for downstream callers (matches qureddy).
 ]
 "scripts/**/*.py" = ["INP001", "S603", "S607", "S202"]  # standalone CLIs; subprocess by design; extractall is validated/filtered
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
-# Gradual strict: the whole-codebase annotation backfill (untyped defs in the Gradio shell,
-# any-generics, return-any) is tracked as a follow-up for full qureddy parity. These three are
-# relaxed for now; every other strict check (redundant-cast, unused-ignores, no-implicit-
-# optional, strict-equality, extra-checks, check-untyped-defs, ...) stays ON and catches bugs.
-disallow_untyped_defs = false
-disallow_untyped_calls = false
-disallow_any_generics = false
-warn_return_any = false
+# Full strict (#74): no relaxations. Every check `strict = true` enables (disallow-untyped-defs,
+# disallow-untyped-calls, disallow-any-generics, warn-return-any, and the rest) is ON. The
+# gradio.* override below (follow_imports=skip) is the one intentional boundary: gradio event
+# methods are attached at runtime, so its calls surface as Any at the UI edge.
 warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
