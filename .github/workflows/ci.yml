@@ -84,11 +84,19 @@ jobs:
       - name: Install (locked)
         run: uv sync --locked --extra dev
       - name: pytest (with coverage + allure results)
+        # -m "not live": DESELECT the live-integration suite (needs docker/live tools absent on
+        # the runner) so it is never collected — a deselected test is not a skip, which lets the
+        # no-skipped-tests gate below stay strict (#90).
         run: >
           uv run --locked pytest -q
+          -m "not live"
           --cov=breachsafe_ux --cov-fail-under=70
           --cov-report=term-missing --cov-report=xml:coverage.xml
           --junitxml=pytest-results.xml
+      - name: no-skipped-tests gate (#90)
+        # A skip/xfail lets a test report success without exercising anything. Fail closed on any
+        # skip in the JUnit report; legitimate live tests are deselected above, not skipped.
+        run: uv run --locked python scripts/check_no_skipped_tests.py pytest-results.xml
       - name: upload test + coverage reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

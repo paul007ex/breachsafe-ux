@@ -38,12 +38,21 @@ dev = [
     "interrogate>=1.7",     # docstring-coverage floor
     "diff-cover>=9.0",      # changed-line coverage gate (vs origin/main)
     "allure-pytest>=2.13",  # rich test-report artifact
+    "defusedxml>=0.7",      # safe JUnit parsing for the no-skipped-tests gate (#90)
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = [
+    # Vendored VERBATIM from breachsafe-common (Apache-2.0) for the no-skipped-tests (#90) and
+    # function/class size (#91) gates. Kept byte-identical to the upstream source of truth (diff
+    # against breachsafe-common/quality-gates/), so they are linted/formatted there, not restyled
+    # here. The repo-owned wrapper scripts/check_size_policy.py IS linted normally.
+    "scripts/_size_policy.py",
+    "scripts/check_no_skipped_tests.py",
+]
 
 [tool.ruff.format]
 exclude = ["**/*.md"]
@@ -126,6 +135,12 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+markers = [
+    # Integration tests that need a live tool / network / docker. CI runs `-m "not live"` so they
+    # are DESELECTED (not skipped) — a deselected test never appears as a skip, which keeps the
+    # no-skipped-tests gate honest (#90). Locally they still run when their dependencies resolve.
+    "live: requires a live tool, network, or docker; deselected in CI via -m 'not live'",
+]
 addopts = [
     "-ra",
     "--strict-markers",
@@ -147,8 +162,8 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
 ]
-# Floor set below the current ~74-75% (with the live-integration suite skipped, as in CI) so the
-# gate holds today; ratchet toward qureddy's 90 as coverage grows. Tracked in #89.
+# Floor set below the current ~74-75% (with the live-integration suite deselected via -m 'not
+# live', as in CI) so the gate holds today; ratchet toward qureddy's 90 as coverage grows. #89.
 fail_under = 70
 show_missing = true
 
@@ -161,7 +176,7 @@ skips = ["B202"]
 [tool.deptry]
 # _release_support is the shared script-local helper module (scripts/_release_support.py),
 # imported by release_gate.py and run_secret_scan.py; it is first-party, not a dependency.
-known_first_party = ["breachsafe_ux", "_release_support"]
+known_first_party = ["breachsafe_ux", "_release_support", "_size_policy"]
 package_module_name_map = { "breachsafe-ux" = "breachsafe_ux", "pyyaml" = "yaml" }
 
 [tool.deptry.per_rule_ignores]
