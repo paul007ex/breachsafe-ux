@@ -2,18 +2,17 @@
 
 [![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](CHANGELOG.md)
 
-A config-driven single-tool UX host. Point it at a command-line tool, declare
-that tool's parameters in one YAML file, and the wizard renders a web form, runs the tool,
-validates the output with an external validator, and reports a three-state verdict:
-VALID, INVALID, or VALIDATOR-UNAVAILABLE. It never shows a green result the validator did
-not actually give.
+BreachSAFE EnXemble is a config-driven UX host for command-line tools. Declare a tool's
+parameters in one YAML file and it renders a web tab, runs the tool, validates the output with
+an external validator, and reports a three-state verdict: VALID, INVALID, or
+VALIDATOR-UNAVAILABLE. It never shows a green result the validator did not actually give.
 
-Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the
-badge are written once in the engine and shared by every tool.
+Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the badge are
+written once in the engine and shared by every tool tab.
 
 - Home: https://www.breachsafe.io
 - Source: https://github.com/paul007ex/breachsafe-ux
-- Licence: PolyForm Noncommercial 1.0.0 (see [Licence](#8-licence))
+- Licence: Apache-2.0 (open source) — see [Licence](#8-licence)
 
 ## Contents
 
@@ -39,30 +38,50 @@ real result of an external validator (for example NIST oscal-cli, or the Cyclone
 validator), reported as one of three distinct states. A tool that failed to run, or a
 validator that could not run, is never rendered as a pass.
 
-Two tools ship as examples:
+Three tabs ship as examples:
 
-- QuReddy scans a TLS endpoint for post-quantum readiness and produces a CycloneDX 1.7 CBOM.
-- mint-oscal turns a scan or CBOM into an OSCAL Plan of Action and Milestones, reached
-  through the QuReddy "Convert to OSCAL" button.
+- Quantum Audit scans a TLS endpoint for post-quantum readiness and produces a CycloneDX 1.7 CBOM.
+- SSH Audit does the same for an SSH endpoint.
+- Compliance (OSCAL) turns a scan or CBOM into an OSCAL Plan of Action and Milestones (also
+  reached from a scan tab's "Convert to OSCAL" button). Enterprise; gated by `BREACHSAFE_UX_MINT_OSCAL`.
 
 ## 2. Quickstart
 
-Requires Python 3.12 and, for tools that use them, Docker.
+### Docker (recommended)
+
+The host runs each tool as its official image, so it needs the docker socket:
 
 ```
-python3.12 -m venv .venv
-.venv/bin/pip install -e .
-.venv/bin/python -m breachsafe_ux.app     # serves http://127.0.0.1:7860
+docker run -p 7860:7860 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+  ghcr.io/paul007ex/qureddy-ux            # QuReddy edition (Quantum Audit + SSH Audit)
 ```
 
-Open the URL, fill in the form, and run. Change the port with `BREACHSAFE_UX_PORT`. Run scratch and
-Docker bind-mounts live under `~/mint-proof/wizard-runs`; on macOS this must stay under
-`/Users` for Docker Desktop to mount it. Override with `WIZARD_RUN_ROOT`.
+Open http://localhost:7860. The tool image (`ghcr.io/breachsafe/qureddy:latest`) is pulled on
+first scan (`--pull=always`, always current). If the `--group-add` form is unavailable, run
+with `--user root`.
 
-Note on the bundled examples: the QuReddy and mint-oscal shims currently expect those tools'
-source trees to be present locally. Containerised execution (`run.image`) removes that
-requirement and is the recommended path for a portable install; see
-[Execution backends](#6-execution-backends).
+### From source (Python 3.12)
+
+Install the tool it fronts (qureddy on PATH), then the host:
+
+```
+git clone https://github.com/breachsafe/qureddy && (cd qureddy && uv sync)
+export PATH="$PWD/qureddy/.venv/bin:$PATH"
+git clone https://github.com/paul007ex/breachsafe-ux && cd breachsafe-ux
+uv sync
+uv run breachsafe-ux            # http://127.0.0.1:7860
+uv run breachsafe-ux --check    # verify every tab's tool + validator resolves (exit != 0 if missing)
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BREACHSAFE_UX_PORT` | 7860 | server port |
+| `BREACHSAFE_UX_HOST` | 127.0.0.1 (0.0.0.0 in Docker) | bind address |
+| `BREACHSAFE_UX_TOOLS_DIR` | bundled `tools/` | descriptor root |
+| `BREACHSAFE_UX_MINT_OSCAL` | true | show the Enterprise OSCAL tab |
+| `BREACHSAFE_UX_RUN_ROOT` | `~/mint-proof/wizard-runs` | per-run scratch (macOS: keep under `/Users` for Docker) |
 
 ## 3. Architecture
 
@@ -141,19 +160,22 @@ of them, so a backend that cannot run yields VALIDATOR-UNAVAILABLE rather than a
 
 | Backend | Descriptor | Portable | Isolated | Status |
 |---|---|---|---|---|
-| Local binary | `run.base` on PATH | no | no | supported |
-| Python shim | `{python}` plus PYTHONPATH | no | no | supported (the bundled examples) |
-| Docker image | `run.image` pinned by `@sha256` | yes | yes | planned |
+| Local binary | `run.base` on PATH | no | no | supported (preferred when present) |
+| Docker image | `run.image` (`docker run --pull=always`) | yes | yes | supported |
 | Remote API | `run.endpoint` | yes | yes | future |
 
-Multi-tool orchestration and workflows are out of scope for the wizard by design; that is
-the role of the orchestration layer (Osmedeus and TAO), not a single-tool surface. Docker
-images, when added, must be pinned by digest, never a floating `:latest` tag.
+A descriptor can declare both `run.base` and `run.image`: the engine runs the **local binary
+when it resolves on PATH**, and falls back to the **docker image** otherwise (so local dev uses
+the binary; the Docker deployment uses the image). `--pull=always` keeps the tool current; pin
+by digest (`@sha256`) instead of `:latest` when reproducibility matters more than freshness.
+
+Multi-tool orchestration and workflows are out of scope by design; that is the role of the
+orchestration layer (Osmedeus and TAO).
 
 ## 7. Development
 
 ```
-.venv/bin/python -m pytest tests/ -q
+uv run --locked pytest -q
 ```
 
 `tests/test_badge_states.py` drives the real pipeline (real tools from source, real oscal-cli in
@@ -164,8 +186,9 @@ VALIDATOR-UNAVAILABLE, and a malformed input never reports VALID.
 Layout:
 
 ```
-src/breachsafe_ux/   facade.py (engine), app.py (shell), brand.py (tokens)
-tools/<name>/            <name>.yaml descriptor, bin/ run shim
+src/breachsafe_ux/   facade.py (engine), resolve.py + _render.py (model), render.py (view),
+                     app.py (controller / Gradio shell), brand.py (theme)
+tools/<name>/            <name>.yaml descriptor, optional bin/ run shim
 docs/adr/                architecture decision records
 tests/                   badge-state and safety tests
 ```
@@ -174,7 +197,5 @@ Known gaps are tracked in `docs/KNOWN-ISSUES.md`.
 
 ## 8. Licence
 
-Source-available under PolyForm Noncommercial 1.0.0
-(the `Apache-2.0` license). You may use, modify, and share it
-for any noncommercial purpose. Commercial use, including inclusion in a commercial product
-or service, requires a separate licence from BreachSAFE. See [LICENSE](LICENSE).
+Apache-2.0 (open source). You may use, modify, distribute, and use it commercially under the
+terms of the licence. See [LICENSE](LICENSE). (The tools it fronts carry their own licences.)
