@@ -16,6 +16,7 @@ Usage:
 `--check` is wired into the release gate: a release cannot cut unless the
 CHANGELOG documents the current version.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,8 +40,12 @@ def current_version() -> str:
 
 
 def _changelog_has(version: str) -> bool:
-    return re.search(rf"^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}",
-                     CHANGELOG.read_text(), re.M) is not None
+    return (
+        re.search(
+            rf"^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}", CHANGELOG.read_text(), re.M
+        )
+        is not None
+    )
 
 
 def check() -> int:
@@ -77,8 +82,10 @@ def set_version(version: str) -> int:
     PYPROJECT.write_text(text)
     _sync_badge(README, version)
     _sync_badge(CHANGELOG, version)
-    today = _dt.datetime.now(_dt.timezone.utc).date().isoformat()
-    print(f"set version {version}; add a '## [{version}] - {today}' CHANGELOG section, then --check")
+    today = _dt.datetime.now(_dt.UTC).date().isoformat()
+    print(
+        f"set version {version}; add a '## [{version}] - {today}' CHANGELOG section, then --check"
+    )
     return 0
 
 

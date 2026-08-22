@@ -7,7 +7,7 @@ version = 1
 [[annotations]]
 path = [
   "src/**", "tests/**", "tools/**", "docs/**", "scripts/**", "CHANGELOG.md",
-  "README.md", "NOTICE", ".gitignore", ".python-version", "pyproject.toml",
+  "README.md", "NOTICE", ".gitignore", ".python-version", "pyproject.toml", "uv.lock",
   "assets/logo.png", "assets/favicon.png",
 ]
 precedence = "aggregate"

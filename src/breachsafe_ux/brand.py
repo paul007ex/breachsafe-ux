@@ -4,6 +4,7 @@ Light and dark are class-based like EnXemble: light background #fdfdfd / slate-9
 dark background #000000 / white text, and the brand cyan #3ae7f4 primary button stays cyan
 in both modes. Single source of truth; these mirror globals.css (do not re-invent per app).
 """
+
 import gradio as gr
 
 BRAND = {
@@ -16,12 +17,30 @@ BRAND = {
     "tagline": "The unified security posture platform, starting with the post-quantum transition.",
 }
 # globals.css: bs-cyan-400 #3ae7f4 is THE brand cyan; navy #141414; magenta #ff0073.
-BS = {"cyan": "#3ae7f4", "cyan_hover": "#68e5f6", "cyan_press": "#16c7d8",
-      "navy": "#141414", "black": "#000000", "magenta": "#ff0073", "ink": "#0f172a", "paper": "#fdfdfd"}
+BS = {
+    "cyan": "#3ae7f4",
+    "cyan_hover": "#68e5f6",
+    "cyan_press": "#16c7d8",
+    "navy": "#141414",
+    "black": "#000000",
+    "magenta": "#ff0073",
+    "ink": "#0f172a",
+    "paper": "#fdfdfd",
+}
 
-_cyan = gr.themes.Color(c50="#ecfeff", c100="#cff9fd", c200="#a5f2fb", c300="#68e5f6",
-                        c400="#3ae7f4", c500="#16c7d8", c600="#0ba0b6", c700="#107f93",
-                        c800="#166577", c900="#164f5e", c950="#0a2a33")
+_cyan = gr.themes.Color(
+    c50="#ecfeff",
+    c100="#cff9fd",
+    c200="#a5f2fb",
+    c300="#68e5f6",
+    c400="#3ae7f4",
+    c500="#16c7d8",
+    c600="#0ba0b6",
+    c700="#107f93",
+    c800="#166577",
+    c900="#164f5e",
+    c950="#0a2a33",
+)
 
 THEME = gr.themes.Soft(primary_hue=_cyan, neutral_hue=gr.themes.colors.slate).set(
     # light
@@ -42,7 +61,7 @@ THEME = gr.themes.Soft(primary_hue=_cyan, neutral_hue=gr.themes.colors.slate).se
     button_primary_text_color_dark="#141414",
 )
 
-GRADIENT = "linear-gradient(96deg, #3ae7f4 3.55%, #116dff 98.85%)"   # EnXemble brand gradient
+GRADIENT = "linear-gradient(96deg, #3ae7f4 3.55%, #116dff 98.85%)"  # EnXemble brand gradient
 CSS = (
     ".gradio-container{font-family:-apple-system,Segoe UI,Roboto,sans-serif}"
     "footer{visibility:hidden}"
