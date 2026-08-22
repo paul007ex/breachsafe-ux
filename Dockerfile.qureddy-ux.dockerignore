@@ -1,11 +1,10 @@
-# Per-Dockerfile ignore (BuildKit) for the qureddy-ux consumer image. Same as .dockerignore
-# but keeps tools/qureddy + tools/qureddy-ssh (the OSS descriptors this image ships); drops the
-# Enterprise mint-oscal descriptor and local bin shims. The tool itself is NOT baked in.
+# Per-Dockerfile ignore (BuildKit) for the qureddy-ux consumer image. Keeps dist/ (the host
+# wheel this image installs) and tools/qureddy + tools/qureddy-ssh (the OSS descriptors); drops
+# the Enterprise mint-oscal descriptor and local bin shims.
 .git
 .github
 .gitignore
 .venv
-dist
 build
 .ruff_cache
 .mypy_cache
