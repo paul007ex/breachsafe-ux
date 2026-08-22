@@ -119,22 +119,26 @@ exit-code/stdout-based sets `run.artifact: optional`; the guard is then skipped 
 comes from the validator against stdout. Symmetric to the existing
 `run.trust_artifact_on_nonzero` escape hatch.
 
-### 3. Trust/auth is a host property (#7, #22)
+### 3. Trust/auth: loopback default, operator-owned exposure (#7, #22)
 
-Reaching the UI equals reaching a process spawner, so the server posture is owned by the host,
-independent of any tool:
+Reaching the UI equals reaching a process spawner, so exposure is a deployment decision, not a
+host feature. For a source-available tool that runs mostly in Docker, the host keeps this
+deliberately thin:
 
-- **Default bind is loopback** (`127.0.0.1`). Binding any other interface is opt-in.
-- **Auth mechanism: Gradio's built-in `auth=`** (HTTP Basic Auth), sourced from environment
-  (`BREACHSAFE_UX_USER` / `BREACHSAFE_UX_PASSWORD`; a single shared token is carried as the
-  password). Chosen over hand-rolled bearer-token middleware because it is built in, needs no
-  extra request-handling code, and is sufficient behind a loopback-default + opt-in-exposure
-  posture. A non-loopback bind **requires** `auth=` to be set or the server refuses to start.
-- **Host-header allowlist + CSRF/DNS-rebinding protection** are on whenever the bind is not
-  loopback.
-- User-supplied executable paths (the reason #7 is a P0) are only as dangerous as who can reach
-  the port; loopback-default plus required-auth-on-exposure closes the remote path. Path fields
-  keep the Verify button so a local user still gets feedback.
+- **Default bind is loopback** (`127.0.0.1`, `app.py:293`). A local `pip` run is reachable only
+  from the same machine.
+- **Exposure is the operator's boundary.** In Docker the container binds `0.0.0.0` so the port
+  can be mapped; the trust boundary is the container network namespace and the operator's
+  explicit `-p` mapping / reverse proxy, not code in the host. The host does **not** refuse to
+  start on a non-loopback bind (that would break the Docker default) and does **not** inject
+  host-header / DNS-rebinding middleware.
+- **No built-in auth.** Put auth at the boundary you already run (reverse proxy, Docker network,
+  VPN) when you expose it. An in-process Basic Auth or host-header allowlist adds code and
+  fights the Docker `0.0.0.0` norm for little gain on a local single-tool surface.
+
+**Decision (2026-08-22): #7 and #22 are closed as wontfix under this posture.** Path-field
+Verify buttons still give a local user feedback. If a hosted, multi-tenant surface is ever
+built, auth belongs in that control plane (Phase 4 in ADR-004), not in this single-tool host.
 
 ## Consequences
 
@@ -153,13 +157,13 @@ independent of any tool:
 
 ## Sequencing (implementation follows this ADR)
 
-1. **Host hardening** — #7 + #22 (loopback default, required `auth=` on exposure,
-   host-header/CSRF). No schema change; highest severity.
-2. **Generic contract PR** — #1 (descriptor headline) + #9 (canonical argv + `--`), with both
+1. **Generic contract PR** — #1 (descriptor headline) + #9 (canonical argv + `--`), with both
    descriptors migrated and #45 regression-checked.
-3. **Retire the debt** — #21 (`preflight.argv`) + #43 (`validate.by`, closes #16/#14) + #44
+2. **Retire the debt** — #21 (`preflight.argv`) + #43 (`validate.by`, closes #16/#14) + #44
    (`artifact: optional`).
-4. Rev to 0.3.0 with a CHANGELOG entry once the P0/P1 security items land.
+3. Rev to 0.3.0 with a CHANGELOG entry once the above land.
+
+Server hardening (#7, #22) is intentionally out of scope — see §3.
 
 ## Open questions
 
