@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+name: duplicate-code
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - ".jscpd.json"
+      - ".github/workflows/duplicate-code.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: duplicate-code-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  jscpd:
+    name: jscpd (copy-paste detection)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "20"
+      - name: Detect duplicated code (jscpd)
+        run: npx --yes jscpd@4 src/ --config .jscpd.json
