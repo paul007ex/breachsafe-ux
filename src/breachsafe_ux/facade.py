@@ -220,6 +220,12 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         return {"error": (_err[:2000] or f"exit {proc.returncode}"),
                 "badge": ("unavailable", _reason)}
 
+    # wizard #15 (false-green): exit 0 with an empty/missing artifact must not badge VALID.
+    # The validator checks SHAPE; a zero-byte or absent artifact means the tool produced nothing.
+    if not artifact.exists() or artifact.stat().st_size == 0:
+        return {"error": "tool produced no output",
+                "badge": ("unavailable", "scan produced no output")}
+
     try:
         art_json = json.loads(artifact.read_text())
     except (json.JSONDecodeError, OSError, ValueError):
