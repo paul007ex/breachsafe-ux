@@ -41,7 +41,7 @@ jobs:
       - name: ruff format --check
         run: uv run --locked ruff format --check .
       - name: mypy
-        run: uv run --locked mypy src
+        run: uv run --locked mypy --no-incremental src
       - name: bandit
         run: uv run --locked bandit -c pyproject.toml -r -ll src scripts
       - name: pip-audit
@@ -52,6 +52,19 @@ jobs:
         run: uv run --locked reuse lint
       - name: version single-source
         run: uv run --locked python scripts/bump_version.py --check
+      # --- MAX code-quality + architecture gates (#127). All fail-closed. -------------------
+      - name: import-linter (MVC layering + engine/model UI-free)
+        run: uv run --locked lint-imports
+      - name: xenon (cyclomatic complexity)
+        run: uv run --locked xenon --max-absolute B --max-modules A --max-average A src/breachsafe_ux
+      - name: refurb (idiom / modernization)
+        run: uv run --locked refurb src/breachsafe_ux
+      - name: vulture (dead code)
+        run: uv run --locked vulture --min-confidence 80 src/breachsafe_ux .vulture_allowlist.py
+      - name: interrogate (docstring coverage)
+        run: uv run --locked interrogate src/breachsafe_ux
+      - name: pylint duplicate-code (R0801)
+        run: uv run --locked pylint --disable=all --enable=duplicate-code src/breachsafe_ux
 
   test:
     name: "Tests (${{ matrix.os }})"
@@ -70,7 +83,7 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install (locked)
         run: uv sync --locked --extra dev
-      - name: pytest (with coverage)
+      - name: pytest (with coverage + allure results)
         run: >
           uv run --locked pytest -q
           --cov=breachsafe_ux --cov-fail-under=70
@@ -85,5 +98,40 @@ jobs:
             coverage.xml
             pytest-results.xml
           if-no-files-found: warn
+      - name: upload allure results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: allure-results-${{ matrix.os }}
+          path: .allure-results
+          if-no-files-found: warn
       - name: build (wheel + sdist)
         run: uv build
+
+  # Changed-line coverage: every line a PR touches must be covered (#127). PR-only — it compares
+  # against origin/main, which does not exist for a push-to-main build. Consumes the test job's
+  # coverage.xml artifact rather than re-running the suite.
+  diff-cover:
+    name: "Changed-line coverage (diff-cover vs origin/main)"
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install (locked)
+        run: uv sync --locked --extra dev
+      - name: Fetch base branch (origin/main) for the diff
+        run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+      - name: Download coverage.xml
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: test-reports-ubuntu-latest
+      - name: diff-cover (100% of changed lines must be covered)
+        run: uv run --locked diff-cover coverage.xml --compare-branch origin/main --fail-under=100

@@ -11,19 +11,23 @@ from __future__ import annotations
 from typing import Any
 
 
+def _search_children(children: Any, name: str) -> Any:
+    """First non-None `_find_prop` hit across an iterable of child nodes (dict values / list)."""
+    for child in children:
+        r = _find_prop(child, name)
+        if r is not None:
+            return r
+    return None
+
+
 def _find_prop(obj: Any, name: str) -> Any:
+    """Depth-first search for the value of a CBOM/JSON `{name, value}` property (read-only)."""
     if isinstance(obj, dict):
         if obj.get("name") == name and "value" in obj:
             return obj["value"]
-        for v in obj.values():
-            r = _find_prop(v, name)
-            if r is not None:
-                return r
-    elif isinstance(obj, list):
-        for it in obj:
-            r = _find_prop(it, name)
-            if r is not None:
-                return r
+        return _search_children(obj.values(), name)
+    if isinstance(obj, list):
+        return _search_children(obj, name)
     return None
 
 
