@@ -51,29 +51,6 @@ except PackageNotFoundError:  # running from a source tree without an installed 
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
-_HDR_DEFAULT = {
-    "product": "BreachSAFE UX",
-    "version": "0.1.0",
-    "url": BRAND["url"],
-    "repo": BRAND["repo"],
-}
-
-
-def _header_brand(descs):
-    # Header brand comes from the primary standalone tool (this deployment fronts one tool).
-    return (
-        next(
-            (
-                d["brand"]
-                for d in descs.values()
-                if d.get("standalone") is not False and d.get("brand")
-            ),
-            None,
-        )
-        or _HDR_DEFAULT
-    )
-
-
 _RUN_LABEL = "{id}"  # fallback button label; descriptors set their own run_label
 _BUSY_LABEL = "Working…"
 _RADIO_MAX = 3  # <= this many enum choices render as radios, else a dropdown
@@ -210,7 +187,6 @@ def _action_md(desc, action, vals):
 
 def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
     descs = load_descriptors()
-    hdr = _header_brand(descs)
     with gr.Blocks(title=BRAND["name"]) as demo:
         img = (
             f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>'
@@ -221,12 +197,11 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
             with gr.Column(scale=8):
                 gr.HTML(
                     f'<div class="brandbar" style="display:flex;align-items:center;gap:14px">{img}'
-                    f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{hdr["product"]} '
-                    f'<span style="color:#16c7d8">v{hdr["version"]}</span></div>'
+                    f'<div style="flex:1"><div style="font-size:22px;font-weight:800">{BRAND["name"]} '
+                    f'<span style="color:#16c7d8">v{_HOST_VERSION}</span></div>'
                     f'<div style="color:#64748b;font-size:12px">'
-                    f"{_link(hdr['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
-                    f"{_link(hdr['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE} "
-                    f"&nbsp;&middot;&nbsp; {BRAND['name']} v{_HOST_VERSION}</div></div></div>"
+                    f"{_link(BRAND['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
+                    f"{_link(BRAND['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>"
                 )
             with gr.Column(scale=1, min_width=130):
                 theme_btn = gr.Button("Light / Dark", size="sm")
@@ -354,10 +329,9 @@ def build():  # noqa: PLR0915  (the Gradio shell loops over every descriptor)
                     )
         gr.HTML(
             '<div class="bs-footer">'
-            f"<span>{hdr['product']} v{hdr['version']}</span>"
             f"<span>{BRAND['name']} v{_HOST_VERSION}</span>"
-            f"{_link(hdr['url'], 'breachsafe.io')}"
-            f"{_link(hdr['repo'], 'GitHub')}"
+            f"{_link(BRAND['url'], 'breachsafe.io')}"
+            f"{_link(BRAND['repo'], 'GitHub')}"
             f"<span>{_LICENSE}</span></div>"
         )
         # Default to dark on load (EnXemble .dark tokens); the Light/Dark button still toggles it.
