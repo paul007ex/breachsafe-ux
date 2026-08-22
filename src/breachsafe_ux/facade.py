@@ -42,10 +42,8 @@ _RUN_KEEP = 20  # #121: cap RUN_ROOT at the most-recent N per-run workdirs
 
 
 def _prune_run_root(keep: int = _RUN_KEEP) -> None:
-    """Bound RUN_ROOT growth (#121): keep the `keep` most-recently-modified per-run workdirs and
-    remove older ones, so an every-run-mints-a-dir engine does not grow RUN_ROOT unboundedly.
-    Best-effort and fail-safe — any error here is swallowed so housekeeping never breaks a run.
-    """
+    """Bound RUN_ROOT growth (#121): keep the `keep` most-recent per-run workdirs, remove older
+    ones. Best-effort and fail-safe — any error is swallowed so housekeeping never breaks a run."""
     try:
         runs = [d for d in RUN_ROOT.iterdir() if d.is_dir()]
         if len(runs) <= keep:
@@ -205,9 +203,7 @@ def _render(argv: list[str], mapping: dict) -> list[str]:
     garbage.
 
     Token namespace (#50): engine-provided are `{share}` `{workdir}` `{artifact}`
-    `{artifact_name}` `{python}` and, in validate.argv only, `{stdout_file}`; every other
-    `{name}` is an input's value.
-    """
+    `{artifact_name}` `{python}` (+ `{stdout_file}` in validate.argv); every other is an input."""
     unresolved: set[str] = set()
 
     def repl(m: re.Match) -> str:
@@ -285,13 +281,10 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     return _render(argv, mapping)
 
 
-def _run_workdir(desc: dict, params: dict) -> Path:
-    """Deterministic per-run workdir under RUN_ROOT (keyed by id+params), pruned to the most-recent
-    N so the engine never grows RUN_ROOT unboundedly (#121)."""
-    key = uuid.uuid5(
-        uuid.NAMESPACE_URL, desc["id"] + json.dumps(params, sort_keys=True, default=str)
-    ).hex[:12]
-    workdir = RUN_ROOT / f"{desc['id']}-{key}"
+def _run_workdir(desc: dict) -> Path:
+    """Unique per-invocation workdir under RUN_ROOT (GHSA-6ffp-258g-fvp5): a fresh uuid4 dir each
+    run so no stale artifact is reused and no two runs share a dir; RUN_ROOT pruned to N (#121)."""
+    workdir = RUN_ROOT / f"{desc['id']}-{uuid.uuid4().hex[:12]}"
     workdir.mkdir(parents=True, exist_ok=True)
     _prune_run_root()  # #121: bound RUN_ROOT growth (keep the most-recent runs, incl. this one)
     return workdir
@@ -373,7 +366,7 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     successful run also carries `artifact` (parsed JSON or None), `artifact_path`, and `highlights`.
     Any launch/timeout/nonzero-exit/descriptor error returns `error` + `unavailable`, never raising.
     """
-    workdir = _run_workdir(desc, params)
+    workdir = _run_workdir(desc)
     artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
     env = _run_env()  # #116: augmented tool PATH (per-tool bin shims -> ambient PATH)
     mapping = params | {
@@ -431,12 +424,21 @@ def _fail_detail(rule: dict, text: str) -> str:
     return "\n".join(ln.strip() for ln in text.splitlines() if g in ln)[:1500]
 
 
+def _pass_if_valid(rule: dict, text: str, rc: int) -> bool:
+    """GHSA-6ffp-258g-fvp5: a `pass_if` match badges VALID only when the validator also exited 0
+    (unless pass_if pins `exit`, an opt-out) — else output merely containing "valid" false-greens."""
+    pass_if = rule.get("pass_if")
+    if not pass_if or not _match(pass_if, text, rc):
+        return False
+    return "exit" in pass_if or rc == 0
+
+
 def _apply_badge_rule(rule: dict, text: str, rc: int) -> tuple[str, str]:
     """Badge state machine (fail CLOSED, #182): infra → unavailable; blessed → valid; else the
     rule's `otherwise` (default invalid)."""
     if "unavailable_if" in rule and _match(rule["unavailable_if"], text, rc):
         return ("unavailable", "validator could not run (infrastructure)")
-    if "pass_if" in rule and _match(rule["pass_if"], text, rc):
+    if _pass_if_valid(rule, text, rc):
         return ("valid", "validator accepted the artifact")
     detail = _fail_detail(rule, text)
     if "fail_if" in rule and _match(rule["fail_if"], text, rc):
