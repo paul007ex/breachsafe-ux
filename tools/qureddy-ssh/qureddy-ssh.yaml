@@ -4,12 +4,14 @@ schema_version: 1
 order: 2
 id: qureddy-ssh
 standalone: true
-title: "SSH Audit"
-run_label: "SSH Audit"
+title: "HNDL Audit (SSH)"
+run_label: "HNDL Audit (SSH)"
 description: >
-  Scans an SSH endpoint and reports which key exchanges it offers and whether they are
-  post-quantum, hybrid, or classical. Output is a CycloneDX 1.7 CBOM. The scan reads the
-  server's KEXINIT offer and completes in a few seconds.
+  Measures harvest-now-decrypt-later exposure at an SSH endpoint: whether the key exchange
+  it offers is post-quantum, hybrid, or classical-only. Traffic captured today can be
+  decrypted later once a cryptographically relevant quantum computer exists, so
+  classical-only key exchange is a present-day confidentiality risk. Reads the server's
+  KEXINIT offer and completes in a few seconds.
 brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)

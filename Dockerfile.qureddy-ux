@@ -24,7 +24,7 @@ RUN apt-get update \
 COPY dist/breachsafe_ux-*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/breachsafe_ux-*.whl && rm -f /tmp/*.whl
 
-# ship the OSS descriptors (Quantum Audit + SSH Audit)
+# ship the OSS descriptors (HNDL Audit: TLS + SSH)
 COPY tools/qureddy      /opt/enxemble/tools/qureddy
 COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 
