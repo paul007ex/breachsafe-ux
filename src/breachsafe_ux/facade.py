@@ -24,22 +24,13 @@ PKG = Path(__file__).resolve().parent
 ROOT = PKG.parent.parent                    # repo root (…/breachsafe-ux)
 TOOLS = ROOT / "tools"
 RUN_ROOT = Path(os.environ.get("BREACHSAFE_UX_RUN_ROOT", os.path.expanduser("~/mint-proof/wizard-runs")))
-_TOK = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+# Substitution grammar (#50): `{{`/`}}` are literal braces; `{name}` is a token.
+_SUBST = re.compile(r"\{\{|\}\}|\{([a-zA-Z0-9_]+)\}")
 
 
 class _DescriptorError(Exception):
-    """A descriptor is malformed (e.g. an unresolved {token} in run argv). Surfaced as an honest
+    """A descriptor is malformed (e.g. an unresolved {token} in run argv). Surfaced as an
     'unavailable' badge rather than shipped as literal text to the tool (wizard #8)."""
-
-
-def _reject_residual(out: list[str]) -> list[str]:
-    """wizard #8 (fail-open): a mistyped {token} in run.base/positional_from/argv would otherwise
-    ship as literal text (e.g. "example.com:{prt}") and silently scan garbage. A residual token in
-    the RUN argv is a descriptor bug; raise instead of running."""
-    residual = sorted({tok for a in out for tok in _TOK.findall(a)})
-    if residual:
-        raise _DescriptorError("unresolved token(s) in run argv: " + ", ".join(residual))
-    return out
 
 
 def _tools_dir() -> Path:
@@ -154,8 +145,8 @@ def test_connection(host: str, port, openssl: str = "openssl", timeout: float = 
     uses? `openssl s_client` with EOF on stdin. Never raises."""
     # DEFERRED wizard #6: this hardcodes OpenSSL/TLS ("s_client -connect") inside the otherwise
     # tool-agnostic engine, contradicting the module contract at the top of this file. The fix
-    # (drive preflight from a descriptor "preflight.argv" template through _subst, as run/validate
-    # already are) is designed in ADR wizard #5 and gated on the SSH descriptor being the second
+    # (drive preflight from a descriptor "preflight.argv" template through _render, as run/validate
+    # already are) is designed in ADR-0002 §2a (#21) and gated on the SSH descriptor being the second
     # real consumer. Until then this stays TLS-specific by deliberate, tracked exception.
     if not str(host).strip():
         return (False, "no host")
@@ -169,19 +160,45 @@ def test_connection(host: str, port, openssl: str = "openssl", timeout: float = 
     return (ok, f"{host}:{port} TLS {'ok' if ok else 'failed'}")
 
 
-def _subst(argv: list[str], mapping: dict) -> list[str]:
-    return [_TOK.sub(lambda m: str(mapping.get(m.group(1), m.group(0))), a) for a in argv]
+def _render(argv: list[str], mapping: dict) -> list[str]:
+    """Substitute `{name}` tokens into each argv element (never a shell). `{{` and `}}` are
+    literal braces. An unresolved `{name}` is a descriptor bug and fails CLOSED with
+    _DescriptorError (wizard #8), so a mistyped token never ships as literal text and scans
+    garbage.
+
+    Token namespace (#50): engine-provided are `{share}` `{workdir}` `{artifact}`
+    `{artifact_name}` `{python}` and, in validate.argv only, `{stdout_file}`; every other
+    `{name}` is an input's value.
+    """
+    unresolved: set[str] = set()
+
+    def repl(m: re.Match) -> str:
+        whole = m.group(0)
+        if whole == "{{":
+            return "{"
+        if whole == "}}":
+            return "}"
+        name = m.group(1)
+        if name in mapping:
+            return str(mapping[name])
+        unresolved.add(name)
+        return whole
+
+    out = [_SUBST.sub(repl, a) for a in argv]
+    if unresolved:
+        raise _DescriptorError("unresolved token(s) in argv: " + ", ".join(sorted(unresolved)))
+    return out
 
 
 def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     """Static `run.argv`, or build from `run.base` + each input's argv mapping.
 
-    An input maps to argv by exactly one of: positional (value), flag (token if truthy),
+    An input maps to argv by at most one of: positional (value), flag (token if truthy),
     arg (['--x', value] when set). Values are single argv elements — never a shell string.
     """
     run = desc["run"]
     if "argv" in run:
-        return _reject_residual(_subst(run["argv"], mapping))
+        return _render(run["argv"], mapping)
     argv = list(run.get("base", []))
     # DEFERRED wizard #9 (argument injection): shell=False stops SHELL injection but not ARGUMENT
     # injection -- a leading-dash field value (e.g. host="--openssl=/tmp/x") lands in option
@@ -189,7 +206,7 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     # literal "--", then positionals) needs an argv-order change across descriptors and is tracked
     # separately; qureddy is confirmed to honor "--". Not exploitable on the default loopback bind.
     if run.get("positional_from"):                      # compose one positional, e.g. "{host}:{port}"
-        argv.append(_subst([run["positional_from"]], mapping)[0])
+        argv.append(run["positional_from"])             # template; resolved by _render below
     for spec in desc.get("inputs", []):
         v = params.get(spec["name"])
         if spec.get("positional"):
@@ -201,7 +218,7 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
         elif "arg" in spec:
             if v not in (None, "", False):
                 argv += [spec["arg"], str(v)]
-    return _reject_residual(_subst(argv, mapping))
+    return _render(argv, mapping)
 
 
 def run_descriptor(desc: dict, params: dict) -> dict:
@@ -248,6 +265,9 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         # Honest badge, never a traceback to the UI (#183). FileNotFoundError is caught above.
         return {"error": f"could not launch tool: {e}", "badge": ("unavailable", "tool could not be launched")}
 
+    # First-class {stdout_file} (#50): always capture stdout to the workdir, regardless of exit
+    # code, so a validator can inspect it (needed by artifact:optional, #44).
+    (workdir / "stdout.txt").write_text(proc.stdout or "")
     if desc["run"].get("artifact_from") == "stdout":
         artifact.write_text(proc.stdout)
     # wizard #10 (false-green): a nonzero exit must never badge VALID, even when the tool still
@@ -286,8 +306,9 @@ def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
     if not v:
         return ("none", "no external validator declared")
     mapping = {"share": str(workdir), "workdir": str(workdir),
-               "artifact": str(artifact), "artifact_name": artifact.name, "python": sys.executable}
-    argv = _subst(v["argv"], mapping)
+               "artifact": str(artifact), "artifact_name": artifact.name,
+               "stdout_file": str(workdir / "stdout.txt"), "python": sys.executable}
+    argv = _render(v["argv"], mapping)
     if not shutil.which(argv[0]):
         return ("unavailable", f"validator '{argv[0]}' not installed")
     try:

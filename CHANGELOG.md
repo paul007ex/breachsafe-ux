@@ -28,6 +28,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   JSON path, instead of a silent drop or a mid-run surprise (#48).
 - `schema_version` handshake: descriptors declare `schema_version: 1`; a version newer than the
   engine understands fails closed with a "needs a newer breachsafe-ux" message (#49).
+- Documented substitution token namespace with `{{`/`}}` literal-brace escaping and a first-class
+  validate-only `{stdout_file}` token (captured tool stdout); unresolved tokens still fail closed
+  (#50, see docs/descriptor-tokens.md).
 
 ### Fixed
 

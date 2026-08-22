@@ -84,7 +84,7 @@
       "description": "How the tool is executed (no shell). Exactly one of base/argv.",
       "properties": {
         "base": { "type": "array", "items": { "type": "string" }, "description": "Fixed command prefix, e.g. [qureddy, scan, tls]. Options + positionals are appended." },
-        "argv": { "type": "array", "items": { "type": "string" }, "description": "Fully static argv (with {tokens}); no input-driven assembly." },
+        "argv": { "type": "array", "items": { "type": "string" }, "description": "Fully static argv; no input-driven assembly. Tokens: {name} = an input value; engine-provided {share} {workdir} {artifact} {artifact_name} {python}. {{ and }} are literal braces. See docs/descriptor-tokens.md." },
         "positional_from": { "type": "string", "description": "Compose one positional from a template, e.g. {host}:{port}." },
         "artifact_from": { "enum": ["stdout"], "description": "Where the artifact comes from; omit if the tool writes the artifact file itself." },
         "artifact_name": { "type": "string" },
@@ -104,7 +104,7 @@
       "required": ["argv", "badge_rule"],
       "description": "External validator: runs its own process against the artifact and yields the honest verdict.",
       "properties": {
-        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Validator argv. Tokens: engine-provided {share} {workdir} {artifact} {artifact_name} {stdout_file} {python}. {{ and }} are literal braces. See docs/descriptor-tokens.md." },
         "timeout_s": { "type": "integer", "minimum": 1 },
         "badge_rule": { "$ref": "#/$defs/badge_rule" }
       }
