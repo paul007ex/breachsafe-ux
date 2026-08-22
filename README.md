@@ -27,21 +27,23 @@ written once in the engine and shared by every tool tab.
 
 ## 1. What it is
 
-Every tool the wizard wraps is the same pipeline with different nouns:
+Every tool the host wraps is the same pipeline with different nouns:
 
 ```
 INPUT (params/file)  ->  run the tool  ->  ARTIFACT  ->  external validator  ->  verdict
 ```
 
-The wizard exists to make that pipeline pretty and, above all, accurate. The verdict is the
+EnXemble exists to make that pipeline pretty and, above all, accurate. The verdict is the
 real result of an external validator (for example NIST oscal-cli, or the CycloneDX schema
 validator), reported as one of three distinct states. A tool that failed to run, or a
 validator that could not run, is never rendered as a pass.
 
+New here? Walk through [your first scan](docs/first-scan.md).
+
 Three tabs ship as examples:
 
 - HNDL Audit (TLS) measures harvest-now-decrypt-later exposure at a TLS endpoint and produces a CycloneDX 1.7 CBOM.
-- SSH Audit does the same for an SSH endpoint.
+- HNDL Audit (SSH) does the same for an SSH endpoint.
 - Compliance (OSCAL) turns a scan or CBOM into an OSCAL Plan of Action and Milestones (also
   reached from a scan tab's "Convert to OSCAL" button). Enterprise; gated by `BREACHSAFE_UX_MINT_OSCAL`.
 
@@ -153,8 +155,9 @@ chains:
 Widget types: `text`, `int`, `float`, `bool`, `enum` (radio for up to three choices,
 dropdown for more), and `file`. Put rarely-used inputs in `group: advanced` to place them
 behind a collapsible section. Tokens available in argv: `{share}`/`{workdir}` (the per-run
-dir), `{artifact}` (the artifact path), `{python}` (the running interpreter), and every
-input by `{name}`.
+dir), `{artifact}` (the artifact path), `{artifact_name}` (its file name), `{stdout_file}`
+(validate-only; the captured stdout), `{python}` (the running interpreter), and every input by
+`{name}`. Full reference: [`docs/descriptor-tokens.md`](docs/descriptor-tokens.md).
 
 ## 6. Execution backends
 
