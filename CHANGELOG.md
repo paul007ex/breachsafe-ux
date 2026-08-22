@@ -12,7 +12,23 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Docs
+- `CONTRIBUTING.md` now documents the real gate suite and the single authoritative local command
+  (`scripts/release_gate.py`) instead of an outdated six-check list.
+- Added `AGENTS.md` (agent guidance for Codex and other assistants) and `docs/first-scan.md` (a
+  first-scan + how-to-read-the-verdict walkthrough, linked from the README). Corrected residual
+  "wizard" naming and completed the argv-token list in the README.
+
 ## [0.3.5] - 2026-08-22
+
+### Changed
+- The engine and Gradio shell are now fully `mypy --strict` (no relaxations) with google-style
+  docstrings enforced by pydocstyle `D`, completing gate parity with QuReddy (#74).
+
+### Docs
+- The Docker quickstart is now re-runnable: it clears any container already holding port 7860
+  before launching, so copy-pasting it twice no longer fails with "port is already allocated",
+  and the stale "click Run" was corrected to the actual button label (#146).
 
 ### Fixed
 - The `qureddy-ux` image now ships the **current** scanner. Its base was written as

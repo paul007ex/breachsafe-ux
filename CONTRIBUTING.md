@@ -72,22 +72,42 @@ the dev tooling for you.
 
 ## 4. Quality gates
 
-Run the same checks CI runs before you push. From the repo root:
+**One command reproduces every blocking CI check.** It is the authoritative local gate; run
+it before you push:
 
 ```bash
-uv run ruff check src tests        # lint
-uv run ruff format --check .       # format check
-uv run mypy src                    # type check
-uv run pytest tests/ -q            # tests
-uv run python -m build             # wheel + sdist build
-uvx --from 'reuse[charset-normalizer]' reuse lint   # SPDX / license metadata
+uv run --locked --extra dev python scripts/release_gate.py
 ```
 
-All six must pass. CI runs the same gates on every pull request.
+It fails closed on the first breach and prints a `PASS`/`FAIL` summary. Everything runs under
+`uv run --locked` so your versions match the committed `uv.lock` exactly — the same path CI uses.
+
+The full suite CI enforces (all fail closed; none are advisory):
+
+| Category | Gate |
+|---|---|
+| Lint / format | `ruff check .`, `ruff format --check .` |
+| Types | `mypy --strict src` (no relaxations) |
+| Security | `bandit -ll`, `pip-audit`, secret scan (gitleaks) |
+| Dependencies | `deptry .` |
+| Tests | `pytest -m "not live"`, no-skipped-tests gate, `diff-cover` (100% of changed lines) |
+| Architecture | `import-linter` (MVC/engine layering), `xenon` (complexity), `refurb`, `vulture` |
+| Docs / size | `interrogate` (docstrings), `pydocstyle D`, size policy (400 file / 50 fn / 200 class) |
+| Duplication | `jscpd` (0 clones in `src/`) |
+| Licensing | `reuse lint` (100%), version single-source (`bump_version --check`) |
+| Supply chain | CodeQL, OpenSSF Scorecard, Trivy + cosign + SBOM on the image, signed releases |
+
+Run an individual gate directly when iterating, e.g. `uv run --locked --extra dev mypy --strict src`
+or `uv run --locked --extra dev ruff check .`. Do not weaken a gate to make it pass: a red gate
+is a bug to fix, not a threshold to lower.
+
+Live-integration tests (marked `@pytest.mark.live`, e.g. `tests/test_badge_states.py`) need a
+real tool + Docker; CI **deselects** them with `-m "not live"` so a skip can never hide a
+failure. Run them locally with a plain `uv run --locked --extra dev pytest`.
 
 ## 5. Coding style
 
-- Python 3.12, typed (`mypy src`), formatted (`ruff format`), linted (`ruff check`)
+- Python 3.12, fully typed (`mypy --strict src`), formatted (`ruff format`), linted (`ruff check`)
 - Ruff is configured in `pyproject.toml`; do not add per-file `# noqa` without a reason
 - Specific exceptions, not bare `except`, except where the host deliberately
   fails CLOSED (a validator or artifact that cannot run is never reported as a pass)
