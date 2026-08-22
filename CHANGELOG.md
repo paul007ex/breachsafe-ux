@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.3] - 2026-08-22
+
+### Security
+- Each tool run now writes to a unique per-invocation working directory. A re-run whose tool
+  exits 0 without producing an artifact now validates against nothing instead of a previous
+  run's leftover artifact, closing a stale-artifact false-VALID path (GHSA-6ffp-258g-fvp5,
+  CWE-345, #135).
+- A VALID badge now requires the external validator to exit 0 in addition to matching its pass
+  rule. A validator that exits nonzero whose output happens to contain the pass string now
+  badges invalid (GHSA-6ffp-258g-fvp5, CWE-345, #135). Descriptors that pin `exit` in `pass_if`
+  keep their existing behavior; the bundled qureddy CBOM descriptors pin `exit: 0` and are
+  unchanged.
+- The unique-workdir change also resolves the concurrent-run collision where two short-timeout
+  runs with identical parameters shared one deterministic directory (#104, part 3).
 
 ## [0.3.2] - 2026-08-22
 
