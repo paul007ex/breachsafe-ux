@@ -31,7 +31,8 @@ def test_build_argv_positional_from_is_a_template_resolved_once():
     desc = {"id": "t", "run": {"base": ["s", "scan"], "positional_from": "{host}:{port}"},
             "inputs": [{"name": "host", "type": "text"}, {"name": "port", "type": "int"}]}
     mapping = {"host": "h", "port": 443}
-    assert _build_argv(desc, mapping, mapping) == ["s", "scan", "h:443"]
+    # positional_from is a positional, so it lands after the #9 end-of-options guard.
+    assert _build_argv(desc, mapping, mapping) == ["s", "scan", "--", "h:443"]
 
 
 def test_build_argv_unresolved_positional_from_fails_closed():
