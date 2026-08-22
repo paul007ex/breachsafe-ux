@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+# Pre-commit hooks for breachsafe-ux.
+# Install once: pre-commit install
+# Run manually: pre-commit run --all-files
+# Update pins: pre-commit autoupdate (deliberate, in a PR)
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Pin the ruff-pre-commit rev so the formatter behaves identically to the
+    # ruff invoked by the local gates and CI. ruff's formatter changes
+    # line-joining heuristics across minor versions, so mixing versions
+    # produces churn diffs even on already-formatted code. Bump this in a PR
+    # via `pre-commit autoupdate`. Ruff's lint/format config lives in
+    # pyproject.toml.
+    rev: v0.15.12
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/fsfe/reuse-tool
+    # Keep in sync with the reuse version the CI / local `reuse lint` gate uses.
+    rev: v6.2.0
+    hooks:
+      - id: reuse
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+# mypy is intentionally NOT a pre-commit hook: it is slow and shares state
+# poorly with the IDE daemon. CI runs `mypy src` on every pull request.
