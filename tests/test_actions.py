@@ -72,3 +72,20 @@ def test_app_build_smoke():
     assert demo is not None
     # sanity: descriptors actually loaded through the validated path
     assert set(load_descriptors()) == {"qureddy", "qureddy-ssh", "mint-oscal"}
+
+
+def test_collect_file_input_is_filepath_string():
+    """gr.File (Gradio 6, type=filepath) yields the upload's path as a str; _collect must pass it
+    through — not call `.name` (the pre-6 file-object API), which broke manual upload on the
+    mint-oscal tab. Regression for that AttributeError.
+    """
+    from breachsafe_ux.app import _collect
+
+    desc = {
+        "inputs": [
+            {"name": "source", "type": "enum"},
+            {"name": "source_file", "type": "file"},
+        ]
+    }
+    params = _collect(desc, ["cbom", "/tmp/uploaded/cbom.json"])
+    assert params == {"source": "cbom", "source_file": "/tmp/uploaded/cbom.json"}
