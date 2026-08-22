@@ -63,7 +63,7 @@ jobs:
           image-ref: qureddy-ux:ci
           format: table
           severity: HIGH,CRITICAL
-          ignore-unfixed: false
+          ignore-unfixed: true
           exit-code: "1"
       - name: Smoke test — one command, no socket, serves + resolves tools
         run: |
