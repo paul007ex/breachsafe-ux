@@ -31,6 +31,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documented substitution token namespace with `{{`/`}}` literal-brace escaping and a first-class
   validate-only `{stdout_file}` token (captured tool stdout); unresolved tokens still fail closed
   (#50, see docs/descriptor-tokens.md).
+- Generic descriptor-declared `actions[]` buttons (label + argv + `ok_if`), replacing the
+  hardcoded openssl "Test connection" preflight with a descriptor-supplied argv; the engine no
+  longer contains any protocol-specific button code (#5, #21).
 
 ### Fixed
 

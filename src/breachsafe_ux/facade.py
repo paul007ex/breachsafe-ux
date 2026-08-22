@@ -140,24 +140,28 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
     return (p.returncode == 0, line or f"exit {p.returncode}")
 
 
-def test_connection(host: str, port, openssl: str = "openssl", timeout: float = 8.0) -> tuple[bool, str]:
-    """Preflight: does the endpoint complete a TLS handshake, using the same OpenSSL the scan
-    uses? `openssl s_client` with EOF on stdin. Never raises."""
-    # DEFERRED wizard #6: this hardcodes OpenSSL/TLS ("s_client -connect") inside the otherwise
-    # tool-agnostic engine, contradicting the module contract at the top of this file. The fix
-    # (drive preflight from a descriptor "preflight.argv" template through _render, as run/validate
-    # already are) is designed in ADR-0002 §2a (#21) and gated on the SSH descriptor being the second
-    # real consumer. Until then this stays TLS-specific by deliberate, tracked exception.
-    if not str(host).strip():
-        return (False, "no host")
-    ossl = shutil.which(openssl.strip()) or openssl.strip() or "openssl"
+def run_action(action: dict, params: dict) -> tuple[bool, str]:
+    """Run a descriptor-declared action button (#5): render its argv from the current input
+    values, run it (no shell, stdin closed so a tool that reads stdin can't hang, timeout), and
+    report (ok, one-line summary) per the action's `ok_if` condition (default: exit 0).
+
+    This is the generic replacement for what used to be the hardcoded openssl `test_connection`
+    preflight: a 'Test connection' button is now just an action whose argv is `openssl s_client`
+    declared in the descriptor (ADR-0002 §2a / #21). Never raises."""
     try:
-        p = subprocess.run([ossl, "s_client", "-connect", f"{str(host).strip()}:{int(port)}"],
-                           input="", capture_output=True, text=True, timeout=timeout)
-    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        argv = _render(action["argv"], dict(params))
+    except _DescriptorError as e:
+        return (False, str(e))
+    if not argv or not argv[0].strip():
+        return (False, "no command")
+    try:
+        p = subprocess.run(argv, input="", capture_output=True, text=True,
+                           timeout=action.get("timeout_s", 10))
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
         return (False, f"could not run: {type(e).__name__}")
-    ok = p.returncode == 0
-    return (ok, f"{host}:{port} TLS {'ok' if ok else 'failed'}")
+    ok = _match(action.get("ok_if") or {"exit": 0}, p.stdout + p.stderr, p.returncode)
+    line = ((p.stdout or p.stderr).strip().splitlines() or [""])[0][:140]
+    return (ok, line or f"exit {p.returncode}")
 
 
 def _render(argv: list[str], mapping: dict) -> list[str]:
@@ -188,6 +192,27 @@ def _render(argv: list[str], mapping: dict) -> list[str]:
     if unresolved:
         raise _DescriptorError("unresolved token(s) in argv: " + ", ".join(sorted(unresolved)))
     return out
+
+
+_COND_KEYS = {"stdout_contains", "stdout_contains_any", "stdout_not_contains", "exit"}
+
+
+def _match(cond: dict, text: str, returncode: int) -> bool:
+    """Evaluate a badge/action condition. Fail CLOSED (#182): an empty or all-unrecognized
+    condition never passes — a descriptor typo (e.g. stdout_has for stdout_contains) is a bug,
+    not a green. All present sub-conditions must hold (AND). Shared by _validate and run_action."""
+    if not cond or (set(cond) - _COND_KEYS):
+        return False
+    ok = True
+    if "stdout_contains" in cond:
+        ok = ok and cond["stdout_contains"] in text
+    if "stdout_contains_any" in cond:
+        ok = ok and any(s in text for s in cond["stdout_contains_any"])
+    if "stdout_not_contains" in cond:
+        ok = ok and cond["stdout_not_contains"] not in text
+    if "exit" in cond:
+        ok = ok and returncode == cond["exit"]
+    return ok
 
 
 def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
@@ -317,34 +342,16 @@ def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
         return ("unavailable", f"validator error: {type(e).__name__}")
     text = out.stdout + out.stderr
     rule = v["badge_rule"]
+    rc = out.returncode
 
-    _COND_KEYS = {"stdout_contains", "stdout_contains_any", "stdout_not_contains", "exit"}
-
-    def match(cond: dict) -> bool:
-        # Fail CLOSED (#182): an empty or all-unrecognized condition must never vacuously
-        # pass. A descriptor typo (e.g. stdout_has for stdout_contains) is a bug, not a
-        # green — a false 'valid' in the one honesty-critical path is the worst outcome.
-        if not cond or (set(cond) - _COND_KEYS):
-            return False
-        ok = True
-        if "stdout_contains" in cond:
-            ok = ok and cond["stdout_contains"] in text
-        if "stdout_contains_any" in cond:
-            ok = ok and any(s in text for s in cond["stdout_contains_any"])
-        if "stdout_not_contains" in cond:
-            ok = ok and cond["stdout_not_contains"] not in text
-        if "exit" in cond:
-            ok = ok and out.returncode == cond["exit"]
-        return ok
-
-    # honesty: infra failure → unavailable; ran + blessed → valid; ran + not blessed → invalid
-    if "unavailable_if" in rule and match(rule["unavailable_if"]):
+    # state machine: infra failure → unavailable; ran + blessed → valid; ran + not blessed → invalid
+    if "unavailable_if" in rule and _match(rule["unavailable_if"], text, rc):
         return ("unavailable", "validator could not run (infrastructure)")
-    if "pass_if" in rule and match(rule["pass_if"]):
+    if "pass_if" in rule and _match(rule["pass_if"], text, rc):
         return ("valid", "validator accepted the artifact")
     g = rule.get("fail_detail_grep")
     detail = "\n".join(l.strip() for l in text.splitlines() if g and g in l)[:1500] if g else ""
-    if "fail_if" in rule and match(rule["fail_if"]):
+    if "fail_if" in rule and _match(rule["fail_if"], text, rc):
         return ("invalid", detail or "validator rejected the artifact")
     return (rule.get("otherwise", "invalid"), detail or "validator ran; artifact not accepted")
 

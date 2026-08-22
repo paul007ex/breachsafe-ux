@@ -110,6 +110,13 @@ render:
   primary: json
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
+actions:
+  # Preflight, now descriptor-declared argv instead of a hardcoded engine function (#5, #21).
+  # stdin is closed by the engine so s_client does not hang; exit 0 = handshake completed.
+  - label: "Test connection"
+    argv: ["openssl", "s_client", "-connect", "{host}:{port}"]
+    ok_if: { exit: 0 }
+    timeout_s: 8
 chains:
   - to: mint-oscal
     label: "Convert to OSCAL"
