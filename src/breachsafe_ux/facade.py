@@ -10,9 +10,9 @@ from pathlib import Path
 import yaml
 
 PKG = Path(__file__).resolve().parent
-ROOT = PKG.parent.parent                    # repo root (…/breachsafe-wizard)
+ROOT = PKG.parent.parent                    # repo root (…/breachsafe-ux)
 TOOLS = ROOT / "tools"
-RUN_ROOT = Path(os.environ.get("WIZARD_RUN_ROOT", os.path.expanduser("~/mint-proof/wizard-runs")))
+RUN_ROOT = Path(os.environ.get("BREACHSAFE_UX_RUN_ROOT", os.path.expanduser("~/mint-proof/wizard-runs")))
 _TOK = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
@@ -32,10 +32,10 @@ def _reject_residual(out: list[str]) -> list[str]:
 
 
 def _tools_dir() -> Path:
-    """The descriptor root. A host package (e.g. qureddy) points here via WIZARD_TOOLS_DIR
+    """The descriptor root. A host package (e.g. qureddy) points here via BREACHSAFE_UX_TOOLS_DIR
     so the wizard renders that package's own tools instead of the bundled examples (W-1/W-2).
     Read at call time — never bound at import — so setting the env before launch is enough."""
-    d = os.environ.get("WIZARD_TOOLS_DIR")
+    d = os.environ.get("BREACHSAFE_UX_TOOLS_DIR")
     return Path(d) if d else TOOLS
 
 

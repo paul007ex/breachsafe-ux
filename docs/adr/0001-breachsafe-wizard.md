@@ -1,9 +1,9 @@
-# ADR-0001 — breachsafe-wizard: a config-driven, honest single-tool UX facade
+# ADR-0001 — breachsafe-ux: a config-driven, honest single-tool UX facade
 
 - **Status:** Proposed (draft)
 - **Date:** 2026-07-28
 - **Deciders:** BreachSAFE (paul)
-- **Codename:** Gizmo · **Product name:** breachsafe-wizard
+- **Codename:** Gizmo · **Product name:** breachsafe-ux
 - **Related:** breachsafe-ux-frameworks + breachsafe-build-vs-buy skills; TAO/Osmedeus
   ExecutionProvider (orchestration boundary); mint-oscal #30 (productize the facade).
 
@@ -29,7 +29,7 @@ We need a **nice UX per tool** that exposes *all* a tool's parameters and report
 
 ## Decision
 
-Adopt **breachsafe-wizard**: a **config-driven, descriptor-based, single-tool UX facade**
+Adopt **breachsafe-ux**: a **config-driven, descriptor-based, single-tool UX facade**
 rendered on **Gradio** (Apache-2.0), with an honest 3-state validation badge and BreachSAFE
 brand tokens.
 
@@ -41,7 +41,7 @@ brand tokens.
   shell), run, validate, 3-state badge, render. The Gradio shell is a thin loop over the
   descriptor — the only UI code, written once.
 - **Scope = a single tool, done to 10/10.** Multi-tool orchestration is explicitly OUT — that
-  is Osmedeus/TAO (rebranded BreachSAFE). breachsafe-wizard may hand an artifact to another
+  is Osmedeus/TAO (rebranded BreachSAFE). breachsafe-ux may hand an artifact to another
   tool via a declared `chain` (e.g. QuReddy CBOM → "Convert to OSCAL"), but it is not a DAG
   engine.
 
@@ -77,7 +77,7 @@ Non-negotiables baked into the engine:
 - Add a tool = one descriptor; the UI is generated → near-zero Claude UX code per tool.
 - Honest verdict is uniform and audit-by-data across every tool.
 - Apache-2.0 foundation → ship & sell; BreachSAFE code stays PolyForm-Noncommercial.
-- Clean seam with TAO: breachsafe-wizard = single-tool honesty; Osmedeus = multi-tool
+- Clean seam with TAO: breachsafe-ux = single-tool honesty; Osmedeus = multi-tool
   orchestration.
 
 **Negative / cost**
@@ -100,6 +100,6 @@ Non-negotiables baked into the engine:
   a permissive base, minimal Claude UX code.
 
 ## Open questions
-- Final name (breachsafe-wizard vs Facet vs codename Gizmo).
+- Final name (breachsafe-ux vs Facet vs codename Gizmo).
 - Home repo: its own repo vs `breachsafe-common/` (tooling) vs a `ux/` package.
 - Trust/auth model before any non-localhost deployment (reaching the UI == a process-spawner).
