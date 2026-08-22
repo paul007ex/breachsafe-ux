@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/paul007ex/breachsafe-ux/security/advisories/new
+    about: Report security issues privately here. Never file a public issue for a vulnerability.
+  - name: Project home
+    url: https://www.breachsafe.io
+    about: Learn more about BreachSAFE and breachsafe-ux.
