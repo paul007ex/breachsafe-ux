@@ -2,16 +2,16 @@
 
 [![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](CHANGELOG.md)
 
-A config-driven, honest single-tool UX harness. Point it at a command-line tool, declare
+A config-driven single-tool UX host. Point it at a command-line tool, declare
 that tool's parameters in one YAML file, and the wizard renders a web form, runs the tool,
-validates the output with an external validator, and reports an honest three-state verdict:
+validates the output with an external validator, and reports a three-state verdict:
 VALID, INVALID, or VALIDATOR-UNAVAILABLE. It never shows a green result the validator did
 not actually give.
 
-Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the honest
+Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the
 badge are written once in the engine and shared by every tool.
 
-- Home: https://www.breachsafe.ai
+- Home: https://www.breachsafe.io
 - Source: https://github.com/paul007ex/breachsafe-ux
 - Licence: PolyForm Noncommercial 1.0.0 (see [Licence](#8-licence))
 
@@ -20,7 +20,7 @@ badge are written once in the engine and shared by every tool.
 1. [What it is](#1-what-it-is)
 2. [Quickstart](#2-quickstart)
 3. [Architecture](#3-architecture)
-4. [The honest three-state badge](#4-the-honest-three-state-badge)
+4. [The three-state badge](#4-the-three-state-badge)
 5. [Add a tool (the descriptor)](#5-add-a-tool-the-descriptor)
 6. [Execution backends](#6-execution-backends)
 7. [Development](#7-development)
@@ -31,10 +31,10 @@ badge are written once in the engine and shared by every tool.
 Every tool the wizard wraps is the same pipeline with different nouns:
 
 ```
-INPUT (params/file)  ->  run the tool  ->  ARTIFACT  ->  external validator  ->  honest verdict
+INPUT (params/file)  ->  run the tool  ->  ARTIFACT  ->  external validator  ->  verdict
 ```
 
-The wizard exists to make that pipeline pretty and, above all, honest. The verdict is the
+The wizard exists to make that pipeline pretty and, above all, accurate. The verdict is the
 real result of an external validator (for example NIST oscal-cli, or the CycloneDX schema
 validator), reported as one of three distinct states. A tool that failed to run, or a
 validator that could not run, is never rendered as a pass.
@@ -72,7 +72,7 @@ requirement and is the recommended path for a portable install; see
         v
   facade.py  (engine, no tool-specific logic)
         |   render widgets  ->  build typed argv (no shell)  ->  run tool
-        |   ->  artifact  ->  external validator  ->  honest 3-state badge
+        |   ->  artifact  ->  external validator  ->  3-state badge
         v
   app.py  (thin Gradio shell: the type-to-widget map, written once)
         |
@@ -87,7 +87,7 @@ requirement and is the recommended path for a portable install; see
   descriptors. Adding a tool changes no code here.
 - tools/<name>/ holds one descriptor and an optional run shim per tool.
 
-## 4. The honest three-state badge
+## 4. The three-state badge
 
 The badge is the point of the project. Its rule is declarative and auditable as data.
 
@@ -136,7 +136,7 @@ input by `{name}`.
 
 ## 6. Execution backends
 
-A descriptor chooses one way to run its tool. The honest-unavailable path is shared by all
+A descriptor chooses one way to run its tool. The unavailable path is shared by all
 of them, so a backend that cannot run yields VALIDATOR-UNAVAILABLE rather than a false verdict.
 
 | Backend | Descriptor | Portable | Isolated | Status |
@@ -156,7 +156,7 @@ images, when added, must be pinned by digest, never a floating `:latest` tag.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-`tests/test_honesty.py` drives the real pipeline (real tools from source, real oscal-cli in
+`tests/test_badge_states.py` drives the real pipeline (real tools from source, real oscal-cli in
 Docker) and asserts the load-bearing properties: a good artifact validates, a rejected one
 reports INVALID, an injection attempt is argv-safe, an absent validator reports
 VALIDATOR-UNAVAILABLE, and a malformed input never reports VALID.
@@ -167,7 +167,7 @@ Layout:
 src/breachsafe_ux/   facade.py (engine), app.py (shell), brand.py (tokens)
 tools/<name>/            <name>.yaml descriptor, bin/ run shim
 docs/adr/                architecture decision records
-tests/                   honesty and safety tests
+tests/                   badge-state and safety tests
 ```
 
 Known gaps are tracked in `docs/KNOWN-ISSUES.md`.

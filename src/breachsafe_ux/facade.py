@@ -1,7 +1,7 @@
-"""Engine: config-driven, honest single-tool runner.
+"""Engine: config-driven single-tool runner.
 
 A tool is a YAML descriptor under tools/<name>/<name>.yaml. The engine renders it, builds a
-typed argv (no shell), runs the tool, runs its external validator, and derives an HONEST
+typed argv (no shell), runs the tool, runs its external validator, and derives a
 3-state badge (valid / invalid / validator-unavailable). Zero tool-specific logic lives here.
 """
 from __future__ import annotations
@@ -129,7 +129,7 @@ def _tool_version(argv: list[str]) -> str | None:
 
 
 def tool_available(desc: dict) -> bool:
-    """Best-effort: can this descriptor's tool actually run here? Used to render an honest
+    """Best-effort: can this descriptor's tool actually run here? Used to render an accurate
     chain-button state (W-5) rather than a dead button that always reports UNAVAILABLE."""
     run = desc.get("run", {})
     if run.get("image"):
@@ -275,7 +275,7 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
 
     Builds a no-shell argv from the descriptor + params, runs the tool, then its external
-    validator, and derives the honest badge. Returns a dict whose `badge` is a (state, detail)
+    validator, and derives the badge. Returns a dict whose `badge` is a (state, detail)
     tuple with state in valid / invalid / unavailable / none; a successful run also carries
     `artifact` (parsed JSON or None), `artifact_path`, and `highlights`. A launch, timeout,
     nonzero-exit, or descriptor error returns `error` + an `unavailable` badge and never raises
@@ -293,13 +293,13 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     try:
         argv = _build_argv(desc, params, mapping)
     except _DescriptorError as e:
-        # wizard #8: a malformed descriptor is an honest 'unavailable', never a silent bad scan.
+        # wizard #8: a malformed descriptor is an 'unavailable' badge, never a silent bad scan.
         return {"error": str(e), "badge": ("unavailable", f"descriptor error: {e}")}
     if desc["run"].get("image"):
         # Docker backend (W-3/W-4): the tool binary is the image ENTRYPOINT, so drop argv[0]
         # (the tool name in run.base) and hand the rest to `docker run`. Pin images by @sha256;
         # a stdout-artifact tool needs no mount (docker captures stdout). Missing docker ->
-        # FileNotFoundError below -> honest unavailable, never a false verdict.
+        # FileNotFoundError below -> unavailable, never a false verdict.
         argv = ["docker", "run", "--rm", desc["run"]["image"], *argv[1:]]
 
     try:
@@ -312,7 +312,7 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         return {"error": "tool timed out", "badge": ("unavailable", "tool timed out")}
     except (OSError, ValueError) as e:
         # NUL byte in a param, E2BIG, bad fd, permission — the launch itself failed.
-        # Honest badge, never a traceback to the UI (#183). FileNotFoundError is caught above.
+        # A badge, never a traceback to the UI (#183). FileNotFoundError is caught above.
         return {"error": f"could not launch tool: {e}", "badge": ("unavailable", "tool could not be launched")}
 
     # First-class {stdout_file} (#50): always capture stdout to the workdir, regardless of exit
@@ -323,7 +323,7 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     # wizard #10 (false-green): a nonzero exit must never badge VALID, even when the tool still
     # wrote a schema-shaped artifact. The validator checks artifact SHAPE (e.g. CycloneDX
     # conformance), not whether the scan actually succeeded, so a partial/failed run that emits a
-    # well-formed CBOM would otherwise pass. Any nonzero exit is an honest non-valid state; a tool
+    # well-formed CBOM would otherwise pass. Any nonzero exit is a non-valid state; a tool
     # whose contract legitimately exits nonzero with a trustworthy artifact opts in explicitly.
     if proc.returncode != 0 and not desc["run"].get("trust_artifact_on_nonzero"):
         _err = proc.stderr.strip()
@@ -370,7 +370,7 @@ def _validate(desc: dict, workdir: Path, artifact: Path, params: dict | None = N
     v = _select_validator(v, params or {})
     if not v:
         # #43 fail-closed: a variant with no validator (unmatched selector or explicit null) is
-        # honestly "none", never a green. e.g. qureddy format=json/rich has no schema validator.
+        # a "none" badge, never a green. e.g. qureddy format=json/rich has no schema validator.
         return ("none", "no validator for this output")
     mapping = {"share": str(workdir), "workdir": str(workdir),
                "artifact": str(artifact), "artifact_name": artifact.name,

@@ -15,7 +15,7 @@ brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)
   version: "0.2.x"                         # fallback if qureddy is not installed
-  url: "https://www.breachsafe.ai"
+  url: "https://www.breachsafe.io"
   repo: "https://github.com/breachsafe/qureddy"
 inputs:
   - name: host
@@ -96,7 +96,7 @@ run:
   timeout_s: 180
 validate:
   # The external check depends on the output format (#43): only a CBOM has a schema to validate.
-  # json (raw scan) and rich (console) have no schema validator, so they badge 'none' — honestly
+  # json (raw scan) and rich (console) have no schema validator, so they badge 'none' —
   # "no external validator", never a false green/red from running a CBOM validator on non-CBOM.
   by: [format]
   cases:

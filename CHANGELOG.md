@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.ai> -->
+<!-- SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io> -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
@@ -11,6 +11,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- Website URL updated to `https://www.breachsafe.io`, single-sourced via `BRAND["url"]`.
+- Removed AI-slop "honest/honesty" phrasing from docs, code, and tests (#40); renamed
+  `tests/test_honesty.py` → `tests/test_badge_states.py`.
+- `tools/*/bin` shims are now git-ignored local operator wiring (no hardcoded paths),
+  documented in `tools/README.md`; live integration tests skip cleanly when the tool or
+  Docker are absent, so the suite is portable for a public checkout.
 
 ## [0.3.0] - 2026-08-22
 

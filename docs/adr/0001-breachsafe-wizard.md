@@ -1,4 +1,4 @@
-# ADR-0001 — breachsafe-ux: a config-driven, honest single-tool UX facade
+# ADR-0001 — breachsafe-ux: a config-driven single-tool UX facade
 
 - **Status:** Proposed (draft)
 - **Date:** 2026-07-28
@@ -13,13 +13,13 @@ Every BreachSAFE tool (QuReddy, mint-oscal, Qurum, QuCert, QuCrypt) is the same 
 with different nouns:
 
 ```
-INPUT (params/file) → run CLI tool → ARTIFACT → external validator → honest ✅/❌/⚠️ + pretty output
+INPUT (params/file) → run CLI tool → ARTIFACT → external validator → ✅/❌/⚠️ + rendered output
 ```
 
 We need a **nice UX per tool** that exposes *all* a tool's parameters and reports an
-**honest** result. Three forces constrain the choice:
+**accurate** result. Three forces constrain the choice:
 
-1. **Honesty is the differentiator.** The verdict must be a real external-validator result
+1. **The verdict is real.** It is a real external-validator result
    with three states — `valid` / `invalid` / **`validator-unavailable`** — never a green a
    validator didn't give. No generic tool-UI enforces this; it is the compliance value.
 2. **Claude is weak at bespoke UX code.** Minimize hand-authored UI; prefer prebuilt widgets
@@ -30,7 +30,7 @@ We need a **nice UX per tool** that exposes *all* a tool's parameters and report
 ## Decision
 
 Adopt **breachsafe-ux**: a **config-driven, descriptor-based, single-tool UX facade**
-rendered on **Gradio** (Apache-2.0), with an honest 3-state validation badge and BreachSAFE
+rendered on **Gradio** (Apache-2.0), with a 3-state validation badge and BreachSAFE
 brand tokens.
 
 - **One tool = one YAML descriptor** under `tools/<name>/<name>.yaml`. Adding or changing a
@@ -66,7 +66,7 @@ the tool's source tree.
 
 Non-negotiables baked into the engine:
 - **argv, never a shell** — params substitute into single argv elements; injection-safe.
-- **3-state honesty** — `validator-ran-but-rejected → invalid`; `validator-couldn't-run →
+- **3-state result** — `validator-ran-but-rejected → invalid`; `validator-couldn't-run →
   unavailable`; only a real pass → `valid`. Declarative `badge_rule`, auditable as data.
 - **Engine-owned paths / pinned validator images / upload bounds / timeouts.**
 - **Brand from a single source** (EnXemble `brand.ts` tokens: bs-cyan `#3ae7f4`, lockup).
@@ -75,9 +75,9 @@ Non-negotiables baked into the engine:
 
 **Positive**
 - Add a tool = one descriptor; the UI is generated → near-zero Claude UX code per tool.
-- Honest verdict is uniform and audit-by-data across every tool.
+- The verdict is uniform and audit-by-data across every tool.
 - Apache-2.0 foundation → ship & sell; BreachSAFE code stays PolyForm-Noncommercial.
-- Clean seam with TAO: breachsafe-ux = single-tool honesty; Osmedeus = multi-tool
+- Clean seam with TAO: breachsafe-ux = single-tool verdicts; Osmedeus = multi-tool
   orchestration.
 
 **Negative / cost**
@@ -92,11 +92,11 @@ Non-negotiables baked into the engine:
   OSS platform (secureCodeBox/Osmedeus overlap). Rejected for single-tool scope.
 - **B Strip Osmedeus UX:** MIT, but UI source absent (compiled bundle) and a "tool" is a
   workflow-DAG → HIGH-effort hard-fork. Rejected (harvest pattern, not code).
-- **C script-server:** Apache, config-only, but admin-looking and no first-class honest badge.
+- **C script-server:** Apache, config-only, but admin-looking and no first-class validation badge.
   Adopted as the *inspiration*, not the engine (Gradio looks better + we own the thin layer).
 - **D Osmedeus/TAO:** the multi-tool orchestration answer — **kept for that layer**, not for
   single-tool surfaces.
-- **Chosen:** Gradio descriptor-facade = C's config-driven model + A's honest-badge layer, on
+- **Chosen:** Gradio descriptor-facade = C's config-driven model + A's validation-badge layer, on
   a permissive base, minimal Claude UX code.
 
 ## Open questions

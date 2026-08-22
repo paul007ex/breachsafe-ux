@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.ai> -->
+<!-- SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io> -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR-0002 — The host↔descriptor boundary: keeping breachsafe-ux generic under hardening
 

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Run the synchronized canonical checkout and its own Python environment so
-# source code, package metadata, dependencies, and the console entrypoint agree.
-exec "/Users/paul/claude/qureddy/.venv/bin/python" -m qureddy "$@"

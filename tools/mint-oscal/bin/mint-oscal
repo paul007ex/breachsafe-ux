@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-# Run mint-oscal from its source tree without installing it (PYTHONPATH injection, no build).
-exec "/Users/paul/claude/breachsafe-wizard/.venv/bin/python" -c 'import sys; sys.path.insert(0,"/Users/paul/claude/breachsafe-oscal/src"); from mint_oscal.cli import main; sys.exit(main())' "$@"
