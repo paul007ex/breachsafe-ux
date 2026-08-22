@@ -7,8 +7,15 @@ runs its external validator, and derives a 3-state badge
 (:mod:`breachsafe_ux.app`) renders every descriptor as widgets.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
 
 from breachsafe_ux.facade import load_descriptors, run_descriptor
+
+try:
+    # Single-source the version from the installed dist metadata (#115); pyproject is the one
+    # source of truth, so a hardcoded literal here can never drift from [project].version.
+    __version__ = version("breachsafe-ux")
+except PackageNotFoundError:  # running from a source tree without an installed dist
+    __version__ = "0.0.0"
 
 __all__ = ["__version__", "load_descriptors", "run_descriptor"]

@@ -53,3 +53,16 @@ def test_version_cmd_falls_back_on_failure(tmp_path, monkeypatch):
 def test_qureddy_single_sources_its_version():
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     assert q["brand"].get("version_cmd") == ["qureddy", "--version"]
+
+
+def test_package_version_matches_pyproject():
+    """#115: ``__version__`` is derived from the installed dist metadata, so it can never drift
+    from ``pyproject [project].version`` the way the old hardcoded ``0.1.0`` literal had."""
+    import tomllib
+
+    import breachsafe_ux
+
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    # An editable install exposes real metadata; fall back to the source-tree sentinel otherwise.
+    assert breachsafe_ux.__version__ in (pyproject, "0.0.0")
+    assert breachsafe_ux.__version__ != "0.1.0"  # the old drifted literal must be gone
