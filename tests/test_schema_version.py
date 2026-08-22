@@ -4,6 +4,7 @@ A descriptor may declare `schema_version`. Absent means 1 (back-compat, warned).
 newer than this build understands fails CLOSED, so an old engine refuses a new descriptor with
 a clear message instead of a confusing structural error.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,7 +25,7 @@ def _ok() -> dict:
 
 
 def test_current_version_loads():
-    _validate_descriptor(_ok(), Path("t.yaml"))   # no raise, no warning
+    _validate_descriptor(_ok(), Path("t.yaml"))  # no raise, no warning
 
 
 def test_absent_version_warns_but_loads():
@@ -44,4 +45,6 @@ def test_too_new_fails_closed():
 def test_shipped_descriptors_declare_version():
     for p in sorted((ROOT / "tools").glob("*/*.yaml")):
         d = yaml.safe_load(p.read_text())
-        assert d.get("schema_version") == SUPPORTED_SCHEMA_VERSION, f"{p.name} missing schema_version"
+        assert d.get("schema_version") == SUPPORTED_SCHEMA_VERSION, (
+            f"{p.name} missing schema_version"
+        )

@@ -16,6 +16,7 @@ fresh clone or CI), the whole module SKIPS rather than failing — it is a live 
 suite, not a unit test. Docker Desktop on macOS can only bind-mount paths under the home
 directory; the engine's default run root already lives there, so we do NOT override it.
 """
+
 from __future__ import annotations
 
 import copy
@@ -26,6 +27,7 @@ from pathlib import Path
 
 import pytest
 
+from breachsafe_ux import facade
 from breachsafe_ux.facade import load_descriptors, run_descriptor, tool_available
 
 # Live integration: skip cleanly unless the mint-oscal tool is resolvable AND docker is present.
@@ -68,7 +70,7 @@ def mint():
     return load_descriptors()["mint-oscal"]
 
 
-@pytest.fixture()
+@pytest.fixture
 def fixtures_dir():
     # Docker (macOS) only mounts under /Users, so keep everything under $HOME, not /var-tmp.
     d = Path(tempfile.mkdtemp(prefix="wiz-fixtures-", dir=Path.home()))
@@ -133,13 +135,17 @@ def test_t5_malformed_input_is_not_valid(mint, fixtures_dir):
 # --- Unit-level badge-state guards (no Docker / no tool source needed). Regressions for
 #     the two engine bugs found on the [ui] track: breachsafe/qureddy#182, #183. ---
 
-from breachsafe_ux import facade
 
-
-@pytest.mark.parametrize("rule", [
-    {"pass_if": {}, "otherwise": "invalid"},                       # empty condition
-    {"pass_if": {"stdout_has": "ok"}, "otherwise": "invalid"},     # typo'd key (was stdout_contains)
-])
+@pytest.mark.parametrize(
+    "rule",
+    [
+        {"pass_if": {}, "otherwise": "invalid"},  # empty condition
+        {
+            "pass_if": {"stdout_has": "ok"},
+            "otherwise": "invalid",
+        },  # typo'd key (was stdout_contains)
+    ],
+)
 def test_t6_validate_fails_closed_on_malformed_pass_if(tmp_path, rule):
     """#182: an empty or all-unrecognized ``pass_if`` must NEVER vacuously return ``valid``.
 
@@ -157,9 +163,18 @@ def test_t6b_validate_still_valid_on_wellformed_rule(tmp_path):
     """Guard the guard: a real, well-formed ``exit: 0`` rule must still pass (no over-fix)."""
     art = tmp_path / "a.json"
     art.write_text("{}")
-    desc = {"id": "t", "validate": {"argv": ["true"],
-            "badge_rule": {"pass_if": {"exit": 0}, "fail_if": {"exit": 1}, "otherwise": "unavailable"},
-            "timeout_s": 10}}
+    desc = {
+        "id": "t",
+        "validate": {
+            "argv": ["true"],
+            "badge_rule": {
+                "pass_if": {"exit": 0},
+                "fail_if": {"exit": 1},
+                "otherwise": "unavailable",
+            },
+            "timeout_s": 10,
+        },
+    }
     assert facade._validate(desc, tmp_path, art)[0] == "valid"
 
 
@@ -169,7 +184,10 @@ def test_t7_nul_param_is_unavailable_not_traceback():
     ``subprocess.run`` raises ``ValueError: embedded null byte``; the engine must catch it and
     return the result dict so the UI shows a badge, not a raw traceback.
     """
-    desc = {"id": "t2", "run": {"base": ["echo"], "positional_from": "{host}"},
-            "inputs": [{"name": "host", "type": "text"}]}
+    desc = {
+        "id": "t2",
+        "run": {"base": ["echo"], "positional_from": "{host}"},
+        "inputs": [{"name": "host", "type": "text"}],
+    }
     res = run_descriptor(desc, {"host": "example.com\x00"})  # must not raise
     assert res["badge"][0] == "unavailable", res["badge"]

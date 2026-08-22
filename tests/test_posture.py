@@ -4,6 +4,7 @@ The badge state means 'did the external validator accept the evidence' (e.g. CBO
 schema-valid). Readiness posture is a SEPARATE verdict read from the scan findings, so a green
 'evidence valid' can never read as 'endpoint is secure' (the false-green this closes).
 """
+
 from __future__ import annotations
 
 import json
@@ -14,11 +15,18 @@ from breachsafe_ux.facade import ROOT, _posture
 
 FIXTURE = ROOT / "tests" / "fixtures" / "qureddy_cbom.sample.json"
 
-_DESC = {"render": {"posture": {
-    "from": "qureddy:scan.readiness",
-    "cases": {"quantum_vulnerable": {"text": "QV", "level": "high"},
-              "quantum_safe": {"text": "QS", "level": "ok"}},
-    "default": {"text": "?", "level": "unknown"}}}}
+_DESC = {
+    "render": {
+        "posture": {
+            "from": "qureddy:scan.readiness",
+            "cases": {
+                "quantum_vulnerable": {"text": "QV", "level": "high"},
+                "quantum_safe": {"text": "QS", "level": "ok"},
+            },
+            "default": {"text": "?", "level": "unknown"},
+        }
+    }
+}
 
 
 def _art(readiness):
@@ -52,35 +60,51 @@ def test_qureddy_resolves_a_representative_cbom():
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cbom = json.loads(FIXTURE.read_text())
     p = _posture(q, cbom)
-    assert p and p["level"] == "high"                                  # quantum_vulnerable -> high
+    assert p and p["level"] == "high"  # quantum_vulnerable -> high
     assert q["render"]["posture"]["from"] == "qureddy:scan.readiness"  # #287-stable surface
 
 
 def test_qureddy_maps_the_full_readiness_enum():
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cases = q["render"]["posture"]["cases"]
-    for v in ["quantum_vulnerable", "classically_weak", "transitional_hybrid",
-              "quantum_safe", "unknown", "not_applicable"]:
+    for v in [
+        "quantum_vulnerable",
+        "classically_weak",
+        "transitional_hybrid",
+        "quantum_safe",
+        "unknown",
+        "not_applicable",
+    ]:
         assert v in cases, f"readiness value {v!r} not mapped (qureddy Readiness enum)"
 
 
 def test_result_shows_banner_and_reworded_evidence_badge():
     from breachsafe_ux.app import _result
-    desc = {"render": {
-        "posture": {"from": "r", "cases": {"quantum_vulnerable": {"text": "Quantum-vulnerable", "level": "high"}}},
-        "badge_text": {"valid": "Evidence: CBOM well-formed"}}}
-    res = {"badge": ("valid", "ok"),
-           "artifact": {"metadata": {"properties": [{"name": "r", "value": "quantum_vulnerable"}]}},
-           "highlights": []}
+
+    desc = {
+        "render": {
+            "posture": {
+                "from": "r",
+                "cases": {"quantum_vulnerable": {"text": "Quantum-vulnerable", "level": "high"}},
+            },
+            "badge_text": {"valid": "Evidence: CBOM well-formed"},
+        }
+    }
+    res = {
+        "badge": ("valid", "ok"),
+        "artifact": {"metadata": {"properties": [{"name": "r", "value": "quantum_vulnerable"}]}},
+        "highlights": [],
+    }
     md = _result(desc, res)[0]
-    assert "Quantum-vulnerable" in md                 # readiness banner present
-    assert "Evidence: CBOM well-formed" in md         # evidence-specific wording
-    assert "VALID" not in md                          # bare 'VALID' no longer implies 'secure'
+    assert "Quantum-vulnerable" in md  # readiness banner present
+    assert "Evidence: CBOM well-formed" in md  # evidence-specific wording
+    assert "VALID" not in md  # bare 'VALID' no longer implies 'secure'
 
 
 def test_result_no_banner_on_failed_run():
     from breachsafe_ux.app import _result
+
     desc = {"render": {"posture": {"from": "r", "cases": {"x": {"text": "X", "level": "high"}}}}}
     res = {"badge": ("unavailable", "tool timed out"), "error": "tool timed out"}
     md = _result(desc, res)[0]
-    assert "X" not in md          # no artifact -> no readiness claim on a failed run
+    assert "X" not in md  # no artifact -> no readiness claim on a failed run

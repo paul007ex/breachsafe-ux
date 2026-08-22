@@ -1,4 +1,5 @@
 """Descriptor-declared action buttons (#5): generic argv, not host functions."""
+
 from __future__ import annotations
 
 import sys
@@ -22,8 +23,11 @@ def test_action_fail_on_nonzero():
 
 
 def test_action_ok_if_stdout_contains():
-    action = {"label": "x", "argv": [sys.executable, "-c", "print('READY')"],
-              "ok_if": {"stdout_contains": "READY"}}
+    action = {
+        "label": "x",
+        "argv": [sys.executable, "-c", "print('READY')"],
+        "ok_if": {"stdout_contains": "READY"},
+    }
     assert run_action(action, {})[0] is True
     action["ok_if"] = {"stdout_contains": "NOPE"}
     assert run_action(action, {})[0] is False
@@ -32,7 +36,10 @@ def test_action_ok_if_stdout_contains():
 def test_action_renders_input_tokens():
     # {host} comes from params; a value that would hang on stdin can't (stdin is closed)
     ok, msg = run_action(
-        {"label": "echo", "argv": [sys.executable, "-c", "import sys; print(sys.argv[1])", "{host}"]},
+        {
+            "label": "echo",
+            "argv": [sys.executable, "-c", "import sys; print(sys.argv[1])", "{host}"],
+        },
         {"host": "example.com"},
     )
     assert ok and "example.com" in msg
@@ -59,6 +66,7 @@ def test_qureddy_declares_test_connection_action():
 def test_app_build_smoke():
     """The Gradio shell renders every shipped descriptor (incl. actions) without error."""
     from breachsafe_ux.app import build
+
     demo = build()
     assert demo is not None
     # sanity: descriptors actually loaded through the validated path

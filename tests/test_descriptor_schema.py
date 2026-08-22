@@ -5,6 +5,7 @@ rejects the corruption classes that used to fail deep in a run (or silently). Th
 `load_descriptors()` fails CLOSED — a bad descriptor raises at load, it is never silently
 dropped or rendered.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,6 +31,7 @@ def _load(path: Path) -> dict:
 
 def test_schema_itself_is_wellformed():
     from jsonschema import Draft202012Validator
+
     schema = json.loads((ROOT / "src" / "breachsafe_ux" / "descriptor.schema.json").read_text())
     Draft202012Validator.check_schema(schema)
 
@@ -51,15 +53,17 @@ def _q() -> dict:
 @pytest.mark.parametrize(
     "mutate, where",
     [
-        (lambda d: d["inputs"][2].__setitem__("postional", True), "inputs/2"),   # typo'd key
-        (lambda d: d["inputs"][2].__setitem__("flag", "--x"), "inputs/2"),       # arg AND flag
-        (lambda d: d.pop("id"), "<root>"),                                        # missing required
-        (lambda d: d["validate"]["cases"]["cbom"]["badge_rule"].__setitem__("pass_if", {}),
-         "validate/cases/cbom"),   # oneOf collapses the deep path to the case
+        (lambda d: d["inputs"][2].__setitem__("postional", True), "inputs/2"),  # typo'd key
+        (lambda d: d["inputs"][2].__setitem__("flag", "--x"), "inputs/2"),  # arg AND flag
+        (lambda d: d.pop("id"), "<root>"),  # missing required
+        (
+            lambda d: d["validate"]["cases"]["cbom"]["badge_rule"].__setitem__("pass_if", {}),
+            "validate/cases/cbom",
+        ),  # oneOf collapses the deep path to the case
         (lambda d: d["run"].__setitem__("artifact_from", "stderr"), "run/artifact_from"),
-        (lambda d: d["inputs"].append({"name": "z", "type": "enum"}), None),      # enum w/o choices
-        (lambda d: d["run"].__setitem__("timeout_s", 0), "run/timeout_s"),        # timeout must be >=1
-        (lambda d: d.__setitem__("id", "Bad Id"), "id"),                          # id not a slug
+        (lambda d: d["inputs"].append({"name": "z", "type": "enum"}), None),  # enum w/o choices
+        (lambda d: d["run"].__setitem__("timeout_s", 0), "run/timeout_s"),  # timeout must be >=1
+        (lambda d: d.__setitem__("id", "Bad Id"), "id"),  # id not a slug
     ],
 )
 def test_corruptions_are_rejected(mutate, where):
@@ -76,16 +80,18 @@ def test_input_with_no_argv_mapping_is_allowed():
     """host/port are token-only inputs (none of arg/flag/positional) used via positional_from."""
     d = _q()
     host = next(i for i in d["inputs"] if i["name"] == "host")
-    assert not ({"arg", "flag", "positional"} & set(host))   # really has none
+    assert not ({"arg", "flag", "positional"} & set(host))  # really has none
     assert not list(_validator().iter_errors(d))
 
 
 def test_load_descriptors_fails_closed_on_bad_descriptor(tmp_path, monkeypatch):
     tool = tmp_path / "broken"
     tool.mkdir()
-    (tool / "broken.yaml").write_text(yaml.safe_dump(
-        {"id": "broken", "run": {"base": ["x"]}, "inputs": [{"name": "a", "type": "nope"}]}
-    ))
+    (tool / "broken.yaml").write_text(
+        yaml.safe_dump(
+            {"id": "broken", "run": {"base": ["x"]}, "inputs": [{"name": "a", "type": "nope"}]}
+        )
+    )
     monkeypatch.setenv("BREACHSAFE_UX_TOOLS_DIR", str(tmp_path))
     with pytest.raises(_DescriptorError) as ei:
         load_descriptors()
@@ -94,6 +100,6 @@ def test_load_descriptors_fails_closed_on_bad_descriptor(tmp_path, monkeypatch):
 
 def test_validate_descriptor_names_file_and_path():
     with pytest.raises(_DescriptorError) as ei:
-        _validate_descriptor({"run": {"base": ["x"]}}, Path("t/foo.yaml"))   # missing id
+        _validate_descriptor({"run": {"base": ["x"]}}, Path("t/foo.yaml"))  # missing id
     msg = str(ei.value)
     assert "foo.yaml" in msg and "id" in msg
