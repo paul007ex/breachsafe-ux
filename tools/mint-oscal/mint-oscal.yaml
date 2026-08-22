@@ -33,8 +33,11 @@ validate:
   argv: [docker, run, --rm, -v, "{share}:/w", "ghcr.io/metaschema-framework/oscal-cli:latest", validate, /w/poam.json]
   timeout_s: 180
   badge_rule:
+    # #14: the validator's exit code must gate the verdict, or a nonzero-exit run whose stdout
+    # happens to contain "is valid" would false-green. Docker/infra failures -> unavailable; a
+    # real pass requires exit 0 as well as the "is valid" text.
     unavailable_if: { stdout_contains_any: ["Cannot connect to the Docker daemon", "Unable to find image"] }
-    pass_if: { stdout_contains: "is valid", stdout_not_contains: "is invalid" }
+    pass_if: { stdout_contains: "is valid", stdout_not_contains: "is invalid", exit: 0 }
     otherwise: invalid
     fail_detail_grep: ""
 render:

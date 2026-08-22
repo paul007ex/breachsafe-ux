@@ -95,18 +95,26 @@ run:
   artifact_name: cbom.json
   timeout_s: 180
 validate:
-  # QuReddy has no external CLI validator; CycloneDX 1.7 schema-conformance is the honest check.
-  # Run under the same interpreter as the app (has cyclonedx), not a bare 'python' that may be absent.
-  # exit 0 = valid, 1 = rejected, 3 = validator could not run (missing dep / error) -> unavailable, never a false verdict.
-  argv:
-    - "{python}"
-    - -c
-    - "import sys\ntry:\n from cyclonedx.schema import SchemaVersion\n from cyclonedx.validation.json import JsonStrictValidator\n r=JsonStrictValidator(SchemaVersion.V1_7).validate_str(open('{artifact}').read())\nexcept Exception as e:\n sys.stderr.write('validator-infra-error: '+repr(e)); sys.exit(3)\nsys.exit(0 if r is None else 1)"
-  timeout_s: 30
-  badge_rule:
-    pass_if: { exit: 0 }
-    fail_if: { exit: 1 }
-    otherwise: unavailable
+  # The external check depends on the output format (#43): only a CBOM has a schema to validate.
+  # json (raw scan) and rich (console) have no schema validator, so they badge 'none' — honestly
+  # "no external validator", never a false green/red from running a CBOM validator on non-CBOM.
+  by: [format]
+  cases:
+    json: null    # raw scan JSON: no external schema validator
+    rich: null    # console output: not a validated artifact
+    cbom:
+      # CycloneDX 1.7 schema-conformance. Run under the same interpreter as the app (has
+      # cyclonedx), not a bare 'python' that may be absent. exit 0 = valid, 1 = rejected,
+      # 3 = validator could not run (missing dep / error) -> unavailable, never a false verdict.
+      argv:
+        - "{python}"
+        - -c
+        - "import sys\ntry:\n from cyclonedx.schema import SchemaVersion\n from cyclonedx.validation.json import JsonStrictValidator\n r=JsonStrictValidator(SchemaVersion.V1_7).validate_str(open('{artifact}').read())\nexcept Exception as e:\n sys.stderr.write('validator-infra-error: '+repr(e)); sys.exit(3)\nsys.exit(0 if r is None else 1)"
+      timeout_s: 30
+      badge_rule:
+        pass_if: { exit: 0 }
+        fail_if: { exit: 1 }
+        otherwise: unavailable
 render:
   primary: json
   highlights:

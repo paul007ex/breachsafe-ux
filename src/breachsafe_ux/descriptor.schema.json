@@ -102,10 +102,27 @@
     "validate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["argv", "badge_rule"],
-      "description": "External validator: runs its own process against the artifact and yields the honest verdict.",
+      "description": "External validator. Either a single validator (argv + badge_rule), OR one selected by an input value via `by`/`cases` (#43). Fail-closed: a variant with no validator badges 'none', never a green.",
       "properties": {
         "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Validator argv. Tokens: engine-provided {share} {workdir} {artifact} {artifact_name} {stdout_file} {python}. {{ and }} are literal braces. See docs/descriptor-tokens.md." },
+        "timeout_s": { "type": "integer", "minimum": 1 },
+        "badge_rule": { "$ref": "#/$defs/badge_rule" },
+        "by": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Input name(s) that select the validator; multi-key values are joined with '|'." },
+        "cases": { "type": "object", "additionalProperties": { "oneOf": [ { "type": "null" }, { "$ref": "#/$defs/validator_case" } ] }, "description": "Keyed by the joined `by` values. A null case = explicit 'no validator' (badge 'none')." },
+        "default": { "oneOf": [ { "type": "null" }, { "$ref": "#/$defs/validator_case" } ], "description": "Used when no case matches; null (or absent) = no validator." }
+      },
+      "oneOf": [
+        { "required": ["argv", "badge_rule"], "not": { "anyOf": [ { "required": ["by"] }, { "required": ["cases"] } ] } },
+        { "required": ["by", "cases"], "not": { "anyOf": [ { "required": ["argv"] }, { "required": ["badge_rule"] } ] } }
+      ]
+    },
+    "validator_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "badge_rule"],
+      "description": "One validator variant for validate.by (#43).",
+      "properties": {
+        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "timeout_s": { "type": "integer", "minimum": 1 },
         "badge_rule": { "$ref": "#/$defs/badge_rule" }
       }

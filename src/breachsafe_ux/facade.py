@@ -347,14 +347,31 @@ def run_descriptor(desc: dict, params: dict) -> dict:
         # validator below, not this parse. A wider catch would mask real bugs.
         art_json = None
     return {"artifact": art_json, "artifact_path": str(artifact),
-            "badge": _validate(desc, workdir, artifact),
+            "badge": _validate(desc, workdir, artifact, params),
             "highlights": _highlights(desc, art_json)}
 
 
-def _validate(desc: dict, workdir: Path, artifact: Path) -> tuple[str, str]:
+def _select_validator(v: dict, params: dict) -> dict | None:
+    """Resolve validate.by (#43): choose the case whose key matches the current input values
+    (joined with '|' for multi-key). Fail CLOSED — an unmatched selector with no default, or an
+    explicit null case, yields None ('no validator'), never a green. A singular validate (no
+    'by') passes through unchanged (back-compat)."""
+    if "by" not in v:
+        return v
+    key = "|".join(str(params.get(k, "")) for k in v["by"])
+    cases = v.get("cases", {})
+    return cases[key] if key in cases else v.get("default")
+
+
+def _validate(desc: dict, workdir: Path, artifact: Path, params: dict | None = None) -> tuple[str, str]:
     v = desc.get("validate")
     if not v:
         return ("none", "no external validator declared")
+    v = _select_validator(v, params or {})
+    if not v:
+        # #43 fail-closed: a variant with no validator (unmatched selector or explicit null) is
+        # honestly "none", never a green. e.g. qureddy format=json/rich has no schema validator.
+        return ("none", "no validator for this output")
     mapping = {"share": str(workdir), "workdir": str(workdir),
                "artifact": str(artifact), "artifact_name": artifact.name,
                "stdout_file": str(workdir / "stdout.txt"), "python": sys.executable}
