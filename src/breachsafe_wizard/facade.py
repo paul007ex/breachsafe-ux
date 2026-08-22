@@ -16,6 +16,21 @@ RUN_ROOT = Path(os.environ.get("WIZARD_RUN_ROOT", os.path.expanduser("~/mint-pro
 _TOK = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
+class _DescriptorError(Exception):
+    """A descriptor is malformed (e.g. an unresolved {token} in run argv). Surfaced as an honest
+    'unavailable' badge rather than shipped as literal text to the tool (wizard #8)."""
+
+
+def _reject_residual(out: list[str]) -> list[str]:
+    """wizard #8 (fail-open): a mistyped {token} in run.base/positional_from/argv would otherwise
+    ship as literal text (e.g. "example.com:{prt}") and silently scan garbage. A residual token in
+    the RUN argv is a descriptor bug; raise instead of running."""
+    residual = sorted({tok for a in out for tok in _TOK.findall(a)})
+    if residual:
+        raise _DescriptorError("unresolved token(s) in run argv: " + ", ".join(residual))
+    return out
+
+
 def _tools_dir() -> Path:
     """The descriptor root. A host package (e.g. qureddy) points here via WIZARD_TOOLS_DIR
     so the wizard renders that package's own tools instead of the bundled examples (W-1/W-2).
@@ -86,6 +101,11 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
 def test_connection(host: str, port, openssl: str = "openssl", timeout: float = 8.0) -> tuple[bool, str]:
     """Preflight: does the endpoint complete a TLS handshake, using the same OpenSSL the scan
     uses? `openssl s_client` with EOF on stdin. Never raises."""
+    # DEFERRED wizard #6: this hardcodes OpenSSL/TLS ("s_client -connect") inside the otherwise
+    # tool-agnostic engine, contradicting the module contract at the top of this file. The fix
+    # (drive preflight from a descriptor "preflight.argv" template through _subst, as run/validate
+    # already are) is designed in ADR wizard #5 and gated on the SSH descriptor being the second
+    # real consumer. Until then this stays TLS-specific by deliberate, tracked exception.
     if not str(host).strip():
         return (False, "no host")
     ossl = shutil.which(openssl.strip()) or openssl.strip() or "openssl"
@@ -110,8 +130,13 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
     """
     run = desc["run"]
     if "argv" in run:
-        return _subst(run["argv"], mapping)
+        return _reject_residual(_subst(run["argv"], mapping))
     argv = list(run.get("base", []))
+    # DEFERRED wizard #9 (argument injection): shell=False stops SHELL injection but not ARGUMENT
+    # injection -- a leading-dash field value (e.g. host="--openssl=/tmp/x") lands in option
+    # position and the target tool may parse it as a flag. The fix (emit all options first, then a
+    # literal "--", then positionals) needs an argv-order change across descriptors and is tracked
+    # separately; qureddy is confirmed to honor "--". Not exploitable on the default loopback bind.
     if run.get("positional_from"):                      # compose one positional, e.g. "{host}:{port}"
         argv.append(_subst([run["positional_from"]], mapping)[0])
     for spec in desc.get("inputs", []):
@@ -125,10 +150,19 @@ def _build_argv(desc: dict, params: dict, mapping: dict) -> list[str]:
         elif "arg" in spec:
             if v not in (None, "", False):
                 argv += [spec["arg"], str(v)]
-    return _subst(argv, mapping)
+    return _reject_residual(_subst(argv, mapping))
 
 
 def run_descriptor(desc: dict, params: dict) -> dict:
+    """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
+
+    Builds a no-shell argv from the descriptor + params, runs the tool, then its external
+    validator, and derives the honest badge. Returns a dict whose `badge` is a (state, detail)
+    tuple with state in valid / invalid / unavailable / none; a successful run also carries
+    `artifact` (parsed JSON or None), `artifact_path`, and `highlights`. A launch, timeout,
+    nonzero-exit, or descriptor error returns `error` + an `unavailable` badge and never raises
+    to the UI.
+    """
     key = uuid.uuid5(uuid.NAMESPACE_URL, desc["id"] + json.dumps(params, sort_keys=True, default=str)).hex[:12]
     workdir = RUN_ROOT / f"{desc['id']}-{key}"
     workdir.mkdir(parents=True, exist_ok=True)
@@ -138,7 +172,11 @@ def run_descriptor(desc: dict, params: dict) -> dict:
     env["PATH"] = f"{_bin_path()}{os.pathsep}{env.get('PATH','')}"
     mapping = dict(params) | {"share": str(workdir), "workdir": str(workdir),
                               "artifact": str(artifact), "python": sys.executable}
-    argv = _build_argv(desc, params, mapping)
+    try:
+        argv = _build_argv(desc, params, mapping)
+    except _DescriptorError as e:
+        # wizard #8: a malformed descriptor is an honest 'unavailable', never a silent bad scan.
+        return {"error": str(e), "badge": ("unavailable", f"descriptor error: {e}")}
     if desc["run"].get("image"):
         # Docker backend (W-3/W-4): the tool binary is the image ENTRYPOINT, so drop argv[0]
         # (the tool name in run.base) and hand the rest to `docker run`. Pin images by @sha256;
@@ -161,7 +199,12 @@ def run_descriptor(desc: dict, params: dict) -> dict:
 
     if desc["run"].get("artifact_from") == "stdout":
         artifact.write_text(proc.stdout)
-    if proc.returncode != 0 and (not artifact.exists() or artifact.stat().st_size == 0):
+    # wizard #10 (false-green): a nonzero exit must never badge VALID, even when the tool still
+    # wrote a schema-shaped artifact. The validator checks artifact SHAPE (e.g. CycloneDX
+    # conformance), not whether the scan actually succeeded, so a partial/failed run that emits a
+    # well-formed CBOM would otherwise pass. Any nonzero exit is an honest non-valid state; a tool
+    # whose contract legitimately exits nonzero with a trustworthy artifact opts in explicitly.
+    if proc.returncode != 0 and not desc["run"].get("trust_artifact_on_nonzero"):
         _err = proc.stderr.strip()
         # Surface the tool's own last diagnostic line (e.g. "OpenSSL 3.5 LTS not found") so the
         # badge says what actually failed, not a generic "tool run failed".
@@ -171,7 +214,10 @@ def run_descriptor(desc: dict, params: dict) -> dict:
 
     try:
         art_json = json.loads(artifact.read_text())
-    except Exception:
+    except (json.JSONDecodeError, OSError, ValueError):
+        # wizard #11: narrowed from bare Exception. A non-JSON or unreadable artifact is a
+        # legitimate "no structured highlights" case; the badge still comes from the external
+        # validator below, not this parse. A wider catch would mask real bugs.
         art_json = None
     return {"artifact": art_json, "artifact_path": str(artifact),
             "badge": _validate(desc, workdir, artifact),
