@@ -1,6 +1,6 @@
 # breachsafe-ux
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.1-blue?style=flat-square)](CHANGELOG.md)
 
 BreachSAFE EnXemble is a config-driven UX host for command-line tools. Declare a tool's
 parameters in one YAML file and it renders a web tab, runs the tool, validates the output with
@@ -49,18 +49,18 @@ Three tabs ship as examples:
 
 ### Docker (recommended)
 
-The host runs each tool as its official image, so it needs the docker socket:
+The image is self-contained (QuReddy + openssl inside), multi-arch, and public — copy-paste and
+your browser opens on it:
 
 ```
-docker run -p 7860:7860 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  --group-add "$(stat -c '%g' /var/run/docker.sock)" \
-  ghcr.io/paul007ex/qureddy-ux            # QuReddy edition (Quantum Audit + SSH Audit)
+docker run -d --rm -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
+sleep 4 && open http://localhost:7860        # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
-Open http://localhost:7860. The tool image (`ghcr.io/breachsafe/qureddy:latest`) is pulled on
-first scan (`--pull=always`, always current). If the `--group-add` form is unavailable, run
-with `--user root`.
+The **Quantum Audit** tab opens with the host prefilled — click **Run**. No login, no docker
+socket, works on Intel and Apple Silicon. Stop it with `docker stop enxemble`; update with
+`docker pull ghcr.io/paul007ex/qureddy-ux:latest`. (`:edge` tracks the tip of `main`; `:latest`
+is the newest release.)
 
 ### From source (Python 3.12)
 
