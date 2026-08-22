@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
+# SPDX-License-Identifier: Apache-2.0
+#
+# Requires the repository to be PUBLIC (or GitHub Advanced Security). breachsafe-ux is
+# going public as the OSS shared dependency of qureddy[ux]; until then these workflows will
+# not produce results.
+#
+# GitHub-native CodeQL static analysis.
+#
+# CodeQL is GitHub's SAST. Free for public repos. Catches taint flows,
+# dataflow issues, and language-specific security smells that ruff/bandit
+# do not. Required for OpenSSF Best Practices passing tier.
+#
+# Reference: https://github.com/github/codeql-action
+
+name: CodeQL
+
+on:
+  push:
+    # Defense-in-depth: scan direct-to-main commits immediately, not only at
+    # the next weekly schedule. PRs are covered by the pull_request trigger;
+    # this catches admin/direct pushes that bypass a PR.
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Wednesdays 08:00 UTC. Weekly scheduled scan even without PR activity.
+    - cron: "0 8 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          # Use the security-extended queries pack for stricter coverage.
+          queries: +security-extended
+
+      - name: Set up Python 3.12
+        if: matrix.language == 'python'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: matrix.language == 'python'
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
+      - name: Install project from lock
+        if: matrix.language == 'python'
+        run: uv sync --locked --extra dev
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: "/language:${{ matrix.language }}"
