@@ -7,16 +7,20 @@
 # its tool, drops a descriptor, and points BREACHSAFE_UX_TOOLS_DIR at it. See ADR-0003.
 
 # --- build: produce the wheel with uv (locked, reproducible) ---
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build
+# Base images are digest-pinned (#119) — tag comment kept for humans; the digest is authoritative.
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim@sha256:e5b65587bce7de595f299855d7385fe7fca39b8a74baa261ba1b7147afa78e58 AS build
 WORKDIR /src
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv build --wheel --out-dir /dist
 
 # --- runtime: slim, non-root ---
-FROM python:3.12-slim-bookworm AS runtime
-LABEL org.opencontainers.image.source="https://github.com/paul007ex/breachsafe-ux" \
+FROM python:3.12-slim-bookworm@sha256:a116514e19457bcb7af7efe9c3dd0b9b71e85b317694e7882a1c52aa15a78134 AS runtime
+LABEL org.opencontainers.image.title="breachsafe-ux" \
+      org.opencontainers.image.vendor="BreachSAFE" \
+      org.opencontainers.image.source="https://github.com/paul007ex/breachsafe-ux" \
       org.opencontainers.image.description="breachsafe-ux — generic config-driven tool UX host (base image)" \
+      org.opencontainers.image.base.name="docker.io/library/python:3.12-slim-bookworm" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 RUN useradd --create-home --uid 10001 app

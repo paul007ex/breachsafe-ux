@@ -7,7 +7,13 @@
 # the TLS/SSH descriptors. One command, no docker socket, any arch:
 #   docker run -p 7860:7860 ghcr.io/paul007ex/qureddy-ux
 # qureddy is on PATH here, so scans run in-process (the descriptors' run.image is just a fallback).
-FROM ghcr.io/breachsafe/qureddy:latest
+# Base image digest-pinned (#119) — tag comment kept for humans; the digest is authoritative.
+FROM ghcr.io/breachsafe/qureddy:latest@sha256:80ebc9bd217726adab9bcd107946d512c39702b05723af6bf651e56825fcc323
+LABEL org.opencontainers.image.title="qureddy-ux" \
+      org.opencontainers.image.vendor="BreachSAFE" \
+      org.opencontainers.image.source="https://github.com/paul007ex/breachsafe-ux" \
+      org.opencontainers.image.description="qureddy-ux — self-contained EnXemble host for QuReddy (TLS/SSH audit)" \
+      org.opencontainers.image.base.name="ghcr.io/breachsafe/qureddy"
 
 USER root
 # ssh-keyscan for the SSH tab's "Test connection" action (openssl for TLS is already in the base)

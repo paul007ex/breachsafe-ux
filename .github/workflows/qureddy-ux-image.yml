@@ -23,7 +23,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: qureddy-ux-image-${{ github.ref }}
@@ -35,6 +34,10 @@ env:
 jobs:
   build-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # scoped to this job (#119), not workflow-level
+      id-token: write # keyless cosign signing (OIDC)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,6 +57,14 @@ jobs:
           tags: qureddy-ux:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Trivy scan — fail on HIGH/CRITICAL (amd64 image)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: qureddy-ux:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
       - name: Smoke test — one command, no socket, serves + resolves tools
         run: |
           docker run -d --name qux -p 7860:7860 qureddy-ux:ci
@@ -72,16 +83,37 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image metadata (version + created)
+        if: github.event_name != 'pull_request'
+        id: meta
+        run: |
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "version=${{ github.ref_type == 'tag' && github.ref_name || 'edge' }}" >> "$GITHUB_OUTPUT"
       - name: Build + push multi-arch (edge on main; version tag on release)
         if: github.event_name != 'pull_request'
+        id: build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: Dockerfile.qureddy-ux
           platforms: linux/amd64,linux/arm64
           push: true
+          provenance: true
+          sbom: true
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           tags: |
             ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && github.ref_name || 'edge' }}
             ${{ env.IMAGE }}:${{ github.ref_type == 'tag' && 'latest' || 'edge' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign the published digest (keyless)
+        if: github.event_name != 'pull_request'
+        run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"

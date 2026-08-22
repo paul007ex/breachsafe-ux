@@ -30,7 +30,8 @@ run:
   artifact_name: poam.json
   timeout_s: 60
 validate:
-  argv: [docker, run, --rm, -v, "{share}:/w", "ghcr.io/metaschema-framework/oscal-cli:latest", validate, /w/poam.json]
+  # Validator image digest-pinned (#119); tag kept in-comment for humans, digest is authoritative.
+  argv: [docker, run, --rm, -v, "{share}:/w", "ghcr.io/metaschema-framework/oscal-cli:latest@sha256:755aa57e68159bc0d73db815234f7e7ef46016b6ceeb8963467d02ec9626bd65", validate, /w/poam.json]
   timeout_s: 180
   badge_rule:
     # #14: the validator's exit code must gate the verdict, or a nonzero-exit run whose stdout
