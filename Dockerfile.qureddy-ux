@@ -15,6 +15,22 @@
 # The scheduled rebuild in qureddy-ux-image.yml is what makes ":latest" mean latest — without
 # it this file only rebuilds when ux itself changes, so a qureddy release would never land.
 # Reproducibility is preserved by the per-release qureddy-ux tags, which are immutable.
+# ---- builder stage: install the EnXemble host wheel where pip still exists ----
+# The qureddy base runtime ships NO pip/setuptools (breachsafe/qureddy#385), so the host
+# wheel + its deps are installed here (same digest-pinned python as the qureddy base, so the
+# site-packages ABI matches) and COPYed into the final image. qureddy itself comes from the
+# base image — never pip/TestPyPI.
+FROM python:3.14-slim-bookworm@sha256:23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52 AS ux-builder
+COPY dist/breachsafe_ux-*.whl /tmp/
+RUN set -eux; \
+    test "$(ls -1 /tmp/breachsafe_ux-*.whl | wc -l)" -eq 1; \
+    pip install --no-cache-dir --prefix=/install /tmp/breachsafe_ux-*.whl; \
+    # Preserve the base's pip-free / Trivy posture (#382): drop any build tooling a dep dragged in.
+    rm -rf /install/lib/python3.14/site-packages/pip* \
+           /install/lib/python3.14/site-packages/setuptools* \
+           /install/lib/python3.14/site-packages/pkg_resources \
+           /install/bin/pip /install/bin/pip3 /install/bin/pip3.14
+
 FROM ghcr.io/breachsafe/qureddy:latest
 LABEL org.opencontainers.image.title="qureddy-ux" \
       org.opencontainers.image.vendor="BreachSAFE" \
@@ -27,29 +43,12 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssh-client \
     && rm -rf /var/lib/apt/lists/*
-# add the EnXemble host (gradio + engine) on top of the qureddy tool image
-COPY dist/breachsafe_ux-*.whl /tmp/
-# Install the host, then delete the installer. pip is needed for this line and never again:
-# ENTRYPOINT is breachsafe-ux and the healthcheck is plain urllib. pip's vendored tree is where
-# Trivy finds msgpack GHSA-6v7p-g79w-8964 and setuptools CVE-2025-47273, both inherited from
-# python:3.14-slim-bookworm rather than declared by us (breachsafe/qureddy#382). Removing unused
-# code beats suppressing a finding about it, and it shrinks the image.
-#
-# Every step is &&-chained on purpose: an earlier `|| true;` masked a failed install and produced
-# an image with no application in it that still built green.
+# add the EnXemble host (gradio + engine) on top of the qureddy tool image.
+# Installed in the ux-builder stage (the qureddy base has no pip, #385); COPY the resolved tree
+# into the base's /usr/local (site-packages + console scripts). No pip ever runs in this image.
+COPY --from=ux-builder /install /usr/local
+# Fail closed if the host didn't actually land (an earlier `|| true` once shipped an app-less image).
 RUN set -eux; \
-    test "$(ls -1 /tmp/breachsafe_ux-*.whl | wc -l)" -eq 1; \
-    pip install --no-cache-dir /tmp/breachsafe_ux-*.whl; \
-    rm -f /tmp/*.whl; \
-    python3 -c "import breachsafe_ux"; \
-    command -v breachsafe-ux; \
-    pip uninstall -y pip setuptools; \
-    rm -rf /usr/local/lib/python3.14/site-packages/pip \
-           /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
-           /usr/local/lib/python3.14/site-packages/setuptools \
-           /usr/local/lib/python3.14/site-packages/setuptools-*.dist-info \
-           /usr/local/lib/python3.14/site-packages/pkg_resources \
-           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14; \
     python3 -c "import breachsafe_ux"; \
     command -v breachsafe-ux
 
