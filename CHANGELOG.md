@@ -20,6 +20,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   name with shell metacharacters could run in the signing job. (#175)
 
 ### Fixed
+- A single malformed descriptor no longer downs the whole host. `load_descriptors` now skips an
+  invalid descriptor with a warning and loads its valid siblings, so one bad file in a tools
+  directory cannot take every tab (and `--check`) offline. (#174)
 - `schema_version` now fails closed for a YAML float such as `2.0`. The int-only gate let a
   too-new float version load because `2.0` is not an `int` yet passes JSON Schema `type: integer`.
   An unresolved `{token}` in `validate.argv` now badges the run unavailable instead of raising to
