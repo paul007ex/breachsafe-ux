@@ -35,6 +35,12 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   EnXemble host wheel now installs in a pip-capable builder stage and is copied onto the pip-free
   qureddy base; qureddy still comes from the base image. Bundled qureddy is now the current release
   (0.2.43). (#166, #167)
+- Console/ANSI escape sequences in tool output are stripped before display, so `rich` or coloured
+  output reads cleanly in the web view instead of as escape-code garbage. (#4)
+- Documented commands that did not work as written: `README.md` §7 `pytest` now includes
+  `--extra dev` (pytest is a dev extra), `CONTRIBUTING.md` uses `uv sync --extra dev` plus
+  `breachsafe-ux --check` to verify a dev setup, and `--help` is not a CLI command (web UX).
+  Every documented command was run against the real product.
 
 ### Changed
 - Renamed the `reproducible` toggle to `deterministic` in the TLS and SSH descriptors, matching
@@ -46,14 +52,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   signed, provenance-attested wheel and sdist remain attached to each GitHub Release as
   downloadable assets.
 
-### Fixed
-- Documented commands that did not work as written: `README.md` §7 `pytest` now includes
-  `--extra dev` (pytest is a dev extra), and `CONTRIBUTING.md` uses `uv sync --extra dev` plus
-  `breachsafe-ux --check` to verify a dev setup (plain `uv sync` installs only the runtime, and
-  `--help` is not a CLI command — this is a web UX). Every command in the docs was executed
-  against the real product (Docker image + from-source CLI).
-
 ### Docs
+- Removed em and en dashes from all product-doc prose (README and docs/**), matching the
+  anti-slop writing standard in the breachsafe-docs skill. (#170)
 - Deepened the contributor docs toward qureddy parity: `docs/contributors/coding-rules.md`
   (51→206 lines — no-shell argv, fail-closed discipline, MVC layering, typing/docstrings,
   descriptor conventions, size ceilings) and `review-process.md` (42→116, with a reviewer
