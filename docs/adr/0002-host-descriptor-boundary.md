@@ -11,6 +11,9 @@
   function references).
 - **Related issues:** #1, #5, #7, #9, #14, #16, #21, #22, #25. Introduces #43 (`validate.by`),
   #44 (`artifact: optional`), #45 (dual-consumer pressure-test).
+- **Threat model:** the trust-boundary reasoning in §3 is explained in prose in
+  [the threat model](../explanation/threat-model.md) and encoded machine-readably in
+  [`threat-model/threagile.yaml`](../../threat-model/threagile.yaml).
 
 ## Context
 

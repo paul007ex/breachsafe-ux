@@ -65,6 +65,7 @@ Conceptual discussion. Why the host is built the way it is.
 - [The host↔descriptor boundary](explanation/host-descriptor-boundary.md) — the ADR-0002 thesis.
 - [Why the verdict has three states](explanation/three-state-verdict.md) — fail-closed by design.
 - [Why the host is agnostic](explanation/why-agnostic.md) — the design thesis.
+- [The threat model](explanation/threat-model.md) — the operator-owned trust boundary, no-shell argv, fail-closed validation, and the accepted risks.
 
 ## 6. Contributor documentation
 
