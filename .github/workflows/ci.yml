@@ -90,7 +90,7 @@ jobs:
         run: >
           uv run --locked pytest -q
           -m "not live"
-          --cov=breachsafe_ux --cov-fail-under=70
+          --cov=breachsafe_ux --cov-fail-under=85
           --cov-report=term-missing --cov-report=xml:coverage.xml
           --junitxml=pytest-results.xml
       - name: no-skipped-tests gate (#90)
