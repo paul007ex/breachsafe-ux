@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
-from breachsafe_ux._render import _evaluation, _posture
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     feature_enabled,
@@ -35,15 +34,12 @@ from breachsafe_ux.render import (
     _ICON_DIR,
     _LICENSE,
     _action_output_md,
-    _badge,
     _diag_md,
     _empty,
     _env_advanced_md,
     _env_panel_md,
-    _evaluation_md,
     _link,
-    _posture_md,
-    _strip_ansi,
+    _result,
 )
 from breachsafe_ux.resolve import environment, tool_available
 
@@ -130,67 +126,25 @@ def _collect(desc: dict[str, Any], vals: Sequence[Any]) -> dict[str, Any]:
     return params
 
 
-def _raw_log_md(res: dict[str, Any], body: str) -> str:
-    """Fenced Raw log: the invocation + run dir header (#199), then the ANSI-stripped tool text."""
-    cmd, workdir = res.get("command"), res.get("workdir")
-    header = f"$ {cmd}\n# ran in: {workdir}\n\n" if cmd else ""
-    text = _strip_ansi(body.strip())
-    return f"```\n{header}{text}\n```" if (text or header) else ""
-
-
-def _result(
-    desc: dict[str, Any], res: dict[str, Any]
-) -> tuple[str, str, dict[str, str], Any, str | None]:
-    """(badge_md, raw_log_md, artifact_texts, primary_artifact, primary_path). Defined on every branch.
-
-    badge_md is a readiness-posture banner (from the findings, #1) then the evidence badge.
-    artifact_texts maps each declared artifact name -> its raw text for a copyable output box (#199).
-    """
-    state, detail = res["badge"]
-    head_text = desc.get("render", {}).get("badge_text", {}).get(state)
-    if "error" in res:
-        # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
-        return (
-            _badge(state, detail, head_text=head_text),
-            _raw_log_md(res, res["error"]),
-            {},
-            None,
-            None,
-        )
-    banner = _posture_md(_posture(desc, res.get("artifact")))
-    # #199: the tool's own per-axis evaluation, rendered under the badge (config-driven, agnostic).
-    evaluation = _evaluation_md(_evaluation(desc, res.get("artifact")))
-    # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
-    raw = _raw_log_md(res, res.get("log") or "")
-    art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
-    return (
-        banner
-        + _badge(state, detail, res.get("highlights", []), head_text=head_text)
-        + ("\n\n" + evaluation if evaluation else ""),
-        raw,
-        art_texts,
-        res.get("artifact"),
-        res.get("artifact_path"),
-    )
-
-
 def _handler(desc: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
     art_names = [a["name"] for a in desc["run"].get("artifacts", [])]
+    has_eval = bool(desc.get("render", {}).get("evaluation"))
 
     def run(*vals: Any, progress: Any = gr.Progress()) -> tuple[Any, ...]:
         progress(0, desc=f"running {desc['id']}…")
         params = _collect(desc, vals)
         res = run_descriptor(desc, params)
         progress(1)
-        badge, raw, art_texts, primary, path = _result(desc, res)
+        badge, evaluation, raw, art_texts, primary, path = _result(desc, res)
         # Reset the Run button here, atomic with the result, so it always clears "Running…"
         # (a trailing .then could be skipped; _result never raises, so this return always runs).
         reset = gr.update(value=_run_label(desc), interactive=True)
-        # Output order mirrors _wire_run: badge, raw log, one box per declared artifact (or the
-        # single legacy JSON when a tool declares none), then the primary-artifact path + reset.
+        # Output order mirrors _wire_run: badge, [evaluation box], raw log, one box per declared
+        # artifact (or the single legacy JSON), then the primary-artifact path + reset.
+        eval_out = (evaluation,) if has_eval else ()
         if art_names:
-            return (badge, raw, *(art_texts.get(n, "") for n in art_names), path, reset)
-        return (badge, raw, primary, path, reset)
+            return (badge, *eval_out, raw, *(art_texts.get(n, "") for n in art_names), path, reset)
+        return (badge, *eval_out, raw, primary, path, reset)
 
     return run
 
@@ -213,7 +167,11 @@ def _chain_handler(chain: dict[str, Any], descs: dict[str, Any]) -> Callable[...
         params = dict(chain.get("with", {})) | {chain["pass_artifact_as"]: artifact_path}
         res = run_descriptor(target, params)
         progress(1)
-        return _result(target, res)
+        # The chain surface has 4 outputs [cbadge, cout, craw, cstate]; adapt _result's richer
+        # tuple to them (the evaluation/per-artifact boxes are the primary tab's surfaces, not the
+        # chain's). cout shows the primary artifact.
+        badge, _evaluation, raw, _art_texts, primary, path = _result(target, res)
+        return (badge, primary, raw, path)
 
     return run
 
@@ -334,8 +292,14 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
     badge = gr.Markdown(_empty(desc))
     dl = gr.DownloadButton("Download output", visible=False)
-    # Consistent output surfaces (#199): every box is a collapsed accordion; each machine output
-    # is a copyable gr.Code. Raw log first, then one box per declared artifact (CBOM, JSON, …).
+    # Consistent output surfaces (#199): every box is a collapsed, copyable gr.Code accordion.
+    # The Evaluation box (the tool's own interpretation, config-driven) sits alongside the CBOM/
+    # JSON boxes with the same structure. Order: Evaluation, Raw log, then one box per artifact.
+    eval_cfg = desc.get("render", {}).get("evaluation")
+    eval_outs: list[Any] = []
+    if eval_cfg:
+        with gr.Accordion(eval_cfg.get("title", "Evaluation"), open=False):
+            eval_outs.append(gr.Code(show_label=False, wrap_lines=True))
     with gr.Accordion("Raw log", open=False):
         raw_log = gr.Markdown("")
     artifacts = desc["run"].get("artifacts", [])
@@ -353,7 +317,7 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
         .then(
             _handler(desc),
             ordered,
-            [badge, raw_log, *outs, artifact_state, run_btn],
+            [badge, *eval_outs, raw_log, *outs, artifact_state, run_btn],
             show_progress="full",
             concurrency_limit=1 if heavy else None,
         )
