@@ -90,6 +90,26 @@ retry-count increases used to hide a deterministic failure") — that's the righ
 for *reviewing a diff*; this skill is about *the CI wiring* that catches it
 mechanically, so it doesn't depend on a reviewer noticing.
 
+## Merging on a red gate; local gate is a SUBSET of the required checks
+
+**What it looks like**: an automated flow runs `gh pr merge` right after a step that
+detected a check failed (the merge is chained unconditionally, not branched on the
+result), or a green **local** gate (`scripts/release_gate.py`, `cargo test`) is treated
+as "all CI green."
+
+**Real example**: breachsafe-ux #180 merged while the required `diff-cover` (changed-line
+coverage) check was RED, because the watch step printed the failure and the very next
+command was an unconditional `gh pr merge`. Separately, the repo's local
+`scripts/release_gate.py` does NOT run `diff-cover`, CodeQL, or the container build —
+those are separate CI jobs — so a local "release gate PASS" is a strict subset of the
+required checks, never a substitute for them.
+
+**Check**: before any automated merge, branch on the actual required-check conclusion
+(`gh pr checks <pr>` and confirm every required check is `pass`, not merely that a local
+gate ran). Never chain a merge after a check step without acting on that step's result.
+Remediate a discovered bypass by adding the missing coverage/fix, not by lowering or
+removing the gate (that is the quality-theater anti-pattern in reverse).
+
 ## Tools
 
 Two of the above are now real, portable, tested scripts in `breachsafe-common`

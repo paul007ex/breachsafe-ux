@@ -99,6 +99,19 @@ refs are `breachsafe/qureddy#<n>`; **remediation + verify command for each is in
 10. **Version single-sourcing.** A bump must reach EVERY sink — pyproject, README/badge,
     CHANGELOG heading + TOC, Dockerfile ARG default, lockfile, goldens. Audit for drift after
     bumping (#206).
+11. **Pinned build/publish tools drift behind the build backend's metadata.** `twine check`
+    fails `'2.5' is not a valid metadata version` when the pinned `twine` predates the
+    `Metadata-Version` the current `uv build`/hatchling emits. The dry-run `twine check` only
+    protects the release if it runs against a FRESHLY-built wheel AND the twine pin tracks the
+    build backend; bump the consumer-tool pin when the backend bumps metadata. First real
+    `release: published` run is where this surfaces, not the local gate (breachsafe-ux #189).
+12. **Verify the tag will CONTAIN the intended changes; watch for concurrent releases.** A tag
+    cut by another actor (or from a stale local `main`) can point at a commit behind `main`, so
+    the fixes you think you are shipping are not in it while the CHANGELOG claims them. Before
+    tagging, run `git merge-base --is-ancestor <fix-commit> <tag>` for each intended change and
+    confirm no concurrent release already used the version. If one did, cut the next version and
+    split the CHANGELOG so each `[x.y.z]` section matches what its tag actually contains
+    (breachsafe-ux 0.3.6 -> 0.3.7).
 
 ## How to run
 

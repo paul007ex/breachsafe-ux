@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.7-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.8-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.8] - 2026-08-23
 
 ### Fixed
 - The Raw log accordion now shows the tool's diagnostic log (stderr) on a successful run, not
