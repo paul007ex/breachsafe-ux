@@ -109,6 +109,10 @@ def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str,
         options += opts
         positionals += poss
     argv = base + options
+    # #199: an output-dir tool writes correlated artifacts (e.g. qureddy's scan.cdx.json +
+    # scan.json) into one run directory. The flag is an OPTION, so it goes before the "--".
+    if run.get("output_dir_flag"):
+        argv += [run["output_dir_flag"], mapping["workdir"]]
     # wizard #9 (argument injection): options, then a literal "--", then positionals, so a
     # leading-dash value can't be parsed as a flag. A tool lacking "--" opts out via
     # run.no_end_of_options (documented weaker posture).

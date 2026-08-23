@@ -34,13 +34,6 @@ inputs:
     min: 1
     max: 65535
     info: "TLS port. Defaults to 443."
-  - name: format
-    type: enum
-    label: "output format"
-    choices: [cbom, json]
-    default: cbom
-    info: "cbom is a CycloneDX 1.7 CBOM (default, needed to chain to mint-oscal). json is the raw scan."
-    arg: "--format"
   - name: timeout
     type: int
     label: "per-probe timeout (s)"
@@ -100,31 +93,29 @@ run:
   # this image instead (docker run --pull=always). Local installs use the PATH binary.
   image: ghcr.io/breachsafe/qureddy:latest
   positional_from: "{host}:{port}"
-  artifact_from: stdout
-  artifact_name: cbom.json
+  # #199: one scan writes both correlated documents into the run dir (qureddy --output-dir),
+  # so the UI shows CBOM and JSON together with no format toggle and no second scan. The
+  # engine reads each declared artifact; `primary` is the one the badge/posture validate against.
+  output_dir_flag: "--output-dir"
+  artifacts:
+    - { name: cbom, file: scan.cdx.json, label: "CBOM (CycloneDX 1.7)", primary: true }
+    - { name: json, file: scan.json,     label: "JSON (raw scan)" }
   timeout_s: 180
 validate:
-  # The external check depends on the output format (#43): only a CBOM has a schema to validate.
-  # json (raw scan) and rich (console) have no schema validator, so they badge 'none' —
-  # "no external validator", never a false green/red from running a CBOM validator on non-CBOM.
-  by: [format]
-  cases:
-    json: null    # raw scan JSON: no external schema validator
-    cbom:
-      # CycloneDX 1.7 schema-conformance. Run under the same interpreter as the app (has
-      # cyclonedx), not a bare 'python' that may be absent. exit 0 = valid, 1 = rejected,
-      # 3 = validator could not run (missing dep / error) -> unavailable, never a false verdict.
-      argv:
-        - "{python}"
-        - -c
-        - "import sys\ntry:\n from cyclonedx.schema import SchemaVersion\n from cyclonedx.validation.json import JsonStrictValidator\n r=JsonStrictValidator(SchemaVersion.V1_7).validate_str(open('{artifact}').read())\nexcept Exception as e:\n sys.stderr.write('validator-infra-error: '+repr(e)); sys.exit(3)\nsys.exit(0 if r is None else 1)"
-      timeout_s: 30
-      badge_rule:
-        pass_if: { exit: 0 }
-        fail_if: { exit: 1 }
-        otherwise: unavailable
+  # Always validate the CBOM (the primary artifact): CycloneDX 1.7 schema-conformance. Run under
+  # the same interpreter as the app (has cyclonedx), not a bare 'python' that may be absent.
+  # exit 0 = valid, 1 = rejected, 3 = validator could not run -> unavailable, never a false verdict.
+  argv:
+    - "{python}"
+    - -c
+    - "import sys\ntry:\n from cyclonedx.schema import SchemaVersion\n from cyclonedx.validation.json import JsonStrictValidator\n r=JsonStrictValidator(SchemaVersion.V1_7).validate_str(open('{artifact}').read())\nexcept Exception as e:\n sys.stderr.write('validator-infra-error: '+repr(e)); sys.exit(3)\nsys.exit(0 if r is None else 1)"
+  timeout_s: 30
+  badge_rule:
+    pass_if: { exit: 0 }
+    fail_if: { exit: 1 }
+    otherwise: unavailable
 render:
-  primary: json
+  primary: cbom
   # #1: readiness posture comes from the scan FINDINGS, shown separately from the evidence badge.
   # A schema-valid CBOM (green badge) does NOT mean the endpoint is PQC-ready — this banner says
   # what the scan actually found. Values are the qureddy Readiness enum.
