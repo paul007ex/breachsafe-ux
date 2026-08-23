@@ -26,11 +26,23 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   against the real product (Docker image + from-source CLI).
 
 ### Docs
+- Restructured `docs/` into the Diátaxis quadrants (`tutorials/`, `how-to/`, `reference/`,
+  `explanation/`, `contributors/`) with a `docs/README.md` index, and rewrote `README.md` in the
+  task-first BreachSAFE style with a badge row and a slim overview that points into `docs/`. All
+  content is host-generic: the `qureddy-ux` image appears only as a labelled shipped reference
+  example, and `docs/how-to/add-a-tool.md` uses a non-BreachSAFE example tool to demonstrate that
+  the host is tool-agnostic. Moved `docs/first-scan.md` to `docs/tutorials/your-first-scan.md` and
+  `docs/descriptor-tokens.md` to `docs/reference/descriptor-tokens.md`. Added how-to guides
+  (Docker, from source, add a tool, white-label branding, optional tabs), reference pages
+  (descriptor schema, environment variables, execution backends, badge, CLI), explanation pages
+  (architecture, host↔descriptor boundary, three-state verdict, why agnostic), and contributor
+  pages (coding rules, local release gate, review process). Every command example was executed
+  against the real product. (#152)
 - `CONTRIBUTING.md` now documents the real gate suite and the single authoritative local command
   (`scripts/release_gate.py`) instead of an outdated six-check list.
-- Added `AGENTS.md` (agent guidance for Codex and other assistants) and `docs/first-scan.md` (a
-  first-scan + how-to-read-the-verdict walkthrough, linked from the README). Corrected residual
-  "wizard" naming and completed the argv-token list in the README.
+- Added `AGENTS.md` (agent guidance for Codex and other assistants) and the first-scan
+  walkthrough, linked from the README. Corrected residual "wizard" naming and completed the
+  argv-token list in the README.
 
 ## [0.3.5] - 2026-08-22
 

@@ -1,168 +1,125 @@
-# breachsafe-ux
+# BreachSAFE EnXemble
 
 [![Version](https://img.shields.io/badge/version-0.3.5-blue?style=flat-square)](CHANGELOG.md)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
+[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
+[![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/paul007ex/breachsafe-ux/badge)](https://securityscorecards.dev/viewer/?uri=github.com/paul007ex/breachsafe-ux)
 
-BreachSAFE EnXemble is a config-driven UX host for command-line tools. Declare a tool's
-parameters in one YAML file and it renders a web tab, runs the tool, validates the output with
-an external validator, and reports a three-state verdict: VALID, INVALID, or
+BreachSAFE EnXemble is a generic, config-driven UX host for command-line tools. Declare any CLI
+tool's parameters in one YAML descriptor and the host renders a web tab, runs the tool, validates
+its output with an external validator, and reports a three-state verdict: VALID, INVALID, or
 VALIDATOR-UNAVAILABLE. It never shows a green result the validator did not actually give.
 
 Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the badge are
-written once in the engine and shared by every tool tab.
-
-- Home: https://www.breachsafe.io
-- Source: https://github.com/paul007ex/breachsafe-ux
-- Licence: Apache-2.0 (open source) — see [Licence](#8-licence)
+written once in the engine and shared by every tool tab, so the host stays tool-agnostic. The
+packaged `qureddy-ux` image used in the examples below is one **shipped reference example** of the
+host with a specific tool bundled in; any other tool wraps the same way.
 
 ## Contents
 
-1. [What it is](#1-what-it-is)
-2. [Quickstart](#2-quickstart)
-3. [Architecture](#3-architecture)
-4. [The three-state badge](#4-the-three-state-badge)
-5. [Add a tool (the descriptor)](#5-add-a-tool-the-descriptor)
+1. [Quickstart with Docker](#1-quickstart-with-docker)
+2. [Run from source](#2-run-from-source)
+3. [Open the UI and run](#3-open-the-ui-and-run)
+4. [Add your own tool](#4-add-your-own-tool)
+5. [Interpret the verdict](#5-interpret-the-verdict)
 6. [Execution backends](#6-execution-backends)
-7. [Development](#7-development)
-8. [Licence](#8-licence)
+7. [Configuration](#7-configuration)
+8. [Requirements](#8-requirements)
+9. [Documentation and support](#9-documentation-and-support)
+10. [Contributing](#10-contributing)
+11. [License](#11-license)
 
-## 1. What it is
+## 1. Quickstart with Docker
 
-Every tool the host wraps is the same pipeline with different nouns:
+Docker is the primary way to run a tool-UX and the fastest path to a result. A tool-UX image
+bundles the host and its tools, so a single `docker run` serves the UI with the tools already
+resolvable. Using the shipped reference example image:
 
-```
-INPUT (params/file)  ->  run the tool  ->  ARTIFACT  ->  external validator  ->  verdict
-```
-
-EnXemble exists to make that pipeline pretty and, above all, accurate. The verdict is the
-real result of an external validator (for example NIST oscal-cli, or the CycloneDX schema
-validator), reported as one of three distinct states. A tool that failed to run, or a
-validator that could not run, is never rendered as a pass.
-
-New here? Walk through [your first scan](docs/first-scan.md).
-
-Three tabs ship as examples:
-
-- HNDL Audit (TLS) measures harvest-now-decrypt-later exposure at a TLS endpoint and produces a CycloneDX 1.7 CBOM.
-- HNDL Audit (SSH) does the same for an SSH endpoint.
-- Compliance (OSCAL) turns a scan or CBOM into an OSCAL Plan of Action and Milestones (also
-  reached from a scan tab's "Convert to OSCAL" button). Enterprise; gated by `BREACHSAFE_UX_MINT_OSCAL`.
-
-## 2. Quickstart
-
-### Docker (recommended)
-
-The image is self-contained (QuReddy + openssl inside), multi-arch, and public — copy-paste and
-your browser opens on it:
-
-```
+```bash
 docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
 docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
 sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
-Copy-paste the three lines. The first clears any container already holding port 7860 (so a
-re-run never fails with "port is already allocated"); `--pull=always` fetches the newest image,
-so it always runs the latest; the third opens your browser once it is up. The
-**HNDL Audit (TLS)** tab opens with the host prefilled — click **HNDL Audit (TLS)** to scan. No
-login, no docker socket, works on Intel and Apple Silicon. Stop it with `docker stop enxemble`.
-(`:edge` tracks the tip of `main`; `:latest` is the newest release.)
+The first line clears any container already on port 7860; `--pull=always` fetches the newest
+image; the third opens your browser once the host is up (macOS `open`; Linux `xdg-open`; Windows
+`start`). No login, no Docker socket, multi-arch (Intel and Apple Silicon). Stop it with
+`docker stop enxemble`. See [run with Docker](docs/how-to/run-with-docker.md) for tags, digest
+pinning, and configuration.
 
-### From source (Python 3.12)
+## 2. Run from source
 
-Install the tool it fronts (qureddy on PATH), then the host:
+Run the host from a source checkout to develop it, wrap a tool that has no prebuilt image, or
+point it at your own descriptors. EnXemble is **not** published to PyPI or TestPyPI; install it
+from source with [`uv`](https://github.com/astral-sh/uv):
 
-```
-git clone https://github.com/breachsafe/qureddy && (cd qureddy && uv sync)
-export PATH="$PWD/qureddy/.venv/bin:$PATH"
+```bash
 git clone https://github.com/paul007ex/breachsafe-ux && cd breachsafe-ux
-uv sync
-uv run breachsafe-ux            # http://127.0.0.1:7860
-uv run breachsafe-ux --check    # verify every tab's tool + validator resolves (exit != 0 if missing)
+uv sync                          # runtime only (enough to launch)
+uv run breachsafe-ux             # serves http://127.0.0.1:7860
+uv run breachsafe-ux --check     # resolve every tab's tool + validator (exit != 0 if any is missing)
 ```
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `BREACHSAFE_UX_PORT` | 7860 | server port |
-| `BREACHSAFE_UX_HOST` | 127.0.0.1 (0.0.0.0 in Docker) | bind address |
-| `BREACHSAFE_UX_TOOLS_DIR` | bundled `tools/` | descriptor root |
-| `BREACHSAFE_UX_MINT_OSCAL` | true | show the Enterprise OSCAL tab |
-| `BREACHSAFE_UX_RUN_ROOT` | `~/mint-proof/wizard-runs` | per-run scratch (macOS: keep under `/Users` for Docker) |
+The tools a descriptor names are resolved on `PATH` (with a Docker-image fallback when a
+descriptor declares one). See [run from source](docs/how-to/run-from-source.md) for making tools
+resolvable and pointing the host at your own descriptor directory.
 
-## 3. Architecture
+## 3. Open the UI and run
 
+Open the host in your browser. You land on the first tab with its fields prefilled with a working
+example, so you can run immediately: edit the fields, click the tab's run button, and read the
+badge. The [first-run tutorial](docs/tutorials/your-first-scan.md) walks through it end to end.
+The shipped example tabs wrap a post-quantum readiness scanner; for what those scans mean, see
+the [`breachsafe/qureddy` documentation](https://github.com/breachsafe/qureddy).
+
+## 4. Add your own tool
+
+Wrap any command-line tool from **one YAML descriptor** at `tools/<id>/<id>.yaml`. Each input
+maps to argv by exactly one of `positional`, `arg`, or `flag`; the descriptor also declares how
+the tool runs, its external validator, and the badge rule. Adding a tool changes no host code.
+
+```yaml
+id: mytool
+title: "My Tool"
+standalone: true
+inputs:
+  - { name: source, type: text, label: "source", required: true, arg: "--source" }
+  - { name: fast, type: bool, label: "fast mode", default: false, flag: "--fast", group: advanced }
+run:
+  base: [mytool, scan]
+  artifact_from: stdout
+  artifact_name: out.json
+validate:
+  argv: ["{python}", "-c", "import json,sys; json.load(open('{artifact}')); sys.exit(0)"]
+  badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
 ```
-  tools/<tool>/<tool>.yaml              one file declares the whole tool surface
-        |   inputs[], run, validate, render, chains
-        v
-  facade.py  (engine, no tool-specific logic)
-        |   render widgets  ->  build typed argv (no shell)  ->  run tool
-        |   ->  artifact  ->  external validator  ->  3-state badge
-        v
-  app.py  (thin Gradio shell: the type-to-widget map, written once)
-        |
-        v
-  web surface, one tab per standalone tool
-```
 
-- facade.py is the engine. It loads descriptors, builds a typed argv (values are single argv
-  elements, never a shell string, so an input can never become a command), runs the tool,
-  runs the validator, and derives the badge. It carries no knowledge of any specific tool.
-- app.py is the Gradio shell. It maps a parameter type to a widget once, then loops over
-  descriptors. Adding a tool changes no code here.
-- tools/<name>/ holds one descriptor and an optional run shim per tool.
+The full recipe (with a generic worked example) is [add a tool](docs/how-to/add-a-tool.md); every
+field is in the [descriptor schema](docs/reference/descriptor-schema.md) and the argv tokens are
+in [descriptor tokens](docs/reference/descriptor-tokens.md).
 
-## 4. The three-state badge
+## 5. Interpret the verdict
 
-The badge is the point of the project. Its rule is declarative and auditable as data.
+The badge reports the result of an external validator as one of three states, and never a green
+the validator did not give:
 
 | State | Meaning |
 |---|---|
 | VALID | the validator ran and accepted the artifact |
 | INVALID | the validator ran and rejected the artifact |
-| VALIDATOR-UNAVAILABLE | the tool or the validator could not run (missing dependency, Docker down, timeout) |
+| VALIDATOR-UNAVAILABLE | the tool or validator could not run (missing dependency, Docker down, timeout, empty output) |
 
-A crashed tool, a missing validator dependency, or an empty run all resolve to
-VALIDATOR-UNAVAILABLE, never to VALID. Colour is a redundant cue only; the word carries the
-state as text.
-
-## 5. Add a tool (the descriptor)
-
-Create `tools/<name>/<name>.yaml`. Each input declares its widget and how it maps to argv by
-exactly one of: `positional: true`, `arg: --x`, or `flag: --x`.
-
-```yaml
-id: mytool
-title: "My Tool"
-standalone: true                     # false = reached only through another tool's chain button
-inputs:
-  - { name: host, type: text, label: host, required: true }
-  - { name: port, type: int,  label: port, default: 443, min: 1, max: 65535 }
-  - { name: fast, type: bool, label: "fast mode", default: false, flag: "--fast", group: advanced }
-run:
-  base: [mytool, scan]
-  positional_from: "{host}:{port}"   # compose one positional from several inputs
-  artifact_from: stdout
-  artifact_name: out.json
-validate:
-  argv: ["{python}", "-c", "..."]    # {python} is the running interpreter, not a bare 'python'
-  badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
-render:
-  highlights: [ { label: status, find_prop: "status" } ]
-chains:
-  - { to: mint-oscal, label: "Convert to OSCAL", pass_artifact_as: source_file, with: { source: cbom } }
-```
-
-Widget types: `text`, `int`, `float`, `bool`, `enum` (radio for up to three choices,
-dropdown for more), and `file`. Put rarely-used inputs in `group: advanced` to place them
-behind a collapsible section. Tokens available in argv: `{share}`/`{workdir}` (the per-run
-dir), `{artifact}` (the artifact path), `{artifact_name}` (its file name), `{stdout_file}`
-(validate-only; the captured stdout), `{python}` (the running interpreter), and every input by
-`{name}`. Full reference: [`docs/descriptor-tokens.md`](docs/descriptor-tokens.md).
+A crashed tool, a missing validator, or an empty run all resolve to VALIDATOR-UNAVAILABLE. Colour
+is a redundant cue only; the word carries the state. See
+[the three-state verdict](docs/explanation/three-state-verdict.md) and the
+[badge reference](docs/reference/badge.md).
 
 ## 6. Execution backends
 
-A descriptor chooses one way to run its tool. The unavailable path is shared by all
-of them, so a backend that cannot run yields VALIDATOR-UNAVAILABLE rather than a false verdict.
+A descriptor chooses how its tool runs; the "could not run" path is shared, so a backend that
+cannot run yields VALIDATOR-UNAVAILABLE rather than a false verdict.
 
 | Backend | Descriptor | Portable | Isolated | Status |
 |---|---|---|---|---|
@@ -170,43 +127,57 @@ of them, so a backend that cannot run yields VALIDATOR-UNAVAILABLE rather than a
 | Docker image | `run.image` (`docker run --pull=always`) | yes | yes | supported |
 | Remote API | `run.endpoint` | yes | yes | future |
 
-A descriptor can declare both `run.base` and `run.image`: the engine runs the **local binary
-when it resolves on PATH**, and falls back to the **docker image** otherwise (so local dev uses
-the binary; the Docker deployment uses the image). `--pull=always` keeps the tool current; pin
-by digest (`@sha256`) instead of `:latest` when reproducibility matters more than freshness.
+A descriptor can declare both `run.base` and `run.image`: the host runs the local binary when it
+resolves on PATH and falls back to the image otherwise. See
+[execution backends](docs/reference/execution-backends.md). Multi-tool orchestration is out of
+scope by design.
 
-The `qureddy-ux` image itself takes the opposite trade deliberately: its base is
-`ghcr.io/breachsafe/qureddy:latest`, unpinned, rebuilt daily. This image exists to put the
-current scanner in front of a user, so freshness wins. Reproducibility is preserved by the
-per-release `qureddy-ux` version tags, which are immutable.
+## 7. Configuration
 
-Multi-tool orchestration and workflows are out of scope by design; that is the role of the
-orchestration layer (Osmedeus and TAO).
+The host is configured by environment variables.
 
-## 7. Development
+| Variable | Default | Purpose |
+|---|---|---|
+| `BREACHSAFE_UX_PORT` | 7860 | server port |
+| `BREACHSAFE_UX_HOST` | 127.0.0.1 (0.0.0.0 in Docker) | bind address |
+| `BREACHSAFE_UX_TOOLS_DIR` | bundled `tools/` | descriptor root |
+| `BREACHSAFE_UX_RUN_ROOT` | `~/mint-proof/wizard-runs` | per-run scratch (macOS: keep under `/Users` for Docker) |
+| `BREACHSAFE_UX_<FLAG>` | on | hide a `feature_flag`-gated tab with `false` |
 
-```
-uv run --locked --extra dev pytest -q     # pytest lives in the dev extra
-```
+Full details, including feature flags, are in the
+[environment variables reference](docs/reference/environment-variables.md) and
+[enable optional tabs](docs/how-to/enable-optional-tabs.md).
 
-`tests/test_badge_states.py` drives the real pipeline (real tools from source, real oscal-cli in
-Docker) and asserts the load-bearing properties: a good artifact validates, a rejected one
-reports INVALID, an injection attempt is argv-safe, an absent validator reports
-VALIDATOR-UNAVAILABLE, and a malformed input never reports VALID.
+## 8. Requirements
 
-Layout:
+- Python 3.12 or newer, with `uv`, to run from source.
+- Docker, to run a tool-UX image or when a descriptor uses the image backend or a Docker-based
+  validator.
+- Each wrapped tool has its own requirements and carries its own licence.
 
-```
-src/breachsafe_ux/   facade.py (engine), resolve.py + _render.py (model), render.py (view),
-                     app.py (controller / Gradio shell), brand.py (theme)
-tools/<name>/            <name>.yaml descriptor, optional bin/ run shim
-docs/adr/                architecture decision records
-tests/                   badge-state and safety tests
-```
+## 9. Documentation and support
 
-Known gaps are tracked in `docs/KNOWN-ISSUES.md`.
+- [Documentation index](docs/README.md)
+- [Your first run](docs/tutorials/your-first-scan.md)
+- [Add a tool](docs/how-to/add-a-tool.md) · [Descriptor schema](docs/reference/descriptor-schema.md)
+- [Architecture](docs/explanation/architecture.md) · [Why the host is agnostic](docs/explanation/why-agnostic.md)
+- [Architecture decision records](docs/adr/) · [Known issues](docs/KNOWN-ISSUES.md)
+- [Security policy and private disclosure](SECURITY.md)
+- [Public issue tracker](https://github.com/paul007ex/breachsafe-ux/issues)
 
-## 8. Licence
+Do not file security vulnerabilities in the public issue tracker. Follow
+[`SECURITY.md`](SECURITY.md) for private reporting.
 
-Apache-2.0 (open source). You may use, modify, distribute, and use it commercially under the
-terms of the licence. See [LICENSE](LICENSE). (The tools it fronts carry their own licences.)
+## 10. Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the
+[contributor documentation](docs/contributors/). The repository enforces formatting, lint, strict
+type checking, tests, security scans, dependency audits, architecture layering, license metadata,
+file size policy, and release-artifact checks. Reproduce every blocking check locally with
+`uv run --locked --extra dev python scripts/release_gate.py`.
+
+## 11. License
+
+Apache License 2.0 (OSI-approved open source). You may use, modify, distribute, and use it
+commercially under the terms of the licence. See [`LICENSE`](LICENSE), [`LICENSES/`](LICENSES/),
+and [`REUSE.toml`](REUSE.toml). The tools it fronts carry their own licences.
