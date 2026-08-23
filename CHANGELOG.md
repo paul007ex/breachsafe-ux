@@ -26,6 +26,17 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   against the real product (Docker image + from-source CLI).
 
 ### Docs
+- Deepened the contributor docs toward qureddy parity: `docs/contributors/coding-rules.md`
+  (51→206 lines — no-shell argv, fail-closed discipline, MVC layering, typing/docstrings,
+  descriptor conventions, size ceilings) and `review-process.md` (42→116, with a reviewer
+  checklist + review-flow diagram). (#157)
+- Expanded `NOTICE` from a stub into a full third-party attribution record (runtime dependencies
+  and their licenses, the bundled Lucide icons under ISC, and the dev-only skills). (#158)
+- Documented the `breachsafe-ux --check` exit behavior and failure categories (`ok` / `NOT FOUND`
+  / summary `OK` / `MISSING TOOLS`) in the CLI reference, with a decision diagram. (#159)
+- Added `docs/explanation/threat-model.md` — a host-level, tool-agnostic threat-model explainer
+  grounded in `threat-model/threagile.yaml` and ADR-0002, with a colored trust-boundary diagram
+  (linked from the docs index and ADR-0002). (#160)
 - Added a consistent, accessible semantic colour palette to the Mermaid diagrams via `classDef`
   (green VALID, red INVALID, orange VALIDATOR-UNAVAILABLE, blue process, grey artifact, purple
   external), so colour carries meaning at a glance; diagram content is unchanged. (#156)
