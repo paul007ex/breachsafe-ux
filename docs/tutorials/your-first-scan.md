@@ -6,7 +6,7 @@ A five-minute walkthrough of the generic flow every EnXemble tab follows: launch
 a tool against an input, and read the three-state verdict correctly. No configuration required.
 
 We use the **shipped reference example** image, `qureddy-ux`, because it is the packaged product
-you can pull today. What you learn here is the host flow, not the scanner — every tab, whatever
+you can pull today. What you learn here is the host flow, not the scanner: every tab, whatever
 tool it wraps, works the same way.
 
 The flow end to end:
@@ -51,24 +51,24 @@ The shipped example tabs wrap a post-quantum readiness scanner; for what those s
 mean, see the [`breachsafe/qureddy` documentation](https://github.com/breachsafe/qureddy). This
 tutorial stays with the host flow that is the same for any tool.
 
-## 3. Read the verdict — the three-state badge
+## 3. Read the verdict: the three-state badge
 
 The badge is the point of the host. It reports the result of an **external validator**, never a
 guess, and it has exactly three states:
 
 | Badge | What it means | What it does NOT mean |
 |---|---|---|
-| **VALID** | The validator ran and accepted the artifact. | — |
+| **VALID** | The validator ran and accepted the artifact. | None |
 | **INVALID** | The validator ran and rejected the artifact. | Not "the tool crashed." |
 | **VALIDATOR-UNAVAILABLE** | The tool or validator could not run (missing dependency, Docker down, timeout, empty output). | **Never** a pass in disguise. |
 
 The rule that matters: a crashed tool, a missing validator, or an empty run resolve to
-**VALIDATOR-UNAVAILABLE** — they are never shown as VALID. Colour is only a redundant cue; the
+**VALIDATOR-UNAVAILABLE**. They are never shown as VALID. Colour is only a redundant cue; the
 word carries the state. If you see green, a real validator really accepted a real artifact. See
 [the three-state verdict](../explanation/three-state-verdict.md) for why the host fails closed.
 
 Some tools add a plain-language summary line above the badge. That summary is the tool's own
-finding declared in its descriptor, not something the host computes — the host only defends the
+finding declared in its descriptor, not something the host computes. The host only defends the
 badge state.
 
 ## 4. Where the artifact goes
@@ -86,7 +86,7 @@ docker exec enxemble breachsafe-ux --check     # exit != 0 if any tool/validator
 ```
 
 This prints, per tab, the exact binary, version, and path in use for each role (tool, validator,
-and any connection-test command) — the same provenance shown greyed-out inside each tab's
+and any connection-test command): the same provenance shown greyed-out inside each tab's
 **Advanced** section. Stop the host with `docker stop enxemble`.
 
 ## Next steps

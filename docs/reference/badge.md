@@ -59,5 +59,5 @@ Each condition is an AND over any of `exit`, `stdout_contains`, `stdout_contains
 The host defends only the badge **state**. A descriptor may reword each state with
 `render.badge_text` so a green badge states what was checked (for example "Evidence: report is
 well-formed") rather than implying a security verdict, and may show a separate `render.posture`
-banner for a finding it reads out of the artifact. The host never computes a domain verdict — see
+banner for a finding it reads out of the artifact. The host never computes a domain verdict. See
 [the host↔descriptor boundary](../explanation/host-descriptor-boundary.md).

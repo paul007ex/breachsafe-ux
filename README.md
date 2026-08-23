@@ -19,7 +19,7 @@ host with a specific tool bundled in; any other tool wraps the same way.
 
 ## Architecture at a glance
 
-Every tab is the same pipeline with different nouns — input, run, artifact, external validator,
+Every tab is the same pipeline with different nouns: input, run, artifact, external validator,
 three-state verdict:
 
 ```mermaid

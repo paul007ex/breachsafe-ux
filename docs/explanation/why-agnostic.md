@@ -9,8 +9,8 @@ UI per tool. The settled decision is [ADR-0001](../adr/0001-breachsafe-wizard.md
 ## Every tool is the same pipeline
 
 Look at almost any command-line tool through a UI and the shape is identical: take some input,
-run the tool, produce an artifact, check the artifact, show the result. The nouns change — a
-scanner, a linter, a converter, a secret finder — but the pipeline does not. Building a bespoke
+run the tool, produce an artifact, check the artifact, show the result. The nouns change, a
+scanner, a linter, a converter, a secret finder, but the pipeline does not. Building a bespoke
 UI for each tool re-implements that same pipeline every time, and each copy drifts: one handles a
 missing dependency, another does not; one reports a real verdict, another shows an optimistic
 green.
@@ -24,12 +24,12 @@ So the host is written once and the tool is data:
 - **A tool is a descriptor.** Adding or changing a tool is a YAML file, not new UI code. The
   renderer, the runner, and the badge are shared by every tool tab.
 
-The correctness properties — no-shell argv, fail-closed validation, the three-state verdict — are
+The correctness properties, no-shell argv, fail-closed validation, the three-state verdict, are
 then written and tested **once**, and every tool inherits them. That is only possible if the
 engine never learns about a specific tool, which is why the
 [host↔descriptor boundary](host-descriptor-boundary.md) is a hard invariant.
 
-One generic host, many descriptor plugins — each an example of the same contract:
+One generic host, many descriptor plugins, each an example of the same contract:
 
 ```mermaid
 flowchart TD
@@ -64,7 +64,7 @@ flowchart TD
 ## What it is not
 
 The host wraps a **single tool per tab** and, at most, hands one artifact to another tab via a
-declared chain. Multi-tool orchestration — DAGs, batch runs, scheduling, run history — is
+declared chain. Multi-tool orchestration, DAGs, batch runs, scheduling, run history, is
 deliberately out of scope; that belongs to an orchestration layer, not to this host. Keeping the
 scope to "one tool, done well" is what lets the host stay small enough to be generic. See
 [execution backends](../reference/execution-backends.md).

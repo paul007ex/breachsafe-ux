@@ -57,7 +57,7 @@ not exercised.
 
 ## The argv model
 
-Whatever the backend, the host builds a **typed argv, never a shell string** — each input value
+Whatever the backend, the host builds a **typed argv, never a shell string**: each input value
 is a single argv element, so a value can never become a command. Options are emitted first, then
 a literal `--`, then positionals, so a leading-dash value cannot be parsed as a flag. A tool
 whose parser does not support `--` opts out with `run.no_end_of_options: true` (a weaker

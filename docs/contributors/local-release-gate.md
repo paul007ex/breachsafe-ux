@@ -9,7 +9,7 @@ uv run --locked --extra dev python scripts/release_gate.py
 ```
 
 It fails closed on the first breach and prints a `PASS` / `FAIL` summary. Everything runs under
-`uv run --locked`, so your versions match the committed `uv.lock` exactly — the same path CI
+`uv run --locked`, so your versions match the committed `uv.lock` exactly: the same path CI
 uses. This is the authoritative local gate; the full list of checks it enforces (lint, format,
 strict types, security, dependencies, tests, architecture layering, docs, size, duplication,
 licensing, supply chain) is in [`CONTRIBUTING.md`](../../CONTRIBUTING.md) §4 and is not

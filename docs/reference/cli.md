@@ -4,7 +4,7 @@
 
 The host is a web application with one command, `breachsafe-ux`. It has two behaviours: launch
 the server (the default), or resolve the environment and exit (`--check`). There is **no**
-`--help` or `--version` subcommand — the host is a web UX, not a CLI tool.
+`--help` or `--version` subcommand. The host is a web UX, not a CLI tool.
 
 ## `breachsafe-ux`
 
@@ -26,7 +26,7 @@ any other flag fall through to a server launch.
 ## `breachsafe-ux --check`
 
 Resolves every loaded descriptor's environment, prints a per-tab table, and exits nonzero if any
-tool or validator is missing. This is the real health signal — a `curl` on `/` is false-healthy
+tool or validator is missing. This is the real health signal: a `curl` on `/` is false-healthy
 because the web server serves even when the underlying tool is absent.
 
 ```bash
@@ -34,8 +34,8 @@ uv run breachsafe-ux --check          # from a source checkout
 docker exec enxemble breachsafe-ux --check   # inside a running container
 ```
 
-For each tab it prints a Markdown table with one row per role — the tool, the validator, and any
-connection-test command — showing the resolved binary, version, and path, plus a per-row status.
+For each tab it prints a Markdown table with one row per role, the tool, the validator, and any
+connection-test command, showing the resolved binary, version, and path, plus a per-row status.
 It ends with a summary line: `OK` or `MISSING TOOLS`.
 
 ### Example
@@ -71,12 +71,12 @@ plain launch runs until stopped.
 | Invocation | Exit code | When |
 |---|---|---|
 | `breachsafe-ux` (launch) | `0` | The server was started and later shut down cleanly (for example `Ctrl-C`). |
-| `breachsafe-ux` (launch) | non-zero | The server could not start — the web framework raises (for example the port is already in use), which propagates as a non-zero exit. The host does not assign this code itself. |
+| `breachsafe-ux` (launch) | non-zero | The server could not start: the web framework raises (for example the port is already in use), which propagates as a non-zero exit. The host does not assign this code itself. |
 | `breachsafe-ux --check` | `0` | Every loaded tab's tool and validator resolved. The summary line is `OK`. |
 | `breachsafe-ux --check` | `1` | At least one row is missing. The summary line is `MISSING TOOLS`. |
 
 `--check` only inspects the tabs that are **loaded**. A tab gated off by a feature flag is not
-checked, so hiding an optional tab whose tool you have not installed keeps `--check` green — for
+checked, so hiding an optional tab whose tool you have not installed keeps `--check` green. For
 example `BREACHSAFE_UX_MINT_OSCAL=false` skips the mint-oscal tab entirely. See
 [enable optional tabs](../how-to/enable-optional-tabs.md).
 

@@ -7,8 +7,8 @@ host reads the descriptor, renders a form, builds a typed argv (never a shell st
 tool, hands the output to an external validator, and shows the three-state badge. Adding a tool
 is data, not code.
 
-This guide wraps a generic third-party CLI — the secret scanner
-[`gitleaks`](https://github.com/gitleaks/gitleaks) — to show the host is tool-agnostic. Nothing
+This guide wraps a generic third-party CLI, the secret scanner
+[`gitleaks`](https://github.com/gitleaks/gitleaks), to show the host is tool-agnostic. Nothing
 here is specific to any BreachSAFE tool. The full field list is the
 [descriptor schema reference](../reference/descriptor-schema.md); the argv tokens are the
 [descriptor tokens reference](../reference/descriptor-tokens.md).
@@ -16,7 +16,7 @@ here is specific to any BreachSAFE tool. The full field list is the
 > The YAML blocks below are **illustrative configuration**, not shell commands. Adapt the flag
 > names and validator to the tool you are wrapping.
 
-The lifecycle you are wiring up — one descriptor becomes a rendered tab, a run, and a verdict:
+The lifecycle you are wiring up: one descriptor becomes a rendered tab, a run, and a verdict.
 
 ```mermaid
 flowchart LR
@@ -85,7 +85,7 @@ collapsible section.
 ## 3. Declare how the tool runs
 
 `run.base` is the fixed command prefix; the host appends the inputs' argv, then a literal `--`,
-then any positionals. Tell the host where the artifact comes from — a file the tool writes, or
+then any positionals. Tell the host where the artifact comes from: a file the tool writes, or
 its captured stdout.
 
 ```yaml
@@ -96,7 +96,7 @@ run:
 ```
 
 `{share}` is the per-run working directory the host creates. Setting gitleaks' own
-`--exit-code 0` keeps a "secrets found" result from being read as a tool crash — the finding
+`--exit-code 0` keeps a "secrets found" result from being read as a tool crash: the finding
 belongs in the artifact and the validator, not in a nonzero exit. If your tool writes the
 artifact itself (as here), omit `run.artifact_from`; to use the tool's stdout as the artifact,
 set `run.artifact_from: stdout`.
@@ -127,7 +127,7 @@ validate:
 `{python}` is the interpreter running the host, not a bare `python` that might be absent, and
 `{artifact}` is the report path. A real validator would check the report against a schema; this
 one just proves the report parses. If a validator's applicability depends on an input value, use
-`validate.by` / `cases` to select one per value and badge `none` where none applies — see the
+`validate.by` / `cases` to select one per value and badge `none` where none applies. See the
 [descriptor schema reference](../reference/descriptor-schema.md).
 
 ## 5. Optional: render, actions, chains
@@ -156,5 +156,5 @@ BREACHSAFE_UX_TOOLS_DIR=tools uv run breachsafe-ux --check
 ```
 
 `--check` prints the tool, validator, and their paths for each tab and exits nonzero if any is
-missing. When it passes, launch the host and your new tab is there — with no change to any host
+missing. When it passes, launch the host and your new tab is there, with no change to any host
 code.

@@ -16,7 +16,7 @@ change the values in this module.
 |---|---|
 | `BRAND` | Text identity: product name, company, URL, repository link, tagline. `BRAND["name"]` is the browser tab title and the header lockup. |
 | `BS` | The brand colour tokens (the primary accent, hover/press shades, background, and text colours). |
-| `THEME` | The Gradio theme built from those tokens — light and dark backgrounds, text, and the primary button fill. |
+| `THEME` | The Gradio theme built from those tokens: light and dark backgrounds, text, and the primary button fill. |
 | `GRADIENT` | The accent gradient used for the header bar. |
 | `CSS` | Custom CSS injected at launch (header bar, button sizing, footer). |
 
@@ -40,14 +40,14 @@ BRAND = {
 ## Change the colours and theme
 
 `THEME` is a `gradio.themes` object. Retint it by editing the colour ramp and the theme
-`.set(...)` overrides — the primary button fill, the light and dark backgrounds, and the text
+`.set(...)` overrides: the primary button fill, the light and dark backgrounds, and the text
 colours. Keep a light and a dark value for each so both modes stay legible; the host defaults to
 dark on load and offers a Light/Dark toggle. `CSS` carries the header-bar rule and the button
 sizing; adjust it to match your design system.
 
 ## Keep third-party assets under their own licence
 
-The bundled icon set is third-party (Lucide, ISC) and stays under its original licence — do not
+The bundled icon set is third-party (Lucide, ISC) and stays under its original licence. Do not
 relabel vendored assets as your own when you re-skin. If you swap in your own icons, add them
 with their correct licence and update `REUSE.toml` accordingly.
 
@@ -59,5 +59,5 @@ Run the host from source and open it in a browser to see the new identity:
 uv run breachsafe-ux
 ```
 
-Because branding is one module, this is the whole change — no per-tab edits, and the descriptor
+Because branding is one module, this is the whole change: no per-tab edits, and the descriptor
 contract is untouched.
