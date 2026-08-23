@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.11-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.12-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.12] - 2026-08-23
+
+### Added
+- Evaluation box: the qureddy tabs show the tool's own per-axis interpretation (PQC support,
+  key exchange, downgrade resistance, authentication, protocol hygiene) plus a headline, under
+  the badge. Config-driven via `render.evaluation`; the host renders it verbatim. (#199, #59)
+
+### Changed
+- Python baseline is now 3.14 (dev, CI, and config; the runtime image already ran on 3.14). (#100)
 
 ## [0.3.11] - 2026-08-23
 
