@@ -12,6 +12,19 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+- The TestPyPI publishing job in `release.yml` (added in 0.3.4, #19). breachsafe-ux is
+  Docker-first and is not published to any package index; only qureddy is on TestPyPI. The
+  signed, provenance-attested wheel and sdist remain attached to each GitHub Release as
+  downloadable assets.
+
+### Fixed
+- Documented commands that did not work as written: `README.md` §7 `pytest` now includes
+  `--extra dev` (pytest is a dev extra), and `CONTRIBUTING.md` uses `uv sync --extra dev` plus
+  `breachsafe-ux --check` to verify a dev setup (plain `uv sync` installs only the runtime, and
+  `--help` is not a CLI command — this is a web UX). Every command in the docs was executed
+  against the real product (Docker image + from-source CLI).
+
 ### Docs
 - `CONTRIBUTING.md` now documents the real gate suite and the single authoritative local command
   (`scripts/release_gate.py`) instead of an outdated six-check list.

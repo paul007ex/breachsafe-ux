@@ -47,15 +47,17 @@ cd breachsafe-ux
 # Install uv if you don't have it
 # https://github.com/astral-sh/uv
 
-# Create the dev environment (installs the project + dev group)
-uv sync
+# Create the dev environment (project + the dev tooling the gates need)
+uv sync --extra dev
 
-# Verify
-uv run breachsafe-ux --help
+# Verify the install and that each tab's tool + validator resolves
+uv run breachsafe-ux --check
 ```
 
-The project targets **Python 3.12+**. `uv sync` provisions the interpreter and
-the dev tooling for you.
+The project targets **Python 3.12+**. `uv sync --extra dev` provisions the
+interpreter and the dev tooling for you. (Plain `uv sync` installs only the
+runtime, which is enough to launch the app but not to run the tests or gates.)
+`--check` prints each tab's tool/version/path and exits non-zero if any is missing.
 
 ## 3. Workflow
 

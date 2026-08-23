@@ -186,7 +186,7 @@ orchestration layer (Osmedeus and TAO).
 ## 7. Development
 
 ```
-uv run --locked pytest -q
+uv run --locked --extra dev pytest -q     # pytest lives in the dev extra
 ```
 
 `tests/test_badge_states.py` drives the real pipeline (real tools from source, real oscal-cli in

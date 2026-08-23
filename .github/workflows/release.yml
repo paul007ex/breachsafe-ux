@@ -10,12 +10,9 @@
 # Release flow: bump version (PR) -> `git push` tag vX.Y.Z (builds the qureddy-ux image) ->
 # `gh release create vX.Y.Z` (or the Releases UI) -> this workflow signs + attaches artifacts.
 #
-# TestPyPI publish (#19) is included but GUARDED OFF by default. To enable it:
-#   1. On https://test.pypi.org, register a pending publisher:
-#      owner=paul007ex  project=breachsafe-ux  workflow=release.yml  environment=testpypi
-#   2. Set the repo variable PUBLISH_TESTPYPI=true (Settings -> Secrets and variables ->
-#      Actions -> Variables), or `gh variable set PUBLISH_TESTPYPI --body true`.
-# Real PyPI stays a deliberate future flip (see the commented `pypi` job at the bottom).
+# breachsafe-ux is Docker-first and is NOT published to PyPI or TestPyPI (only qureddy publishes
+# to TestPyPI). The signed wheel + sdist are attached to the GitHub Release as downloadable,
+# provenance-attested assets; there is no package-index publish step.
 name: release
 
 on:
@@ -60,12 +57,6 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: "dist/*"
-      # Hand the pristine dist/ to the TestPyPI job before any signature bundles land in dist/,
-      # so twine/publish never tries to upload a .sigstore file.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: dist
-          path: dist/
       # Signed-Releases: cosign keyless OIDC signature bundles attached to the GitHub Release so
       # OpenSSF Scorecard can discover a signature next to each asset. Only meaningful on
       # `release: published` (workflow_dispatch has no release tag).
@@ -102,41 +93,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify_release_signed.sh "${{ github.event.release.tag_name }}" "${{ github.repository }}"
-
-  testpypi:
-    name: publish to TestPyPI (OIDC)
-    needs: build
-    # Guarded OFF until the TestPyPI pending publisher is registered (see header). A skipped job
-    # is green, so this never red-fails a release before publishing is set up. Set the repo
-    # variable PUBLISH_TESTPYPI=true to enable (#19).
-    if: vars.PUBLISH_TESTPYPI == 'true'
-    runs-on: ubuntu-latest
-    environment: testpypi     # must match the TestPyPI pending-publisher "Environment name"
-    permissions:
-      id-token: write         # OIDC — this is what enables tokenless publishing
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true      # don't fail if this version is already on TestPyPI
-
-  # Enable once a real-PyPI Trusted Publisher (environment: pypi) is registered AND the platform
-  # approves publishing breachsafe-ux to public PyPI (today: Docker-first, TestPyPI only):
-  # pypi:
-  #   name: publish to PyPI (OIDC)
-  #   needs: testpypi
-  #   runs-on: ubuntu-latest
-  #   environment: pypi
-  #   permissions:
-  #     id-token: write
-  #   steps:
-  #     - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-  #       with:
-  #         name: dist
-  #         path: dist/
-  #     - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
