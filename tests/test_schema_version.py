@@ -42,6 +42,15 @@ def test_too_new_fails_closed():
         _validate_descriptor(d, Path("t.yaml"))
 
 
+def test_float_version_fails_closed():
+    # #104: a YAML float like 2.0 is not an int but passes JSON Schema `type: integer`; the gate
+    # must still fail closed, not let a too-new descriptor load.
+    d = _ok()
+    d["schema_version"] = float(SUPPORTED_SCHEMA_VERSION + 1)  # e.g. 2.0
+    with pytest.raises(_DescriptorError, match="newer breachsafe-ux"):
+        _validate_descriptor(d, Path("t.yaml"))
+
+
 def test_shipped_descriptors_declare_version():
     for p in sorted((ROOT / "tools").glob("*/*.yaml")):
         d = yaml.safe_load(p.read_text())

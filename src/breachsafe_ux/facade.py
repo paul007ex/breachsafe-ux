@@ -81,7 +81,9 @@ def _check_schema_version(doc: dict[str, Any], path: Path) -> None:
             f"{path.name}: no schema_version; assuming {SUPPORTED_SCHEMA_VERSION}", stacklevel=2
         )
         return
-    if isinstance(ver, int) and ver > SUPPORTED_SCHEMA_VERSION:
+    # #104: numeric compare (not isinstance int). A YAML float 2.0 passes `type:integer` but is not
+    # an int, so int-only let a too-new descriptor load; a bool cannot exceed 1 so it self-excludes.
+    if isinstance(ver, (int, float)) and ver > SUPPORTED_SCHEMA_VERSION:
         raise _DescriptorError(
             f"{path.name}: schema_version {ver} needs a newer breachsafe-ux "
             f"(this build supports up to {SUPPORTED_SCHEMA_VERSION})"
@@ -172,11 +174,9 @@ def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
 def run_action(action: dict[str, Any], params: dict[str, Any]) -> tuple[bool, str]:
     """Run a descriptor-declared action button (#5) and report (ok, output).
 
-    Render its argv from the current inputs, run it (no shell, stdin closed so a tool can't hang,
-    timeout), and report (ok, output) per the action's `ok_if` condition (default: exit 0). output
-    is the tool's own captured stdout+stderr so the UI shows the actual result (#97), not a canned
-    line. The generic replacement for the old hardcoded openssl `test_connection` preflight
-    (ADR-0002 §2a / #21). Never raises.
+    Renders argv from the current inputs, runs it (no shell, stdin closed, timeout), and reports
+    (ok, output) per `ok_if` (default exit 0). output is the tool's own stdout+stderr (#97).
+    Generic replacement for the hardcoded openssl preflight (#21). Never raises.
     """
     try:
         argv = _render(action["argv"], params.copy())
@@ -184,8 +184,7 @@ def run_action(action: dict[str, Any], params: dict[str, Any]) -> tuple[bool, st
         return (False, str(e))
     if not argv or not argv[0].strip():
         return (False, "no command")
-    # #116: run against the augmented tool PATH so a bare argv[0] resolves via the per-tool bin
-    # shims, consistent with run_descriptor (subprocess resolves argv[0] from env's PATH).
+    # #116: augmented tool PATH so a bare argv[0] resolves via the per-tool bin shims.
     p = _run(argv, input_="", timeout=action.get("timeout_s", 10), env=_run_env())
     if p is None:
         return (False, "could not run")
@@ -268,10 +267,9 @@ def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str,
         options += opts
         positionals += poss
     argv = base + options
-    # wizard #9 (argument injection): emit all options first, then a literal "--", then the
-    # positionals, so everything after "--" is data. A leading-dash field value (e.g.
-    # host="--openssl=/tmp/x") can no longer be parsed as a flag by the target tool. A tool whose
-    # parser does not support "--" opts out with run.no_end_of_options (documented weaker posture).
+    # wizard #9 (argument injection): options, then a literal "--", then positionals, so a
+    # leading-dash value can't be parsed as a flag. A tool lacking "--" opts out via
+    # run.no_end_of_options (documented weaker posture).
     if positionals and not run.get("no_end_of_options"):
         argv.append("--")
     argv += positionals
@@ -293,11 +291,7 @@ def _run_workdir(desc: dict[str, Any]) -> Path:
 def _launch(
     argv: list[str], run: dict[str, Any], workdir: Path, env: dict[str, str]
 ) -> subprocess.CompletedProcess[str] | dict[str, Any]:
-    """Run the tool argv (no shell) and return its CompletedProcess.
-
-    Return an error-result dict for a missing tool / timeout / launch failure — always a badge,
-    never a traceback (#183).
-    """
+    """Run the tool argv (no shell); return its CompletedProcess or an error-result dict (#183)."""
     try:
         return subprocess.run(
             argv,
@@ -368,10 +362,9 @@ def _postprocess(
 def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
     """Run one descriptor end to end and return the UI-facing result dict (wizard #12).
 
-    Builds a no-shell argv, runs the tool then its external validator, and derives the badge. The
-    `badge` is a (state, detail) tuple with state in valid / invalid / unavailable / none; a
-    successful run also carries `artifact` (parsed JSON or None), `artifact_path`, and `highlights`.
-    Any launch/timeout/nonzero-exit/descriptor error returns `error` + `unavailable`, never raising.
+    Builds a no-shell argv, runs the tool then its validator, derives the badge (a (state, detail)
+    tuple; state in valid / invalid / unavailable / none). A successful run also carries `artifact`,
+    `artifact_path`, and `highlights`. Any error returns `error` + `unavailable`, never raising.
     """
     workdir = _run_workdir(desc)
     artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
@@ -388,9 +381,8 @@ def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, An
         # wizard #8: a malformed descriptor is an 'unavailable' badge, never a silent bad scan.
         return {"error": str(e), "badge": ("unavailable", f"descriptor error: {e}")}
     if _tool_source(desc["run"])[0] == "image":
-        # Docker backend (W-3/W-4): local binary absent, so run the tool as its image. The tool is
-        # the image ENTRYPOINT, so drop argv[0] and hand the rest to `docker run`; --pull=always
-        # keeps it current. Missing docker -> FileNotFoundError -> unavailable, never a false green.
+        # Docker backend (W-3/W-4): tool is the image ENTRYPOINT, so drop argv[0] for `docker run`.
+        # --pull=always keeps it current; missing docker -> FileNotFoundError -> unavailable.
         argv = ["docker", "run", "--rm", "--pull=always", desc["run"]["image"], *argv[1:]]
     proc = _launch(argv, desc["run"], workdir, env)
     if isinstance(proc, dict):
@@ -465,7 +457,12 @@ def _validate(
         # #43 fail-closed: a variant with no validator (unmatched selector or explicit null) is a
         # "none" badge, never a green (e.g. qureddy format=json/rich has no schema validator).
         return ("none", "no validator for this output")
-    argv = _render(v["argv"], _validate_mapping(workdir, artifact))
+    try:
+        argv = _render(v["argv"], _validate_mapping(workdir, artifact))
+    except _DescriptorError as e:
+        # #104: _validate runs outside run_descriptor's try, so an unresolved validate.argv token
+        # would raise to the UI; badge unavailable instead ("never raises to the UI" contract).
+        return ("unavailable", f"validator descriptor error: {e}")
     if not _resolve(argv[0]):  # #116: resolve via the augmented tool PATH, like the tool itself
         return ("unavailable", f"validator '{argv[0]}' not installed")
     try:

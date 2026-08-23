@@ -59,6 +59,21 @@ def test_validate_runs_selected_case(tmp_path):
     assert _validate(desc, tmp_path, art, {"format": "cbom"})[0] == "valid"
 
 
+def test_validate_unresolved_token_badges_unavailable(tmp_path):
+    # #104: an unresolved {token} in validate.argv must not raise (run_descriptor calls _validate
+    # outside its own try/except); it badges unavailable instead of reaching the UI.
+    art = tmp_path / "a.json"
+    art.write_text("{}")
+    desc = {
+        "validate": {
+            "argv": [sys.executable, "-c", "{nonexistent_token}"],
+            "badge_rule": {"pass_if": {"exit": 0}},
+        }
+    }
+    state, msg = _validate(desc, tmp_path, art, {})
+    assert state == "unavailable" and "descriptor error" in msg
+
+
 def test_schema_rejects_validate_with_both_argv_and_by():
     d = {
         "schema_version": 1,
