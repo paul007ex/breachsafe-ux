@@ -137,6 +137,17 @@ render:
     none: "Evidence: no external validator for this output"
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
+  # #199: qureddy's own per-axis interpretation, shown verbatim in an Evaluation box under the
+  # badge. The host reads these properties and renders them; it computes no verdict of its own.
+  evaluation:
+    title: "Evaluation"
+    headline_prop: "qureddy:scan.headline"
+    axes:
+      - { label: "PQC support",          find_prop: "qureddy:scan.pqc_support" }
+      - { label: "Key exchange",         find_prop: "qureddy:scan.axis.key_exchange" }
+      - { label: "Downgrade resistance", find_prop: "qureddy:scan.axis.downgrade_resistance" }
+      - { label: "Authentication",       find_prop: "qureddy:scan.axis.authentication" }
+      - { label: "Protocol hygiene",     find_prop: "qureddy:scan.axis.protocol_hygiene" }
 actions:
   # Preflight, now descriptor-declared argv instead of a hardcoded engine function (#5, #21).
   # stdin is closed by the engine so s_client does not hang; exit 0 = handshake completed.
