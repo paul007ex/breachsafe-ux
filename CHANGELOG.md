@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.10-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.11-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.11] - 2026-08-23
+
+### Changed
+- The qureddy TLS and SSH tabs now show CBOM and JSON together from one scan, each in a
+  collapsed, copyable box, with no output-format toggle. One scan writes both correlated
+  documents via qureddy `--output-dir`; there is no second scan. (#199)
+- The Raw log now shows the executable command and the run directory before the tool output. (#199)
+
+### Added
+- An agnosticism gate: a test fails if a host module hardcodes a tool identifier, so the host
+  stays config-driven as tools are added. (#200)
+- Engine support for multi-artifact tools: `run.output_dir_flag` + `run.artifacts[]` render one
+  copyable box per declared artifact using its label. (#199)
 
 ## [0.3.10] - 2026-08-23
 
