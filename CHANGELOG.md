@@ -20,6 +20,10 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   name with shell metacharacters could run in the signing job. (#175)
 
 ### Fixed
+- `schema_version` now fails closed for a YAML float such as `2.0`. The int-only gate let a
+  too-new float version load because `2.0` is not an `int` yet passes JSON Schema `type: integer`.
+  An unresolved `{token}` in `validate.argv` now badges the run unavailable instead of raising to
+  the UI, since the validator runs outside `run_descriptor`'s error boundary. (#104)
 - A numeric `0` (or `0.0`) on an `arg`-mapped input is no longer silently dropped from the argv.
   The old omit check treated `0` as absent because `0 == False` in Python, so `--retries 0`,
   `--maxfail 0`, and similar were never passed. (#171)

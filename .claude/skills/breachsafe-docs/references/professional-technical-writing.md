@@ -103,6 +103,9 @@ author’s activity, such as “What We Did” or “Why This Matters.”
 
 ## Sentence and paragraph rules
 
+- Write in the register of a senior platform engineer or architect documenting for peers:
+  precise, declarative, and assuming technical fluency. No marketing, sales, or motivational
+  tone. State the fact or procedure; do not sell it.
 - Prefer one main idea per sentence.
 - Use active voice when the actor is known.
 - Use present tense for current behavior and past tense for recorded evidence.
@@ -164,6 +167,7 @@ Remove these words or phrases unless they have a precise technical meaning in co
 | Slop markers | it is worth noting, it should be noted, this demonstrates, this highlights, testament |
 | Decorative closure | “This is more than…”, “not just… but…”, “from X to Y”, “whether you are…” |
 | Negative parallelism | “this, not that”, “not X but Y”, “rather than X, Y” when no technical boundary is being stated |
+| Rhetorical virtue | honesty, honest, truth, truthful, authentic, genuine, real, transparent, trustworthy used as praise instead of a verifiable property. State the checked fact and its source; do not assert the virtue. |
 
 This table is a review trigger, not a blind replacement list. Retain a term when it is
 required by a standard, API name, product name, or precise technical statement. Replace
