@@ -259,7 +259,7 @@ def _read_artifacts(run: dict[str, Any], workdir: Path) -> dict[str, dict[str, A
         text = p.read_text() if p.exists() else ""
         try:
             parsed = json.loads(text) if text else None
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             parsed = None
         out[a["name"]] = {
             "json": parsed,
@@ -296,7 +296,7 @@ def _postprocess(
         }
     try:
         art_json = json.loads(artifact.read_text())
-    except (json.JSONDecodeError, OSError, ValueError):
+    except json.JSONDecodeError, OSError, ValueError:
         # wizard #11: a non-JSON/unreadable artifact is "no structured highlights"; badge still
         # comes from the external validator below, not this parse.
         art_json = None

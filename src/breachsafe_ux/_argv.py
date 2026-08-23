@@ -55,7 +55,7 @@ def _repeat_flag_argv(flag: str, level: Any) -> list[str]:
     """
     try:
         n = int(level) if level not in (None, "", False) else 0
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         n = 0
     if n <= 0:
         return []
