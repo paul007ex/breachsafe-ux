@@ -29,6 +29,19 @@ then written and tested **once**, and every tool inherits them. That is only pos
 engine never learns about a specific tool, which is why the
 [host↔descriptor boundary](host-descriptor-boundary.md) is a hard invariant.
 
+One generic host, many descriptor plugins — each an example of the same contract:
+
+```mermaid
+flowchart TD
+    d1["descriptor: qureddy-ux (example)"]
+    d2["descriptor: gitleaks (example)"]
+    d3["descriptor: mytool (example)"]
+    host["EnXemble host (generic engine + shell)"]
+    d1 --> host
+    d2 --> host
+    d3 --> host
+```
+
 ## What agnostic buys
 
 - **Near-zero UI code per tool.** A new tab is a descriptor; there is no per-tool UI to write,

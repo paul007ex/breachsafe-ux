@@ -20,6 +20,16 @@ A crashed tool, a missing validator dependency, or an empty run all resolve to
 `VALIDATOR-UNAVAILABLE`, never to `VALID`. Colour is a redundant cue only; the word carries the
 state as text.
 
+```mermaid
+stateDiagram-v2
+    state "VALIDATOR-UNAVAILABLE" as VU
+    [*] --> Run
+    Run --> VALID: pass_if matched and validator exit 0
+    Run --> INVALID: fail_if matched (validator rejected)
+    Run --> VU: tool or validator could not run
+    Run --> none: no validator declared
+```
+
 ## How a state is derived
 
 The state comes from the descriptor's `validate.badge_rule` applied to the validator's output:

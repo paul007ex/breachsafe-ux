@@ -17,6 +17,39 @@ written once in the engine and shared by every tool tab, so the host stays tool-
 packaged `qureddy-ux` image used in the examples below is one **shipped reference example** of the
 host with a specific tool bundled in; any other tool wraps the same way.
 
+## Architecture at a glance
+
+Every tab is the same pipeline with different nouns — input, run, artifact, external validator,
+three-state verdict:
+
+```mermaid
+flowchart LR
+    input["INPUT (form fields / file)"] --> argv["build a typed argv (no shell)"]
+    argv --> run["run the tool"]
+    run --> artifact["ARTIFACT"]
+    artifact --> validator["external validator"]
+    validator --> verdict{"three-state verdict"}
+    verdict --> valid["VALID"]
+    verdict --> invalid["INVALID"]
+    verdict --> unavail["VALIDATOR-UNAVAILABLE"]
+```
+
+The host is a small MVC around that engine and a theme layer; only the controller and theme import
+the web framework:
+
+```mermaid
+flowchart TD
+    controller["Controller — app.py (imports gradio)"]
+    controller --> engine["Engine — facade.py"]
+    controller --> view["View — render.py"]
+    controller --> model["Model — resolve.py / _render.py"]
+    controller --> theme["Theme — brand.py (imports gradio)"]
+    engine --> model
+```
+
+See [architecture](docs/explanation/architecture.md) and
+[the Gradio shell](docs/explanation/the-gradio-shell.md) for the full module map.
+
 ## Contents
 
 1. [Quickstart with Docker](#1-quickstart-with-docker)
