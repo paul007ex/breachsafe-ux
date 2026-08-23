@@ -104,11 +104,11 @@ def test_result_surfaces_log_on_success():
         "artifact_path": "/x",
         "log": "\x1b[32mscan.start\x1b[0m\nprobe.done",
     }
-    # #199: _result is (badge_md, raw_log_md, artifact_texts, primary_artifact, primary_path)
-    _badge_md, raw, _texts, _primary, _path = app._result(desc, res)
+    # #199: _result is (badge_md, evaluation_text, raw_log_md, artifact_texts, primary, primary_path)
+    _badge_md, _eval, raw, _texts, _primary, _path = app._result(desc, res)
     assert raw.startswith("```") and "scan.start" in raw and "probe.done" in raw
     assert "\x1b[" not in raw  # ANSI stripped (reuses #4's _strip_ansi)
-    assert app._result(desc, dict(res, log=""))[1] == ""  # empty log -> empty Raw log slot
+    assert app._result(desc, dict(res, log=""))[2] == ""  # empty log -> empty Raw log slot (idx 2)
 
 
 def test_result_surfaces_artifacts_and_command(tmp_path):
@@ -126,7 +126,7 @@ def test_result_surfaces_artifacts_and_command(tmp_path):
             "json": {"text": '{"schema_version": "qureddy.scan.v1"}', "label": "JSON"},
         },
     }
-    _badge_md, raw, texts, _primary, _path = app._result(desc, res)
+    _badge_md, _eval, raw, texts, _primary, _path = app._result(desc, res)
     assert texts["cbom"].startswith("{") and "CycloneDX" in texts["cbom"]
     assert "qureddy.scan.v1" in texts["json"]
     assert "$ qureddy scan tls" in raw and "/run/xyz" in raw  # command + run dir in the log
@@ -172,3 +172,43 @@ def test_handler_returns_artifact_texts_then_legacy_shape(monkeypatch):
     )
     out2 = app._handler(desc2)("v", progress=_noprog)
     assert out2[2] == {"a": 1}  # primary artifact in the single legacy JSON slot
+
+
+def test_handler_includes_evaluation_box_when_declared(monkeypatch):
+    # #199: a tool that declares render.evaluation gets an extra Evaluation box in the output tuple,
+    # right after the badge (matching _wire_run's [badge, eval, raw, ...] order).
+    def _noprog(*_a, **_k):
+        return None
+
+    desc = {
+        "id": "t",
+        "run": {"artifacts": [{"name": "cbom", "file": "c"}]},
+        "render": {"evaluation": {"axes": [{"label": "PQC", "find_prop": "p"}]}},
+    }
+    monkeypatch.setattr(app, "run_descriptor", lambda d, p: {"badge": ("valid", "ok")})
+    # _result (imported into app from render) yields the evaluation text as its 2nd element
+    monkeypatch.setattr(
+        app, "_result", lambda d, r: ("BADGE", "PQC: hybrid", "RAW", {"cbom": "C"}, {}, "/x")
+    )
+    out = app._handler(desc)("h", progress=_noprog)
+    assert out[0] == "BADGE" and out[1] == "PQC: hybrid"  # evaluation box is index 1 (after badge)
+
+
+def test_chain_handler_adapts_result_to_four_outputs(monkeypatch):
+    # The chain surface has 4 outputs [cbadge, cout, craw, cstate]; the success path adapts
+    # _result's richer tuple to them, with the primary artifact in cout.
+    descs = {"x": {"id": "x", "run": {"base": ["true"]}}}
+    monkeypatch.setattr(app, "run_descriptor", lambda d, p: {"badge": ("valid", "ok")})
+    monkeypatch.setattr(
+        app, "_result", lambda d, r: ("BADGE", "EVAL", "RAW", {"cbom": "C"}, {"a": 1}, "/p")
+    )
+    out = app._chain_handler({"to": "x", "pass_artifact_as": "src"}, descs)(
+        "/some/artifact.json", progress=lambda *a, **k: None
+    )
+    assert out == ("BADGE", {"a": 1}, "RAW", "/p")  # (cbadge, cout=primary, craw, cstate=path)
+
+
+def test_verify_md_wraps_verify_path(monkeypatch):
+    monkeypatch.setattr(app, "verify_path", lambda value, argv: (True, "openssl 3.5.7"))
+    md = app._verify_md("/opt/openssl/bin/openssl", ["{value}", "version"])
+    assert "OK" in md and "3.5.7" in md

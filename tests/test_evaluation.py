@@ -9,7 +9,7 @@ the host reads whatever `render.evaluation` declares and renders it verbatim.
 from __future__ import annotations
 
 from breachsafe_ux._render import _evaluation
-from breachsafe_ux.render import _evaluation_md
+from breachsafe_ux.render import _evaluation_text
 
 _ART = {
     "metadata": {
@@ -52,17 +52,15 @@ def test_evaluation_skips_missing_props():
     assert [r["label"] for r in ev["rows"]] == ["PQC support"]  # unresolved axis dropped
 
 
-def test_evaluation_md_renders_table_and_headline():
-    md = _evaluation_md(_evaluation(_DESC, _ART))
-    assert "**Evaluation**" in md and "PQC support" in md and "hybrid_observed" in md
-    assert "legacy remains" in md
-    assert _evaluation_md(None) == ""  # nothing to show
-
-
-def test_evaluation_md_escapes_artifact_derived_values():
-    ev = {"title": "E", "rows": [{"label": "A", "value": "<script>"}], "headline": "<b>x"}
-    md = _evaluation_md(ev)
-    assert "<script>" not in md and "&lt;script&gt;" in md
+def test_evaluation_text_renders_aligned_rows_and_headline():
+    text = _evaluation_text(_evaluation(_DESC, _ART))
+    lines = text.splitlines()
+    assert lines[0].startswith("PQC support:") and lines[0].endswith("hybrid_observed")
+    assert lines[1].startswith("Key exchange:") and lines[1].endswith("hybrid")
+    # labels are padded to a common width so the values line up (aligned columns)
+    assert lines[0].index("hybrid_observed") == lines[1].index("hybrid")
+    assert "legacy remains" in text  # headline appended
+    assert _evaluation_text(None) == ""  # nothing to show
 
 
 def test_evaluation_is_none_when_no_axis_resolves():

@@ -14,6 +14,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from breachsafe_ux._render import _evaluation, _posture
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -116,23 +118,22 @@ def _posture_md(posture: dict[str, Any] | None) -> str:
     )
 
 
-def _evaluation_md(ev: dict[str, Any] | None) -> str:
-    """The tool's per-axis evaluation as a small labelled table, or "" when there is none (#199).
+def _evaluation_text(ev: dict[str, Any] | None) -> str:
+    """The tool's per-axis evaluation as plain, aligned `label: value` text, or "" when none (#199).
 
-    Renders exactly the axis label + value the tool reported (all escaped, artifact-derived), then
-    the headline. The host adds no interpretation of its own; it stays tool-agnostic.
+    Rendered in a copyable code box (consistent with the CBOM/JSON boxes), so it is exactly the
+    label + value the tool reported, then the headline. The host adds no interpretation; it stays
+    tool-agnostic. Plain text (no markup), so no escaping is needed.
     """
     if not ev or not ev.get("rows"):
         return ""
-    title = html.escape(str(ev.get("title", "Evaluation")))
-    rows = "\n".join(
-        f"| {html.escape(str(r['label']))} | {html.escape(str(r['value']))} |" for r in ev["rows"]
-    )
-    out = f"**{title}**\n\n| | |\n|---|---|\n{rows}\n"
+    width = max(len(str(r["label"])) for r in ev["rows"])
+    lines = [f"{str(r['label']) + ':':<{width + 1}} {r['value']}" for r in ev["rows"]]
+    text = "\n".join(lines)
     headline = ev.get("headline")
     if headline:
-        out += f"\n{html.escape(str(headline))}\n"
-    return out + "\n"
+        text += f"\n\n{headline}"
+    return text
 
 
 def _badge(
@@ -231,3 +232,48 @@ def _env_panel_md(rows: list[dict[str, Any]]) -> str:
         for r in rows
     )
     return header + body
+
+
+def _raw_log_md(res: dict[str, Any], body: str) -> str:
+    """Fenced Raw log: the invocation + run dir header (#199), then the ANSI-stripped tool text."""
+    cmd, workdir = res.get("command"), res.get("workdir")
+    header = f"$ {cmd}\n# ran in: {workdir}\n\n" if cmd else ""
+    text = _strip_ansi(body.strip())
+    return f"```\n{header}{text}\n```" if (text or header) else ""
+
+
+def _result(
+    desc: dict[str, Any], res: dict[str, Any]
+) -> tuple[str, str, str, dict[str, str], Any, str | None]:
+    """(badge_md, evaluation_text, raw_log_md, artifact_texts, primary_artifact, primary_path).
+
+    Defined on every branch. The evaluation is the tool's own per-axis interpretation, shown in
+    its own copyable code box (same structure as the CBOM/JSON boxes, #199); "" when the tool
+    declares none. artifact_texts maps each declared artifact name -> its raw text.
+    """
+    state, detail = res["badge"]
+    head_text = desc.get("render", {}).get("badge_text", {}).get(state)
+    if "error" in res:
+        # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
+        return (
+            _badge(state, detail, head_text=head_text),
+            "",
+            _raw_log_md(res, res["error"]),
+            {},
+            None,
+            None,
+        )
+    banner = _posture_md(_posture(desc, res.get("artifact")))
+    # #199: the tool's own per-axis evaluation, config-driven + agnostic, shown in its own box.
+    evaluation = _evaluation_text(_evaluation(desc, res.get("artifact")))
+    # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
+    raw = _raw_log_md(res, res.get("log") or "")
+    art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
+    return (
+        banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
+        evaluation,
+        raw,
+        art_texts,
+        res.get("artifact"),
+        res.get("artifact_path"),
+    )
