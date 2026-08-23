@@ -119,10 +119,6 @@ strict_equality = true
 extra_checks = true
 
 [[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 # gradio 6.x ships py.typed, so mypy resolves gr.Button but not its event methods (.click/.then)
 # which gradio attaches at runtime -> false "has no attribute" errors. follow_imports=skip treats
 # gradio as untyped (Any) at the UI boundary, which is what ignore_missing_imports did before 6.x

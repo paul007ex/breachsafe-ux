@@ -57,7 +57,7 @@ def _gates(uv: Path) -> None:
             "-m",
             "not live",
             "--cov=breachsafe_ux",
-            "--cov-fail-under=70",
+            "--cov-fail-under=85",
             "--junitxml=pytest-results.xml",
         ],
     )
