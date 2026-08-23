@@ -84,13 +84,16 @@ inputs:
     info: "Omit per-run identity (serial, timestamps, scan id) for a stable, diffable digest."
     group: advanced
     flag: "--deterministic"
-  - name: verbose
-    type: bool
-    label: "verbose log (-v)"
-    default: true
-    info: "Emit the per-subprocess diagnostic log, shown in Raw log below. Turn off for a quiet run."
+  - name: verbosity
+    type: int
+    label: "log verbosity"
+    widget: slider
+    min: 0
+    max: 3
+    default: 1
+    info: "Diagnostic log detail, shown in Raw log below. 0 = quiet, 1 = -v, 2 = -vv, 3 = -vvv (every subprocess start and completion)."
     group: advanced
-    flag: "-v"
+    repeat_flag: "-v"
 run:
   base: [qureddy, scan, tls]
   # Docker fallback: when qureddy isn't on PATH (e.g. the Docker deployment), the engine runs

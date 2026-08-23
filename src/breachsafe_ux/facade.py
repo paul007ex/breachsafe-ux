@@ -10,7 +10,6 @@ from __future__ import annotations
 import functools
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +21,11 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from breachsafe_ux._argv import (  # argv construction lives in _argv.py (#186); re-exported here
+    _build_argv,
+    _DescriptorError,
+    _render,
+)
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
 from breachsafe_ux.resolve import (
     _resolve,
@@ -36,8 +40,6 @@ PKG = Path(__file__).resolve().parent
 RUN_ROOT = Path(
     os.environ.get("BREACHSAFE_UX_RUN_ROOT", str(Path.home() / "mint-proof" / "wizard-runs"))
 )
-# Substitution grammar (#50): `{{`/`}}` are literal braces; `{name}` is a token.
-_SUBST = re.compile(r"\{\{|\}\}|\{([a-zA-Z0-9_]+)\}")
 _RUN_KEEP = 20  # #121: cap RUN_ROOT at the most-recent N per-run workdirs
 
 
@@ -52,13 +54,6 @@ def _prune_run_root(keep: int = _RUN_KEEP) -> None:
             shutil.rmtree(stale, ignore_errors=True)
     except OSError:
         return
-
-
-class _DescriptorError(Exception):
-    """A descriptor is malformed (e.g. an unresolved {token} in run argv).
-
-    Surfaced as an 'unavailable' badge rather than shipped as literal text to the tool (wizard #8).
-    """
 
 
 _SCHEMA_PATH = PKG / "descriptor.schema.json"
@@ -194,28 +189,6 @@ def run_action(action: dict[str, Any], params: dict[str, Any]) -> tuple[bool, st
     return (ok, output or f"exit {p.returncode}")
 
 
-def _render(argv: list[str], mapping: dict[str, Any]) -> list[str]:
-    """Substitute `{name}` tokens into each argv element (never a shell); unresolved fails CLOSED."""
-    unresolved: set[str] = set()
-
-    def repl(m: re.Match[str]) -> str:
-        whole = m.group(0)
-        if whole == "{{":
-            return "{"
-        if whole == "}}":
-            return "}"
-        name = m.group(1)
-        if name in mapping:
-            return str(mapping[name])
-        unresolved.add(name)
-        return whole
-
-    out = [_SUBST.sub(repl, a) for a in argv]
-    if unresolved:
-        raise _DescriptorError("unresolved token(s) in argv: " + ", ".join(sorted(unresolved)))
-    return out
-
-
 _COND_KEYS = {"stdout_contains", "stdout_contains_any", "stdout_not_contains", "exit"}
 
 
@@ -230,50 +203,6 @@ def _match(cond: dict[str, Any], text: str, returncode: int) -> bool:
         "exit" not in cond or returncode == cond["exit"],
     )
     return all(checks)
-
-
-def _input_argv(spec: dict[str, Any], params: dict[str, Any]) -> tuple[list[str], list[str]]:
-    """One input's (options, positionals) contribution to the argv.
-
-    At most one of positional (value), flag (token if truthy), or arg (['--x', value] when set).
-    Values are single argv elements.
-    """
-    v = params.get(spec["name"])
-    if spec.get("positional"):
-        return ([], [str(v)] if v not in (None, "") else [])
-    if "flag" in spec:
-        return ([spec["flag"]] if v else [], [])
-    if "arg" in spec:
-        # Drop only the empty sentinels by identity, not `v not in (None, "", False)`: that
-        # membership test treats a numeric 0 as absent (0 == False in Python), so `--maxfail 0`
-        # or `--retries 0` were silently omitted (#171). A real 0/0.0 must reach the argv.
-        drop = v is None or v == "" or v is False
-        return ([spec["arg"], str(v)] if not drop else [], [])
-    return ([], [])
-
-
-def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str, Any]) -> list[str]:
-    """Static `run.argv`, or build from `run.base` + each input's argv mapping."""
-    run = desc["run"]
-    if "argv" in run:
-        return _render(run["argv"], mapping)
-    base = list(run.get("base", []))
-    options: list[str] = []
-    positionals: list[str] = []
-    if run.get("positional_from"):  # compose one positional, e.g. "{host}:{port}"
-        positionals.append(run["positional_from"])  # template; resolved by _render below
-    for spec in desc.get("inputs", []):
-        opts, poss = _input_argv(spec, params)
-        options += opts
-        positionals += poss
-    argv = base + options
-    # wizard #9 (argument injection): options, then a literal "--", then positionals, so a
-    # leading-dash value can't be parsed as a flag. A tool lacking "--" opts out via
-    # run.no_end_of_options (documented weaker posture).
-    if positionals and not run.get("no_end_of_options"):
-        argv.append("--")
-    argv += positionals
-    return _render(argv, mapping)
 
 
 def _run_workdir(desc: dict[str, Any]) -> Path:

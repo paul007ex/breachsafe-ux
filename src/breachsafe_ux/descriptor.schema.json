@@ -54,7 +54,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "type"],
-      "description": "A form field. It maps to argv by AT MOST ONE of positional/flag/arg; an input with none is a token-only value referenced via {name} in run.positional_from / run.argv / validate.argv (e.g. host, port composed into positional_from).",
+      "description": "A form field. It maps to argv by AT MOST ONE of positional/flag/arg/repeat_flag; an input with none is a token-only value referenced via {name} in run.positional_from / run.argv / validate.argv (e.g. host, port composed into positional_from).",
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "type": { "enum": ["text", "int", "float", "bool", "enum", "file"] },
@@ -70,6 +70,7 @@
         "group": { "enum": ["advanced"] },
         "arg": { "type": "string" },
         "flag": { "type": "string" },
+        "repeat_flag": { "type": "string", "description": "A count input: the level value emits this flag N times. A short flag (-v) collapses to one token (-vvv); a long flag repeats as separate tokens." },
         "positional": { "type": "boolean" },
         "verify_argv": { "type": "array", "items": { "type": "string" } },
         "accept": { "type": "array", "items": { "type": "string" } }
@@ -78,6 +79,9 @@
         { "not": { "required": ["arg", "flag"] } },
         { "not": { "required": ["arg", "positional"] } },
         { "not": { "required": ["flag", "positional"] } },
+        { "not": { "required": ["repeat_flag", "arg"] } },
+        { "not": { "required": ["repeat_flag", "flag"] } },
+        { "not": { "required": ["repeat_flag", "positional"] } },
         {
           "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] },
           "then": { "required": ["choices"] }

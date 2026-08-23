@@ -85,3 +85,25 @@ def test_numeric_zero_arg_is_kept():
     assert _argv(d, {"maxfail": 0, "delay": 0.0}) == ["tool", "--maxfail", "0", "--delay", "0.0"]
     # a nonzero still works and the empty sentinel is still dropped
     assert _argv(d, {"maxfail": 3, "delay": ""}) == ["tool", "--maxfail", "3"]
+
+
+def test_repeat_flag_emits_verbosity_level():
+    # #3: a count input emits its short flag N times, collapsed to one getopt-style token so a
+    # level of 3 reaches qureddy as -vvv, not three separate -v tokens the UI could not express.
+    d = _desc([{"name": "verbosity", "type": "int", "repeat_flag": "-v"}])
+    assert _argv(d, {"verbosity": 0}) == ["tool"]  # 0 = quiet, flag omitted
+    assert _argv(d, {"verbosity": 1}) == ["tool", "-v"]
+    assert _argv(d, {"verbosity": 3}) == ["tool", "-vvv"]
+
+
+def test_repeat_flag_long_form_repeats_as_separate_tokens():
+    # A long flag cannot collapse (--verboseverbose is meaningless), so it repeats as tokens.
+    d = _desc([{"name": "v", "type": "int", "repeat_flag": "--verbose"}])
+    assert _argv(d, {"v": 2}) == ["tool", "--verbose", "--verbose"]
+
+
+def test_repeat_flag_ignores_non_numeric_level():
+    # A stray non-int level must not crash the argv build; treat it as absent.
+    d = _desc([{"name": "verbosity", "type": "int", "repeat_flag": "-v"}])
+    assert _argv(d, {"verbosity": None}) == ["tool"]
+    assert _argv(d, {"verbosity": "x"}) == ["tool"]
