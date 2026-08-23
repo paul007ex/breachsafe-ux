@@ -1,5 +1,42 @@
 breachsafe-ux
 Copyright 2026 BreachSAFE (https://www.breachsafe.io)
 
-Licensed under the Apache License, Version 2.0.
-Bundled Lucide icons (assets/icons/) are ISC-licensed by the Lucide contributors.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+breachsafe-ux is a deliberate, reviewed Apache-2.0 open-source exception (#19) to the
+BreachSAFE platform PolyForm-Noncommercial default, so it can be the public shared
+dependency of the open-source QuReddy [ux] extra.
+
+
+Third-party runtime dependencies
+--------------------------------
+
+This product depends at runtime on the following third-party packages, each under its own
+license (declared in pyproject.toml [project].dependencies):
+
+  gradio                  Apache License, Version 2.0
+  PyYAML                  MIT License
+  jsonschema              MIT License
+  cyclonedx-python-lib    Apache License, Version 2.0
+
+Each package is distributed by its own authors under the license named above. Those
+licenses and copyright notices apply to those packages, not to breachsafe-ux.
+
+
+Bundled third-party assets
+--------------------------
+
+This product bundles the Lucide icon set under src/breachsafe_ux/assets/icons/, which is
+Copyright the Lucide Contributors (https://lucide.dev) and licensed under the ISC License.
+The icons keep their original ISC license and are not relicensed under Apache-2.0. See the
+override annotation for that path in REUSE.toml.
+
+
+Development-only components (not shipped in the wheel)
+-----------------------------------------------------
+
+The canonical BreachSAFE skills installed under .claude/skills/ and .agents/skills/ are
+first-party BreachSAFE tooling under the platform PolyForm-Noncommercial-1.0.0 default.
+They are development-only agent tooling and are not part of the published wheel, so the
+Apache-2.0 grant above does not extend to them. See the annotation for those paths in
+REUSE.toml.
