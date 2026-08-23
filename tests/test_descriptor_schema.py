@@ -2,8 +2,8 @@
 
 These prove the JSON Schema (`descriptor.schema.json`) accepts every real descriptor and
 rejects the corruption classes that used to fail deep in a run (or silently). They also prove
-`load_descriptors()` fails CLOSED — a bad descriptor raises at load, it is never silently
-dropped or rendered.
+`load_descriptors()` isolates a bad descriptor (#174): the invalid file is skipped with a
+warning and its valid siblings still load, so one typo cannot down every tab.
 """
 
 from __future__ import annotations
@@ -84,18 +84,23 @@ def test_input_with_no_argv_mapping_is_allowed():
     assert not list(_validator().iter_errors(d))
 
 
-def test_load_descriptors_fails_closed_on_bad_descriptor(tmp_path, monkeypatch):
-    tool = tmp_path / "broken"
-    tool.mkdir()
-    (tool / "broken.yaml").write_text(
+def test_load_descriptors_isolates_bad_descriptor(tmp_path, monkeypatch):
+    # #174: a malformed descriptor is skipped with a warning; valid siblings still load, so one
+    # bad file cannot down every other tab (and --check).
+    (tmp_path / "broken").mkdir()
+    (tmp_path / "broken" / "broken.yaml").write_text(
         yaml.safe_dump(
             {"id": "broken", "run": {"base": ["x"]}, "inputs": [{"name": "a", "type": "nope"}]}
         )
     )
+    (tmp_path / "good").mkdir()
+    (tmp_path / "good" / "good.yaml").write_text(
+        yaml.safe_dump({"schema_version": 1, "id": "good", "run": {"base": ["echo"]}})
+    )
     monkeypatch.setenv("BREACHSAFE_UX_TOOLS_DIR", str(tmp_path))
-    with pytest.raises(_DescriptorError) as ei:
-        load_descriptors()
-    assert "broken.yaml" in str(ei.value)
+    with pytest.warns(UserWarning, match="skipping invalid descriptor broken.yaml"):
+        descs = load_descriptors()
+    assert "good" in descs and "broken" not in descs  # the valid sibling still loads
 
 
 def test_validate_descriptor_names_file_and_path():

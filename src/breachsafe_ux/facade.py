@@ -115,10 +115,7 @@ def _expand_brand(d: dict[str, Any]) -> None:
 
 
 def _expand_input_defaults(d: dict[str, Any]) -> None:
-    """Expand `${ENV}` in each input's DEFAULT value only (e.g. default: "${QUREDDY_BIN}").
-
-    The value a user submits is passed as a single argv element, never expanded.
-    """
+    """Expand `${ENV}` in each input's DEFAULT only; a submitted value is never expanded (#51)."""
     for inp in d.get("inputs", []):
         if isinstance(inp.get("default"), str):
             inp["default"] = os.path.expandvars(inp["default"])
@@ -129,7 +126,13 @@ def load_descriptors() -> dict[str, Any]:
     ds = []
     for y in sorted(_tools_dir().glob("*/*.yaml")):
         d = yaml.safe_load(y.read_text())
-        _validate_descriptor(d, y)  # fail closed before the descriptor is used at all
+        try:
+            _validate_descriptor(d, y)  # fail closed before the descriptor is used at all
+        except _DescriptorError as e:
+            # #174: isolate a bad descriptor. Skip it with a warning instead of raising, so one
+            # malformed file does not down every other tab (and --check). Fail closed per-tool.
+            warnings.warn(f"skipping invalid descriptor {y.name}: {e}", stacklevel=2)
+            continue
         flag = d.get("feature_flag") if isinstance(d, dict) else None
         if flag and not feature_enabled(flag):
             continue  # #67: gated off for this deployment (e.g. mint_oscal in the OSS base edition)
@@ -143,22 +146,19 @@ def load_descriptors() -> dict[str, Any]:
 
 
 def feature_enabled(flag: str) -> bool:
-    """A descriptor or chain marked `feature_flag: X` renders only when this returns True (#67).
+    """`feature_flag: X` renders only when True (#67): env `BREACHSAFE_UX_<X>`, default ON.
 
-    Gated by env `BREACHSAFE_UX_<X>` (default ON). Lets a deployment hide Pro features — e.g.
-    `mint_oscal` / OSCAL — so the OSS base experience can be previewed (BREACHSAFE_UX_MINT_OSCAL=
-    false) before the code is physically decoupled to the Pro consumer (#25).
+    Lets a deployment hide Pro features (e.g. mint_oscal/OSCAL) before they move to Pro (#25).
     """
     val = os.environ.get(f"BREACHSAFE_UX_{flag.upper()}", "true").strip().lower()
     return val not in ("false", "0", "no", "off")
 
 
 def verify_path(value: str, argv_template: list[str]) -> tuple[bool, str]:
-    """Run a tool's own version/verify command for a user-supplied path (the 'Verify' button).
+    """Run a tool's own version/verify command for a user path (the 'Verify' button).
 
-    argv_template uses {value} for the path, e.g. ["{value}", "--version"]. Returns (ok, one-line
-    summary); never raises. Resolves + runs via _resolve/_run_env so a bare tool name resolves
-    against the same augmented tool PATH the engine uses to run the descriptor (#116).
+    {value} is the path (e.g. ["{value}", "--version"]). Returns (ok, one-line summary), never
+    raises; resolves via the augmented tool PATH like the engine (#116).
     """
     argv = [(value if a == "{value}" else a) for a in argv_template]
     if not argv or not argv[0].strip():
