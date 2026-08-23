@@ -245,7 +245,11 @@ def _input_argv(spec: dict[str, Any], params: dict[str, Any]) -> tuple[list[str]
     if "flag" in spec:
         return ([spec["flag"]] if v else [], [])
     if "arg" in spec:
-        return ([spec["arg"], str(v)] if v not in (None, "", False) else [], [])
+        # Drop only the empty sentinels by identity, not `v not in (None, "", False)`: that
+        # membership test treats a numeric 0 as absent (0 == False in Python), so `--maxfail 0`
+        # or `--retries 0` were silently omitted (#171). A real 0/0.0 must reach the argv.
+        drop = v is None or v == "" or v is False
+        return ([spec["arg"], str(v)] if not drop else [], [])
     return ([], [])
 
 

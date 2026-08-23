@@ -15,6 +15,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.3.6] - 2026-08-23
 
 ### Fixed
+- A numeric `0` (or `0.0`) on an `arg`-mapped input is no longer silently dropped from the argv.
+  The old omit check treated `0` as absent because `0 == False` in Python, so `--retries 0`,
+  `--maxfail 0`, and similar were never passed. (#171)
 - **qureddy-ux image build was broken** (`pip: not found`) after the base qureddy runtime dropped
   pip/setuptools (breachsafe/qureddy#385), which froze the bundled scanner at qureddy 0.2.40. The
   EnXemble host wheel now installs in a pip-capable builder stage and is copied onto the pip-free
