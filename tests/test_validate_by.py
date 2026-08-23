@@ -89,13 +89,17 @@ def test_schema_rejects_validate_with_both_argv_and_by():
     assert list(_validator().iter_errors(d)), "oneOf should reject singular+by mixed"
 
 
-def test_qureddy_json_has_no_validator():
+def test_qureddy_emits_both_formats_and_validates_the_cbom():
+    # #199: one scan writes both correlated documents via --output-dir, so there is no format
+    # toggle; validate always runs the single CBOM (primary) validator, not a per-format case.
     import yaml
 
     from breachsafe_ux.resolve import ROOT
 
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
-    cases = q["validate"]["cases"]
-    assert cases["json"] is None  # raw scan JSON: no external schema validator
-    assert "rich" not in cases  # rich format dropped (#69)
-    assert cases["cbom"]["argv"]  # cbom keeps a real validator
+    assert not any(i["name"] == "format" for i in q.get("inputs", []))  # format toggle removed
+    assert q["run"]["output_dir_flag"] == "--output-dir"
+    arts = {a["name"]: a for a in q["run"]["artifacts"]}
+    assert arts["cbom"]["file"] == "scan.cdx.json" and arts["cbom"]["primary"] is True
+    assert arts["json"]["file"] == "scan.json"
+    assert q["validate"]["argv"] and "cases" not in q["validate"]  # single direct CBOM validator

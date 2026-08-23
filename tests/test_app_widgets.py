@@ -104,7 +104,71 @@ def test_result_surfaces_log_on_success():
         "artifact_path": "/x",
         "log": "\x1b[32mscan.start\x1b[0m\nprobe.done",
     }
-    _badge_md, _art, raw, _path = app._result(desc, res)
+    # #199: _result is (badge_md, raw_log_md, artifact_texts, primary_artifact, primary_path)
+    _badge_md, raw, _texts, _primary, _path = app._result(desc, res)
     assert raw.startswith("```") and "scan.start" in raw and "probe.done" in raw
     assert "\x1b[" not in raw  # ANSI stripped (reuses #4's _strip_ansi)
-    assert app._result(desc, dict(res, log=""))[2] == ""  # empty log -> empty Raw log slot
+    assert app._result(desc, dict(res, log=""))[1] == ""  # empty log -> empty Raw log slot
+
+
+def test_result_surfaces_artifacts_and_command(tmp_path):
+    """#199: _result returns each declared artifact's text, and the Raw log carries the command."""
+    desc = {"run": {}, "render": {}}
+    res = {
+        "badge": ("valid", "ok"),
+        "artifact": {"a": 1},
+        "artifact_path": "/x/scan.cdx.json",
+        "log": "probe.done",
+        "command": "qureddy scan tls -- example.com:443",
+        "workdir": "/run/xyz",
+        "artifacts": {
+            "cbom": {"text": '{"bomFormat": "CycloneDX"}', "label": "CBOM"},
+            "json": {"text": '{"schema_version": "qureddy.scan.v1"}', "label": "JSON"},
+        },
+    }
+    _badge_md, raw, texts, _primary, _path = app._result(desc, res)
+    assert texts["cbom"].startswith("{") and "CycloneDX" in texts["cbom"]
+    assert "qureddy.scan.v1" in texts["json"]
+    assert "$ qureddy scan tls" in raw and "/run/xyz" in raw  # command + run dir in the log
+
+
+def test_handler_returns_artifact_texts_then_legacy_shape(monkeypatch):
+    # #199: with declared artifacts, the handler returns one text per artifact (in order);
+    # with none, it returns the single primary artifact for the legacy JSON slot.
+    def _noprog(*_a, **_k):
+        return None
+
+    desc = {
+        "id": "t",
+        "run": {"artifacts": [{"name": "cbom", "file": "c"}, {"name": "json", "file": "j"}]},
+        "render": {},
+    }
+    monkeypatch.setattr(
+        app,
+        "run_descriptor",
+        lambda d, p: {
+            "badge": ("valid", "ok"),
+            "artifact": {},
+            "artifact_path": "/x",
+            "log": "L",
+            "command": "cmd",
+            "workdir": "/w",
+            "artifacts": {"cbom": {"text": "C"}, "json": {"text": "J"}},
+        },
+    )
+    out = app._handler(desc)("host", progress=_noprog)
+    assert out[2] == "C" and out[3] == "J"  # badge, raw, cbom, json, path, reset
+
+    desc2 = {"id": "t2", "run": {}, "render": {}}
+    monkeypatch.setattr(
+        app,
+        "run_descriptor",
+        lambda d, p: {
+            "badge": ("valid", "ok"),
+            "artifact": {"a": 1},
+            "artifact_path": "/x",
+            "log": "",
+        },
+    )
+    out2 = app._handler(desc2)("v", progress=_noprog)
+    assert out2[2] == {"a": 1}  # primary artifact in the single legacy JSON slot

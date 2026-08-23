@@ -129,44 +129,63 @@ def _collect(desc: dict[str, Any], vals: Sequence[Any]) -> dict[str, Any]:
     return params
 
 
-def _result(desc: dict[str, Any], res: dict[str, Any]) -> tuple[str, Any, str, str | None]:
-    """(badge_md, artifact_json, raw_log_md, artifact_path). Defined result on every branch.
+def _raw_log_md(res: dict[str, Any], body: str) -> str:
+    """Fenced Raw log: the invocation + run dir header (#199), then the ANSI-stripped tool text."""
+    cmd, workdir = res.get("command"), res.get("workdir")
+    header = f"$ {cmd}\n# ran in: {workdir}\n\n" if cmd else ""
+    text = _strip_ansi(body.strip())
+    return f"```\n{header}{text}\n```" if (text or header) else ""
 
-    The badge_md is a readiness-posture banner (from the findings, #1) followed by the evidence
-    badge, whose word can be reworded per state so a green badge states what was checked rather
-    than implying a security verdict.
+
+def _result(
+    desc: dict[str, Any], res: dict[str, Any]
+) -> tuple[str, str, dict[str, str], Any, str | None]:
+    """(badge_md, raw_log_md, artifact_texts, primary_artifact, primary_path). Defined on every branch.
+
+    badge_md is a readiness-posture banner (from the findings, #1) then the evidence badge.
+    artifact_texts maps each declared artifact name -> its raw text for a copyable output box (#199).
     """
     state, detail = res["badge"]
     head_text = desc.get("render", {}).get("badge_text", {}).get(state)
     if "error" in res:
         # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
-        # #4: strip ANSI escapes from the tool error/stderr text so the raw log reads cleanly.
-        raw = f"```\n{_strip_ansi(res['error'])}\n```"
-        return _badge(state, detail, head_text=head_text), None, raw, None
+        return (
+            _badge(state, detail, head_text=head_text),
+            _raw_log_md(res, res["error"]),
+            {},
+            None,
+            None,
+        )
     banner = _posture_md(_posture(desc, res.get("artifact")))
-    # #190: surface the tool's diagnostic log (stderr) in the Raw log accordion on a successful
-    # run too, not only on failure. ANSI-stripped + fenced (reuses #4's _strip_ansi); "" if empty.
-    log = _strip_ansi((res.get("log") or "").strip())
-    raw = f"```\n{log}\n```" if log else ""
+    # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
+    raw = _raw_log_md(res, res.get("log") or "")
+    art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
     return (
         banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
-        res.get("artifact"),
         raw,
+        art_texts,
+        res.get("artifact"),
         res.get("artifact_path"),
     )
 
 
 def _handler(desc: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
+    art_names = [a["name"] for a in desc["run"].get("artifacts", [])]
+
     def run(*vals: Any, progress: Any = gr.Progress()) -> tuple[Any, ...]:
         progress(0, desc=f"running {desc['id']}…")
         params = _collect(desc, vals)
         res = run_descriptor(desc, params)
         progress(1)
-        badge, art, raw, path = _result(desc, res)
+        badge, raw, art_texts, primary, path = _result(desc, res)
         # Reset the Run button here, atomic with the result, so it always clears "Running…"
         # (a trailing .then could be skipped; _result never raises, so this return always runs).
         reset = gr.update(value=_run_label(desc), interactive=True)
-        return badge, art, raw, path, reset
+        # Output order mirrors _wire_run: badge, raw log, one box per declared artifact (or the
+        # single legacy JSON when a tool declares none), then the primary-artifact path + reset.
+        if art_names:
+            return (badge, raw, *(art_texts.get(n, "") for n in art_names), path, reset)
+        return (badge, raw, primary, path, reset)
 
     return run
 
@@ -310,9 +329,18 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
     badge = gr.Markdown(_empty(desc))
     dl = gr.DownloadButton("Download output", visible=False)
+    # Consistent output surfaces (#199): every box is a collapsed accordion; each machine output
+    # is a copyable gr.Code. Raw log first, then one box per declared artifact (CBOM, JSON, …).
     with gr.Accordion("Raw log", open=False):
         raw_log = gr.Markdown("")
-    out = gr.JSON(label="artifact")
+    artifacts = desc["run"].get("artifacts", [])
+    outs: list[Any] = []
+    if artifacts:
+        for art in artifacts:
+            with gr.Accordion(art.get("label", art["name"]), open=False):
+                outs.append(gr.Code(language="json", show_label=False, wrap_lines=True))
+    else:  # legacy single-artifact tool: keep one JSON view
+        outs.append(gr.JSON(label="artifact"))
     artifact_state = gr.State(None)
     heavy = desc["run"].get("timeout_s", 0) >= _HEAVY_TIMEOUT_S
     (
@@ -320,7 +348,7 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
         .then(
             _handler(desc),
             ordered,
-            [badge, out, raw_log, artifact_state, run_btn],
+            [badge, raw_log, *outs, artifact_state, run_btn],
             show_progress="full",
             concurrency_limit=1 if heavy else None,
         )

@@ -107,3 +107,13 @@ def test_repeat_flag_ignores_non_numeric_level():
     d = _desc([{"name": "verbosity", "type": "int", "repeat_flag": "-v"}])
     assert _argv(d, {"verbosity": None}) == ["tool"]
     assert _argv(d, {"verbosity": "x"}) == ["tool"]
+
+
+def test_output_dir_flag_is_an_option_before_end_of_options():
+    # #199: --output-dir is an OPTION, so it must land before the "--" positional guard, with the
+    # engine-provided workdir as its value.
+    d = _desc(
+        [{"name": "host", "type": "text"}], positional_from="{host}", output_dir_flag="--output-dir"
+    )
+    argv = _build_argv(d, {"host": "example.com"}, {"host": "example.com", "workdir": "/run/wd"})
+    assert argv == ["tool", "--output-dir", "/run/wd", "--", "example.com"]

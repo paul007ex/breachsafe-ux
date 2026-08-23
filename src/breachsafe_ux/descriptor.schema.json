@@ -98,6 +98,23 @@
         "positional_from": { "type": "string", "description": "Compose one positional from a template, e.g. {host}:{port}." },
         "artifact_from": { "enum": ["stdout"], "description": "Where the artifact comes from; omit if the tool writes the artifact file itself." },
         "artifact_name": { "type": "string" },
+        "output_dir_flag": { "type": "string", "description": "Flag passed as `<flag> <workdir>` so the tool writes correlated artifacts into the run dir (e.g. --output-dir). Used with `artifacts`." },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Files the tool writes into the run dir; each is shown as its own output. Exactly one should be `primary` (validated + used for posture).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "file"],
+            "properties": {
+              "name": { "type": "string" },
+              "file": { "type": "string" },
+              "label": { "type": "string" },
+              "primary": { "type": "boolean" }
+            }
+          }
+        },
         "image": { "type": "string", "description": "Docker image; the tool binary is the ENTRYPOINT. Pin by @sha256." },
         "timeout_s": { "type": "integer", "minimum": 1 },
         "trust_artifact_on_nonzero": { "type": "boolean", "description": "Opt in: a nonzero exit may still badge from the artifact (default: nonzero -> unavailable)." },
@@ -164,7 +181,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "primary": { "enum": ["json"] },
+        "primary": { "type": "string", "description": "Which declared artifact / format is the primary display + validation target (e.g. an artifacts[].name)." },
         "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } },
         "posture": { "$ref": "#/$defs/posture" },
         "badge_text": {

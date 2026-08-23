@@ -313,3 +313,54 @@ def test_environment_python_validator_and_action(monkeypatch):
     assert "someaction" in cmds
     py_row = next(r for r in rows if r["cmd"] == "python")
     assert py_row["path"] == sys.executable  # {python} resolves to the running interpreter
+
+
+def test_read_artifacts_reads_declared_output_dir_files(tmp_path):
+    # #199: the engine reads each declared artifact from the run dir; a missing one is empty,
+    # not an error; label defaults to the artifact name.
+    (tmp_path / "scan.cdx.json").write_text('{"bomFormat": "CycloneDX"}')
+    (tmp_path / "scan.json").write_text('{"schema_version": "x"}')
+    run = {
+        "artifacts": [
+            {"name": "cbom", "file": "scan.cdx.json", "label": "CBOM", "primary": True},
+            {"name": "json", "file": "scan.json"},
+            {"name": "missing", "file": "nope.json"},
+        ]
+    }
+    arts = facade._read_artifacts(run, tmp_path)
+    assert arts["cbom"]["json"]["bomFormat"] == "CycloneDX" and arts["cbom"]["label"] == "CBOM"
+    assert arts["json"]["json"]["schema_version"] == "x" and arts["json"]["label"] == "json"
+    assert arts["missing"]["text"] == "" and arts["missing"]["json"] is None
+
+
+def test_read_artifacts_handles_malformed_json(tmp_path):
+    # #199: a declared artifact that is not valid JSON keeps its text but parses to None.
+    (tmp_path / "bad.json").write_text("{not json")
+    arts = facade._read_artifacts({"artifacts": [{"name": "bad", "file": "bad.json"}]}, tmp_path)
+    assert arts["bad"]["json"] is None and arts["bad"]["text"] == "{not json"
+
+
+def test_run_descriptor_reads_output_dir_artifacts():
+    # #199: a tool given --output-dir writes correlated files into the run dir; run_descriptor
+    # reads each declared artifact and records the command.
+    script = (
+        "import sys, os\n"
+        "d = sys.argv[sys.argv.index('--output-dir') + 1]\n"
+        "open(os.path.join(d, 'scan.cdx.json'), 'w').write('{\"bomFormat\": \"CycloneDX\"}')\n"
+        "open(os.path.join(d, 'scan.json'), 'w').write('{\"ok\": 1}')\n"
+    )
+    desc = {
+        "id": "t",
+        "run": {
+            "base": [sys.executable, "-c", script],
+            "output_dir_flag": "--output-dir",
+            "artifacts": [
+                {"name": "cbom", "file": "scan.cdx.json", "primary": True},
+                {"name": "json", "file": "scan.json"},
+            ],
+        },
+    }
+    res = facade.run_descriptor(desc, {})
+    assert res["artifacts"]["cbom"]["json"]["bomFormat"] == "CycloneDX"
+    assert res["artifacts"]["json"]["json"]["ok"] == 1
+    assert "--output-dir" in res["command"] and res["workdir"]

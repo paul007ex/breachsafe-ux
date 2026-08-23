@@ -251,12 +251,32 @@ def _nonzero_exit_result(proc: subprocess.CompletedProcess[str]) -> dict[str, An
     return {"error": (_err[:2000] or f"exit {proc.returncode}"), "badge": ("unavailable", _reason)}
 
 
+def _read_artifacts(run: dict[str, Any], workdir: Path) -> dict[str, dict[str, Any]]:
+    """Read each declared output-dir artifact (#199): name -> {json, text, path, label}."""
+    out: dict[str, dict[str, Any]] = {}
+    for a in run.get("artifacts", []):
+        p = workdir / a["file"]
+        text = p.read_text() if p.exists() else ""
+        try:
+            parsed = json.loads(text) if text else None
+        except (json.JSONDecodeError, ValueError):
+            parsed = None
+        out[a["name"]] = {
+            "json": parsed,
+            "text": text,
+            "path": str(p),
+            "label": a.get("label", a["name"]),
+        }
+    return out
+
+
 def _postprocess(
     desc: dict[str, Any],
     workdir: Path,
     artifact: Path,
     proc: subprocess.CompletedProcess[str],
     params: dict[str, Any],
+    argv: list[str] | None = None,
 ) -> dict[str, Any]:
     """Persist stdout, enforce the false-green guards (#10/#15), then badge via the validator."""
     run = desc["run"]
@@ -280,13 +300,19 @@ def _postprocess(
         # wizard #11: a non-JSON/unreadable artifact is "no structured highlights"; badge still
         # comes from the external validator below, not this parse.
         art_json = None
-    return {
+    result: dict[str, Any] = {
         "artifact": art_json,
         "artifact_path": str(artifact),
         "badge": _validate(desc, workdir, artifact, params),
         "highlights": _highlights(desc, art_json),
         "log": proc.stderr,  # #190: tool diagnostic log (stderr) for the Raw log accordion
+        # #199: the invocation + run dir, so the Raw log can show what executable ran and where.
+        "command": " ".join(argv) if argv else "",
+        "workdir": str(workdir),
     }
+    if run.get("artifacts"):  # #199: correlated CBOM + JSON from one --output-dir scan
+        result["artifacts"] = _read_artifacts(run, workdir)
+    return result
 
 
 def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
@@ -297,7 +323,14 @@ def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, An
     `artifact_path`, and `highlights`. Any error returns `error` + `unavailable`, never raising.
     """
     workdir = _run_workdir(desc)
-    artifact = workdir / desc["run"].get("artifact_name", "artifact.json")
+    run_cfg = desc["run"]
+    if run_cfg.get("artifacts"):  # #199: multi-artifact tools (e.g. qureddy --output-dir)
+        primary = next(
+            (a for a in run_cfg["artifacts"] if a.get("primary")), run_cfg["artifacts"][0]
+        )
+        artifact = workdir / primary["file"]
+    else:
+        artifact = workdir / run_cfg.get("artifact_name", "artifact.json")
     env = _run_env()  # #116: augmented tool PATH (per-tool bin shims -> ambient PATH)
     mapping = params | {
         "share": str(workdir),
@@ -317,7 +350,7 @@ def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, An
     proc = _launch(argv, desc["run"], workdir, env)
     if isinstance(proc, dict):
         return proc  # launch failed — error-result badge, never a traceback (#183)
-    return _postprocess(desc, workdir, artifact, proc, params)
+    return _postprocess(desc, workdir, artifact, proc, params, argv)
 
 
 def _select_validator(v: dict[str, Any], params: dict[str, Any]) -> dict[str, Any] | None:
