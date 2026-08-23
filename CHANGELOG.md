@@ -26,6 +26,17 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   against the real product (Docker image + from-source CLI).
 
 ### Docs
+- Added rich Mermaid diagrams across the docs (rendered natively on GitHub) and a dedicated
+  Gradio page. New `docs/explanation/the-gradio-shell.md` explains the web-UI framework edge
+  (only `app.py` and `brand.py` import Gradio), the type→widget map, and theming, linked from the
+  docs index, `architecture.md`, and `contributors/coding-rules.md`. `architecture.md` gains a
+  component-coupling dependency graph (with the Gradio boundary drawn as a dashed subgraph).
+  Added Mermaid diagrams to `README.md` (pipeline + MVC), `three-state-verdict.md` (fail-closed
+  decision flow), `why-agnostic.md`, `host-descriptor-boundary.md`, `execution-backends.md`
+  (local→image→unavailable resolution), `reference/badge.md` (state diagram), `how-to/add-a-tool.md`
+  (descriptor→tab→run→verdict lifecycle), and `tutorials/your-first-scan.md` (user flow); the ASCII
+  pipeline in `architecture.md` is now Mermaid. Every diagram matches the real MVC boundary,
+  backend resolution, and badge logic, and stays host-generic. (#154)
 - Restructured `docs/` into the Diátaxis quadrants (`tutorials/`, `how-to/`, `reference/`,
   `explanation/`, `contributors/`) with a `docs/README.md` index, and rewrote `README.md` in the
   task-first BreachSAFE style with a badge row and a slim overview that points into `docs/`. All

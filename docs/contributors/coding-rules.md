@@ -14,7 +14,8 @@ The host is a small MVC around an engine and a theme (see
 - **Only `app.py` (controller) and `brand.py` (theme) may import Gradio.** The model
   (`resolve.py`, `_render.py`), the view (`render.py`), and the engine (`facade.py`) stay
   framework-free so they are testable without a browser. `import-linter` enforces this layering
-  as a gate.
+  as a gate. See [the Gradio shell](../explanation/the-gradio-shell.md) for why the framework
+  lives at this single edge.
 - New rendering or run logic belongs in the engine or model, not in the Gradio shell.
 
 ## Respect the host↔descriptor boundary

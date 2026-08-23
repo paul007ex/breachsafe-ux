@@ -11,6 +11,20 @@ a backend that cannot run yields `VALIDATOR-UNAVAILABLE` rather than a false ver
 | Docker image | `run.image` (`docker run --pull=always`) | yes | yes | supported |
 | Remote API | `run.endpoint` | yes | yes | future |
 
+The host resolves the backend fail-closed: a local binary is preferred, the image is the fallback,
+and anything that cannot run yields `VALIDATOR-UNAVAILABLE`.
+
+```mermaid
+flowchart TD
+    start(["resolve the tool"]) --> local{"run.base on PATH (or tools/id/bin)?"}
+    local -- yes --> runlocal["run the local binary (in-process)"]
+    local -- no --> image{"run.image declared?"}
+    image -- no --> unavail["unavailable -> VALIDATOR-UNAVAILABLE"]
+    image -- yes --> docker{"docker present?"}
+    docker -- no --> unavail
+    docker -- yes --> rundocker["docker run --rm --pull=always image"]
+```
+
 ## Local binary
 
 The host runs the command named in `run.base` / `run.argv` by resolving it against

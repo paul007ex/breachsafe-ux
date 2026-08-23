@@ -33,6 +33,22 @@ A crashed tool, a missing dependency, a Docker daemon that is down, a timeout, o
 all resolve to `VALIDATOR-UNAVAILABLE`. A green appears only when a real external validator
 really accepted a real artifact.
 
+The state is decided fail-closed: every branch that is not a clean pass or a clean reject falls to
+`VALIDATOR-UNAVAILABLE`, never to a green.
+
+```mermaid
+flowchart TD
+    run(["run the tool"]) --> tool{"tool ran and produced a non-empty artifact?"}
+    tool -- no --> unavail["VALIDATOR-UNAVAILABLE"]
+    tool -- yes --> vran{"validator declared and able to run?"}
+    vran -- no --> unavail
+    vran -- yes --> pass{"pass_if matched and validator exit 0?"}
+    pass -- yes --> valid["VALID"]
+    pass -- no --> rej{"fail_if matched?"}
+    rej -- yes --> invalid["INVALID"]
+    rej -- no --> otherwise["otherwise (default INVALID)"]
+```
+
 ## Fail-closed, by construction
 
 The host derives the state from the descriptor's badge rule, and the rule is fail-closed:

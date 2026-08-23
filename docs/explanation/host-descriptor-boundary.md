@@ -8,6 +8,18 @@ rule. The settled decision is [ADR-0002](../adr/0002-host-descriptor-boundary.md
 
 ## What each side owns
 
+```mermaid
+flowchart LR
+    subgraph host["Host — owns transport and truth"]
+        engine["facade.py — argv, no-shell exec, badge state machine"]
+        shell["app.py — widgets, server"]
+    end
+    subgraph desc["Descriptor — owns meaning"]
+        yaml["id.yaml — argv, inputs, validator, badge rule, text"]
+    end
+    desc --> host
+```
+
 | Layer | Owns | Must never contain |
 |---|---|---|
 | **Host** (`facade.py`, `app.py`) | how a tool is run and reported: argv assembly, no-shell exec, timeouts, the three-state badge state machine, server bind, widget rendering | the name of any specific tool, protocol, algorithm, CLI flag, or domain verdict |

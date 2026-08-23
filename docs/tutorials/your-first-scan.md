@@ -9,6 +9,16 @@ We use the **shipped reference example** image, `qureddy-ux`, because it is the 
 you can pull today. What you learn here is the host flow, not the scanner — every tab, whatever
 tool it wraps, works the same way.
 
+The flow end to end:
+
+```mermaid
+flowchart LR
+    launch["launch the host (docker run)"] --> open["open http://localhost:7860"]
+    open --> edit["edit the prefilled fields"]
+    edit --> runit["click the Run button"]
+    runit --> read["read the three-state verdict"]
+```
+
 ## 1. Launch
 
 ```bash

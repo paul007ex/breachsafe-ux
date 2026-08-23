@@ -60,7 +60,8 @@ Look-it-up information. Comprehensive, accurate, dry.
 
 Conceptual discussion. Why the host is built the way it is.
 
-- [Architecture](explanation/architecture.md) — the MVC engine and theme.
+- [Architecture](explanation/architecture.md) — the MVC engine and theme, with a component-coupling graph.
+- [The Gradio shell](explanation/the-gradio-shell.md) — the web-UI framework edge and the type→widget map.
 - [The host↔descriptor boundary](explanation/host-descriptor-boundary.md) — the ADR-0002 thesis.
 - [Why the verdict has three states](explanation/three-state-verdict.md) — fail-closed by design.
 - [Why the host is agnostic](explanation/why-agnostic.md) — the design thesis.

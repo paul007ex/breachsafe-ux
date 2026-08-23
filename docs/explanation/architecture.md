@@ -11,13 +11,16 @@ module map and why the pieces are split the way they are. For the settled decisi
 
 Every tool the host wraps is the same pipeline with different nouns:
 
-```
-INPUT (form fields / file)
-   -> build a typed argv (no shell)
-   -> run the tool
-   -> ARTIFACT
-   -> external validator
-   -> three-state badge + rendered output
+```mermaid
+flowchart LR
+    input["INPUT (form fields / file)"] --> argv["build a typed argv (no shell)"]
+    argv --> run["run the tool"]
+    run --> artifact["ARTIFACT"]
+    artifact --> validator["external validator"]
+    validator --> verdict{"three-state verdict"}
+    verdict --> valid["VALID"]
+    verdict --> invalid["INVALID"]
+    verdict --> unavail["VALIDATOR-UNAVAILABLE"]
 ```
 
 The value of the host is that this pipeline is written once and shared by every tab, and that
@@ -36,7 +39,54 @@ a green the validator did not give.
 
 **Only `app.py` and `brand.py` import Gradio.** The framework dependency is kept at the
 controller and theme edge; the model, view, and engine stay framework-free so they are testable
-in isolation without a browser.
+in isolation without a browser. That edge is explained in detail in
+[the Gradio shell](the-gradio-shell.md).
+
+## Component coupling
+
+How the modules depend on one another. An arrow reads "uses / depends on"; the dashed box is the
+Gradio boundary — everything inside it imports the framework, everything outside stays
+framework-free.
+
+```mermaid
+flowchart TD
+    tools["tools/ — descriptors + bin/ shims"]
+    desc["descriptor.yaml"]
+    resolve["resolve.py — Model (resolve + probe binaries)"]
+    facade["facade.py — Engine (run, artifact, validate, badge)"]
+    rendermodel["_render.py — Model (highlights + posture)"]
+    view["render.py — View (HTML / markdown)"]
+    validators["external validators (subprocess)"]
+
+    subgraph gradio["Gradio boundary"]
+        app["app.py — Controller"]
+        brand["brand.py — Theme"]
+    end
+
+    tools --> desc
+    facade --> tools
+    facade --> resolve
+    facade --> rendermodel
+    facade --> validators
+    app --> facade
+    app --> resolve
+    app --> view
+    app --> rendermodel
+    app --> brand
+    view --> rendermodel
+    style gradio stroke-dasharray: 5 5
+```
+
+Reading the graph:
+
+- **`facade.py` (engine)** loads descriptors from `tools/`, resolves and runs each tool through
+  `resolve.py`, invokes the external validator as a subprocess, and derives the badge. It carries
+  no knowledge of any specific tool.
+- **`app.py` (controller)** is the only caller that ties everything together: it calls the engine
+  to run a descriptor, `resolve.py` for the environment probe, and the view plus `_render.py` to
+  build the surface — and it imports the theme from `brand.py`.
+- **`resolve.py`, `_render.py`, `render.py`** have no dependency on the controller or on Gradio, so
+  they are unit-testable on their own.
 
 ## The engine
 

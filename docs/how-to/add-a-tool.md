@@ -16,6 +16,17 @@ here is specific to any BreachSAFE tool. The full field list is the
 > The YAML blocks below are **illustrative configuration**, not shell commands. Adapt the flag
 > names and validator to the tool you are wrapping.
 
+The lifecycle you are wiring up — one descriptor becomes a rendered tab, a run, and a verdict:
+
+```mermaid
+flowchart LR
+    yaml["descriptor.yaml"] --> tab["rendered tab (widgets)"]
+    tab --> run["Run: typed argv -> tool"]
+    run --> artifact["artifact"]
+    artifact --> validate["external validator"]
+    validate --> badge["three-state badge"]
+```
+
 ## 1. Create the descriptor file
 
 One tool is one file at `tools/<id>/<id>.yaml`, where `<id>` is a lowercase slug. For our
