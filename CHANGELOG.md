@@ -26,6 +26,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   against the real product (Docker image + from-source CLI).
 
 ### Docs
+- Added a consistent, accessible semantic colour palette to the Mermaid diagrams via `classDef`
+  (green VALID, red INVALID, orange VALIDATOR-UNAVAILABLE, blue process, grey artifact, purple
+  external), so colour carries meaning at a glance; diagram content is unchanged. (#156)
 - Added rich Mermaid diagrams across the docs (rendered natively on GitHub) and a dedicated
   Gradio page. New `docs/explanation/the-gradio-shell.md` explains the web-UI framework edge
   (only `app.py` and `brand.py` import Gradio), the type→widget map, and theming, linked from the

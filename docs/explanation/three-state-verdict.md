@@ -47,6 +47,16 @@ flowchart TD
     pass -- no --> rej{"fail_if matched?"}
     rej -- yes --> invalid["INVALID"]
     rej -- no --> otherwise["otherwise (default INVALID)"]
+    classDef valid       fill:#d4edda,stroke:#28a745,color:#155724;
+    classDef invalid     fill:#f8d7da,stroke:#dc3545,color:#721c24;
+    classDef unavailable fill:#fff3cd,stroke:#fd7e14,color:#7a4a00;
+    classDef process     fill:#cce5ff,stroke:#0d6efd,color:#0a3678;
+    classDef artifact    fill:#e2e3e5,stroke:#6c757d,color:#2f3336;
+    classDef external    fill:#e7d6ff,stroke:#6f42c1,color:#3d1a78;
+    class run,tool,vran,pass,rej process;
+    class valid valid;
+    class invalid,otherwise invalid;
+    class unavail unavailable;
 ```
 
 ## Fail-closed, by construction
