@@ -7,7 +7,7 @@ machine-readable [`threat-model/threagile.yaml`](../../threat-model/threagile.ya
 trust-boundary decision in [ADR-0002](../adr/0002-host-descriptor-boundary.md). The posture is
 deliberately thin and operator-owned: reaching the UI equals reaching a process spawner, so
 exposure is a deployment decision, and the host spends its hardening on the execution path
-instead. This is a host-level model — it describes the generic UX host, not any one tool.
+instead. This is a host-level model: it describes the generic UX host, not any one tool.
 
 ## The trust boundary is the operator's, not the host's
 
@@ -17,7 +17,7 @@ The boundary that protects the UI is the operator's:
 - **Loopback by default.** A local run binds `127.0.0.1`, reachable only from the same machine.
 - **The container binds `0.0.0.0` on purpose.** Inside the shipped image the host binds all
   interfaces so the operator can map the port with `-p`. The trust boundary is then the container
-  network namespace plus the operator's explicit `-p` mapping, reverse proxy, or VPN — not code in
+  network namespace plus the operator's explicit `-p` mapping, reverse proxy, or VPN, not code in
   the host.
 - **Auth belongs at the boundary you already run.** When you expose the UI, put authentication on
   the reverse proxy, Docker network, or VPN in front of it. The host does not add in-process Basic
@@ -35,7 +35,7 @@ The host owns transport and truth; the descriptor owns meaning
 because the descriptor is what decides which command runs.
 
 - **Descriptors are the highest-integrity asset.** A per-tool YAML declares the argv template, the
-  input bindings, the validator, and the badge rule — so a tampered descriptor changes the command
+  input bindings, the validator, and the badge rule, so a tampered descriptor changes the command
   the host executes. Descriptors are in-repo and reviewed; their integrity is rated critical, their
   confidentiality only internal (they are declarations, not secrets).
 - **Operator input is data, never code.** Form-field values are carried as argv elements. They are
@@ -52,8 +52,8 @@ run and how its result is reported.
 - **End-of-options `--` guard.** The engine emits all options first, then a literal `--`, then
   positionals ([ADR-0002 §2d](../adr/0002-host-descriptor-boundary.md)). A field value beginning
   with a dash can no longer be smuggled to the underlying tool as a flag.
-- **Fail-closed validation.** The result badge is a three-state machine —
-  `valid` / `invalid` / `none` — driven by an external validator. If no validator applies to the
+- **Fail-closed validation.** The result badge is a three-state machine,
+  `valid` / `invalid` / `none`, driven by an external validator. If no validator applies to the
   produced artifact, the badge is `none`, never a green
   ([ADR-0002 §2b/§2c](../adr/0002-host-descriptor-boundary.md)). A run without a validator, or with
   an unhandled format or exit code, can never render as a passing verdict. The full rationale is in
@@ -65,7 +65,7 @@ run and how its result is reported.
 ## The trust boundaries, drawn
 
 The operator reaches the host across the operator-owned exposure boundary. Everything the host
-spawns — the descriptor engine, the tool subprocess, and the external validator — lives inside the
+spawns, the descriptor engine, the tool subprocess, and the external validator, lives inside the
 container runtime; the tool subprocess reaches out to the scanned endpoint to probe its
 cryptography.
 
@@ -121,15 +121,15 @@ high- or critical-severity risk whose status is `unchecked` or `in-discussion`**
 `accepted`, `mitigated`, `in-progress`, or `false-positive` pass. Because the two authentication
 risks above are `accepted` and nothing else is high or critical, the gate is green.
 
-The gate is **advisory today** — its two steps carry `continue-on-error` until the Threagile
+The gate is **advisory today**: its two steps carry `continue-on-error` until the Threagile
 container run is proven on the CI runner (#134). Making it blocking is that follow-up's job; the
 model and the gate script are already verified locally.
 
 ## Related reading
 
-- [ADR-0002 — the host ↔ descriptor boundary](../adr/0002-host-descriptor-boundary.md) — the source
+- [ADR-0002: the host ↔ descriptor boundary](../adr/0002-host-descriptor-boundary.md): the source
   decision this model encodes.
-- [`threat-model/README.md`](../../threat-model/README.md) — how to regenerate and validate the
+- [`threat-model/README.md`](../../threat-model/README.md): how to regenerate and validate the
   model locally, and how the CI gate is wired.
-- [Why the verdict has three states](three-state-verdict.md) — the fail-closed badge in depth.
-- [The host ↔ descriptor boundary](host-descriptor-boundary.md) — the boundary as a design thesis.
+- [Why the verdict has three states](three-state-verdict.md): the fail-closed badge in depth.
+- [The host ↔ descriptor boundary](host-descriptor-boundary.md): the boundary as a design thesis.

@@ -36,18 +36,18 @@ flowchart LR
 ```
 
 The value of the host is that this pipeline is written once and shared by every tab, and that
-the verdict is the real result of an external validator, reported as one of three states — never
+the verdict is the real result of an external validator, reported as one of three states, never
 a green the validator did not give.
 
 ## Module map
 
 | Module | Role | Imports Gradio? |
 |---|---|---|
-| `resolve.py`, `_render.py` | **Model** — resolve descriptors, build the render model | no |
-| `render.py` | **View** — turn the model into view structures | no |
-| `app.py` | **Controller** — wire model → view into the running app; the Gradio shell | yes |
-| `facade.py` | **Engine** — load descriptors, build argv, run, validate, derive the badge | no |
-| `brand.py` | **Theme** — branding and white-label tokens | yes |
+| `resolve.py`, `_render.py` | **Model**: resolve descriptors, build the render model | no |
+| `render.py` | **View**: turn the model into view structures | no |
+| `app.py` | **Controller**: wire model → view into the running app; the Gradio shell | yes |
+| `facade.py` | **Engine**: load descriptors, build argv, run, validate, derive the badge | no |
+| `brand.py` | **Theme**: branding and white-label tokens | yes |
 
 **Only `app.py` and `brand.py` import Gradio.** The framework dependency is kept at the
 controller and theme edge; the model, view, and engine stay framework-free so they are testable
@@ -57,7 +57,7 @@ in isolation without a browser. That edge is explained in detail in
 ## Component coupling
 
 How the modules depend on one another. An arrow reads "uses / depends on"; the dashed box is the
-Gradio boundary — everything inside it imports the framework, everything outside stays
+Gradio boundary: everything inside it imports the framework, everything outside stays
 framework-free.
 
 ```mermaid
@@ -105,7 +105,7 @@ Reading the graph:
   no knowledge of any specific tool.
 - **`app.py` (controller)** is the only caller that ties everything together: it calls the engine
   to run a descriptor, `resolve.py` for the environment probe, and the view plus `_render.py` to
-  build the surface — and it imports the theme from `brand.py`.
+  build the surface, and it imports the theme from `brand.py`.
 - **`resolve.py`, `_render.py`, `render.py`** have no dependency on the controller or on Gradio, so
   they are unit-testable on their own.
 
@@ -120,7 +120,7 @@ the ~85%-backend part of the system and the place the correctness properties liv
 ## The shell
 
 `app.py` is the Gradio shell. It maps a parameter type to a widget once, then loops over the
-loaded descriptors to build one tab per standalone tool. Adding a tool changes no code here —
+loaded descriptors to build one tab per standalone tool. Adding a tool changes no code here:
 the tab is generated from the [descriptor](../reference/descriptor-schema.md). It also handles
 the `--check` environment probe (see the [CLI reference](../reference/cli.md)).
 
@@ -135,5 +135,5 @@ tests/               badge-state and safety tests
 ```
 
 Because the framework lives only at the edge and the engine is tool-agnostic, the same host
-serves any tool that can be described by a descriptor. That agnosticism is the design thesis —
-see [why agnostic](why-agnostic.md).
+serves any tool that can be described by a descriptor. That agnosticism is the design thesis.
+See [why agnostic](why-agnostic.md).

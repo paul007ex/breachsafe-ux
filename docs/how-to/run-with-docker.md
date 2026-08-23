@@ -30,13 +30,13 @@ Stop it with `docker stop enxemble`.
 
 ## Tags
 
-- `:latest` — the newest release.
-- `:edge` — the tip of `main`.
-- A version tag (for example `:0.3.5`) — immutable, for reproducible deployments.
+- `:latest`: the newest release.
+- `:edge`: the tip of `main`.
+- A version tag (for example `:0.3.5`): immutable, for reproducible deployments.
 
 `--pull=always` with `:latest` keeps the host and its bundled tools current. When
-reproducibility matters more than freshness, pin an immutable reference instead of `:latest` —
-a version tag, or preferably a `@sha256:` digest:
+reproducibility matters more than freshness, pin an immutable reference instead of `:latest`:
+a version tag, or preferably a `@sha256:` digest.
 
 ```bash
 docker pull ghcr.io/paul007ex/qureddy-ux:latest

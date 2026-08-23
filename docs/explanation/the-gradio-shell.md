@@ -4,7 +4,7 @@
 
 EnXemble renders its web UI with **Gradio**, an Apache-2.0 Python framework for building web
 interfaces from declarative widget code. This page explains what Gradio is, why it fits a
-config-driven, tool-agnostic host, and — most importantly — how the host keeps the framework
+config-driven, tool-agnostic host, and, most importantly, how the host keeps the framework
 dependency at a single edge so the rest of the code stays framework-free and unit-testable. For
 the module map as a whole, see [architecture](architecture.md); for the invariant that keeps the
 engine generic, see [the host↔descriptor boundary](host-descriptor-boundary.md).
@@ -18,7 +18,7 @@ to build, bundle, or ship.
 
 That declarative model is exactly what a config-driven host needs. Because a widget is created by
 calling a constructor, the host can decide **at runtime** which widgets to build by reading a
-tool's descriptor — the form for an arbitrary tool is a loop over that tool's declared inputs, not
+tool's descriptor. The form for an arbitrary tool is a loop over that tool's declared inputs, not
 hand-written markup. The host owns one thin shell; each tool is data. This is what lets a new tool
 be a YAML file rather than new UI code (see [why the host is agnostic](why-agnostic.md)).
 
@@ -110,7 +110,7 @@ dependency stays contained even for theming. The full recipe is
 ## Why this split matters
 
 Keeping Gradio at the controller and theme edge is what makes the rest of the system portable and
-testable. The engine's correctness properties — no-shell argv, fail-closed validation, the
-[three-state verdict](three-state-verdict.md) — are written and tested against plain Python, with
+testable. The engine's correctness properties, no-shell argv, fail-closed validation, the
+[three-state verdict](three-state-verdict.md), are written and tested against plain Python, with
 no browser in the loop. If the UI framework were ever swapped, the model, view, and engine would be
 unaffected; only the shell and theme would change.

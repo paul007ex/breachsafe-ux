@@ -35,7 +35,7 @@ it is reachable only from the same machine.
 The host runs the command a descriptor names by resolving it against `tools/<id>/bin/` first,
 then the system `PATH`. A tool is runnable when either is true:
 
-- **It is on your `PATH`** — install it however it ships. For the bundled reference descriptors,
+- **It is on your `PATH`**: install it however it ships. For the bundled reference descriptors,
   put the scanner on `PATH`, for example by cloning and syncing it:
 
   ```bash
@@ -43,7 +43,7 @@ then the system `PATH`. A tool is runnable when either is true:
   export PATH="$PWD/qureddy/.venv/bin:$PATH"
   ```
 
-- **A descriptor declares `run.image`** — the host runs the local binary when it resolves on
+- **A descriptor declares `run.image`**: the host runs the local binary when it resolves on
   `PATH` and falls back to `docker run --pull=always <image>` otherwise. The bundled reference
   descriptors declare an image, so their tabs work from a bare checkout as long as Docker is
   running, even with nothing extra on `PATH`.

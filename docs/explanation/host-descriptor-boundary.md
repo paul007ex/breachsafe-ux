@@ -42,14 +42,14 @@ tool's name, protocol, algorithm, flag, or domain verdict; all of that is descri
 ## Why it is a hard invariant
 
 A config-driven host only stays generic if tool-specific meaning cannot leak into the engine.
-The moment the engine "knows" about one tool — hardcodes a flag, computes a domain posture, or
-reads an artifact to decide a headline — every future tool has to fit that assumption, and the
+The moment the engine "knows" about one tool, hardcodes a flag, computes a domain posture, or
+reads an artifact to decide a headline, every future tool has to fit that assumption, and the
 host quietly stops being reusable. Keeping the boundary hard means hardening and bug-fixes land
 on the correct side rather than eroding reuse.
 
 This is why, for example, the host renders only the badge **state** it can defend. Any
 domain-specific summary a tab shows is declared by that tool's descriptor and mapped over the
-badge state or an artifact value — the host never computes it. See
+badge state or an artifact value. The host never computes it. See
 [the three-state verdict](three-state-verdict.md) and [why agnostic](why-agnostic.md).
 
 ## Standing witnesses
