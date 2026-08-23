@@ -71,3 +71,17 @@ def test_empty_and_false_values_are_omitted():
         ]
     )
     assert _argv(d, {"opt": "", "pos": "", "flg": False}) == ["tool"]
+
+
+def test_numeric_zero_arg_is_kept():
+    # #171: a numeric 0 / 0.0 must reach the argv. The old `v not in (None, "", False)` check
+    # dropped it because 0 == False in Python (e.g. --retries 0, --maxfail 0 were silently lost).
+    d = _desc(
+        [
+            {"name": "maxfail", "type": "int", "arg": "--maxfail"},
+            {"name": "delay", "type": "float", "arg": "--delay"},
+        ]
+    )
+    assert _argv(d, {"maxfail": 0, "delay": 0.0}) == ["tool", "--maxfail", "0", "--delay", "0.0"]
+    # a nonzero still works and the empty sentinel is still dropped
+    assert _argv(d, {"maxfail": 3, "delay": ""}) == ["tool", "--maxfail", "3"]
