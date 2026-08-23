@@ -86,9 +86,9 @@ inputs:
     flag: "--deterministic"
   - name: verbose
     type: bool
-    label: "verbose (-v)"
-    default: false
-    info: "Emit per-subprocess start and finish diagnostics to the log."
+    label: "verbose log (-v)"
+    default: true
+    info: "Emit the per-subprocess diagnostic log, shown in Raw log below. Turn off for a quiet run."
     group: advanced
     flag: "-v"
 run:

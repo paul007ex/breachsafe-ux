@@ -51,6 +51,15 @@ def test_run_descriptor_success_parses_json_artifact():
     assert res["highlights"] == []
 
 
+def test_run_descriptor_returns_tool_stderr_as_log():
+    """#190: the tool's stderr (its diagnostic log) is returned so Raw log can show it."""
+    prog = "import sys; sys.stdout.write('{}'); sys.stderr.write('scan.start\\nprobe.done')"
+    desc = _desc([PY, "-c", prog], artifact_from="stdout", artifact_name="a.json")
+    res = run_descriptor(desc, {})
+    assert res["artifact"] == {}  # successful run
+    assert res["log"] == "scan.start\nprobe.done"  # stderr carried through, not discarded
+
+
 def test_run_descriptor_non_json_artifact_is_tolerated():
     """A non-JSON but non-empty artifact is fine (art_json=None), badge still from validator."""
     desc = _desc([PY, "-c", "print('not json')"], artifact_from="stdout", artifact_name="a.json")

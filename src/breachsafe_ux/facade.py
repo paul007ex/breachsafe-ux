@@ -356,6 +356,7 @@ def _postprocess(
         "artifact_path": str(artifact),
         "badge": _validate(desc, workdir, artifact, params),
         "highlights": _highlights(desc, art_json),
+        "log": proc.stderr,  # #190: tool diagnostic log (stderr) for the Raw log accordion
     }
 
 

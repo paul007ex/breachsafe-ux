@@ -12,6 +12,12 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- The Raw log accordion now shows the tool's diagnostic log (stderr) on a successful run, not
+  only on failure. The engine carries the tool's stderr through to the result, and the qureddy
+  TLS/SSH tabs default to verbose so the per-subprocess log appears; turn verbose off in Advanced
+  for a quiet run. (#190)
+
 ## [0.3.7] - 2026-08-23
 
 ### Security

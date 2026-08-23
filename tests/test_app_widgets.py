@@ -93,3 +93,18 @@ def test_build_skips_standalone_false_descriptor(monkeypatch):
     monkeypatch.setattr(app, "load_descriptors", lambda: descs)
     demo = app.build()
     assert demo is not None
+
+
+def test_result_surfaces_log_on_success():
+    """#190: a successful run's tool log (stderr) renders in the Raw log slot, ANSI-stripped."""
+    desc = {"run": {}, "render": {}}
+    res = {
+        "badge": ("valid", "ok"),
+        "artifact": {},
+        "artifact_path": "/x",
+        "log": "\x1b[32mscan.start\x1b[0m\nprobe.done",
+    }
+    _badge_md, _art, raw, _path = app._result(desc, res)
+    assert raw.startswith("```") and "scan.start" in raw and "probe.done" in raw
+    assert "\x1b[" not in raw  # ANSI stripped (reuses #4's _strip_ansi)
+    assert app._result(desc, dict(res, log=""))[2] == ""  # empty log -> empty Raw log slot

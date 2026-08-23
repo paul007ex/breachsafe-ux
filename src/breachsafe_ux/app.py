@@ -144,10 +144,14 @@ def _result(desc: dict[str, Any], res: dict[str, Any]) -> tuple[str, Any, str, s
         raw = f"```\n{_strip_ansi(res['error'])}\n```"
         return _badge(state, detail, head_text=head_text), None, raw, None
     banner = _posture_md(_posture(desc, res.get("artifact")))
+    # #190: surface the tool's diagnostic log (stderr) in the Raw log accordion on a successful
+    # run too, not only on failure. ANSI-stripped + fenced (reuses #4's _strip_ansi); "" if empty.
+    log = _strip_ansi((res.get("log") or "").strip())
+    raw = f"```\n{log}\n```" if log else ""
     return (
         banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
         res.get("artifact"),
-        "",
+        raw,
         res.get("artifact_path"),
     )
 
