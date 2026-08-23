@@ -73,7 +73,10 @@ jobs:
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+          TAG: ${{ github.event.release.tag_name }}
+        # #175: the tag flows through env, never interpolated into the run: script text, so a tag
+        # name containing shell metacharacters cannot inject commands.
+        run: gh release upload "$TAG" dist/* --clobber
 
   # Enforcement: a signing STEP existing in the build job does NOT prove it RAN. This job runs
   # AFTER build has signed + uploaded, re-reads the just-published GitHub Release, and FAILS the
@@ -92,4 +95,7 @@ jobs:
       - name: Verify the published release is actually signed
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash scripts/verify_release_signed.sh "${{ github.event.release.tag_name }}" "${{ github.repository }}"
+          TAG: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+        # #175: tag + repo through env, not interpolated into the run: script text.
+        run: bash scripts/verify_release_signed.sh "$TAG" "$REPO"
