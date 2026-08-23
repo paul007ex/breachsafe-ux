@@ -14,6 +14,11 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.6] - 2026-08-23
 
+### Security
+- The release workflow no longer interpolates the Git tag name into a shell `run:` step. The
+  tag and repository flow through `env` variables, closing a script-injection shape where a tag
+  name with shell metacharacters could run in the signing job. (#175)
+
 ### Fixed
 - A numeric `0` (or `0.0`) on an `arg`-mapped input is no longer silently dropped from the argv.
   The old omit check treated `0` as absent because `0 == False` in Python, so `--retries 0`,
