@@ -49,13 +49,13 @@ inputs:
     default: 8
     info: "Seconds per probe (1 to 300, default 8)."
     arg: "--timeout"
-  - name: reproducible
+  - name: deterministic
     type: bool
-    label: "reproducible"
+    label: "deterministic"
     default: false
     info: "Omit per-run identity (serial, timestamps, scan id) for a stable, diffable digest."
     group: advanced
-    flag: "--reproducible"
+    flag: "--deterministic"
   - name: verbose
     type: bool
     label: "verbose (-v)"

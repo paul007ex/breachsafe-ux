@@ -77,13 +77,13 @@ inputs:
     info: "Seconds between retries (0.0 to 10.0, default 1.0)."
     group: advanced
     arg: "--retry-delay"
-  - name: reproducible
+  - name: deterministic
     type: bool
-    label: "reproducible"
+    label: "deterministic"
     default: false
     info: "Omit per-run identity (serial, timestamps, scan id) for a stable, diffable digest."
     group: advanced
-    flag: "--reproducible"
+    flag: "--deterministic"
   - name: verbose
     type: bool
     label: "verbose (-v)"

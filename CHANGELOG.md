@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.5-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.6-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.6] - 2026-08-23
+
+### Fixed
+- **qureddy-ux image build was broken** (`pip: not found`) after the base qureddy runtime dropped
+  pip/setuptools (breachsafe/qureddy#385), which froze the bundled scanner at qureddy 0.2.40. The
+  EnXemble host wheel now installs in a pip-capable builder stage and is copied onto the pip-free
+  qureddy base; qureddy still comes from the base image. Bundled qureddy is now the current release
+  (0.2.43). (#166, #167)
+
+### Changed
+- Renamed the `reproducible` toggle to `deterministic` in the TLS and SSH descriptors, matching
+  qureddy's renamed `--deterministic` flag (breachsafe/qureddy#388).
 
 ### Removed
 - The TestPyPI publishing job in `release.yml` (added in 0.3.4, #19). breachsafe-ux is
