@@ -29,9 +29,10 @@ should be corrected.
 
 ## Where things are
 
-- Architecture + repo map: [`CLAUDE.md`](CLAUDE.md) and [`docs/adr/`](docs/adr/).
-- How to run every gate locally (one command): [`CONTRIBUTING.md`](CONTRIBUTING.md) §4.
-- First scan + reading the verdict: [`docs/first-scan.md`](docs/first-scan.md).
+- Documentation index (Diátaxis): [`docs/README.md`](docs/README.md).
+- Architecture + repo map: [`CLAUDE.md`](CLAUDE.md), [`docs/explanation/architecture.md`](docs/explanation/architecture.md), and [`docs/adr/`](docs/adr/).
+- How to run every gate locally (one command): [`CONTRIBUTING.md`](CONTRIBUTING.md) §4 and [`docs/contributors/local-release-gate.md`](docs/contributors/local-release-gate.md).
+- First run + reading the verdict: [`docs/tutorials/your-first-scan.md`](docs/tutorials/your-first-scan.md).
 
 ## Agent skills
 
