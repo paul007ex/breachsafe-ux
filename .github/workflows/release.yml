@@ -50,7 +50,9 @@ jobs:
       - name: Build distributions
         run: uv build   # -> dist/*.whl + dist/*.tar.gz
       - name: Check with twine
-        run: uv tool run --from "twine==6.2.0" twine check dist/*
+        # twine 7.0.0: earlier pins (6.2.0) reject Metadata-Version 2.5 emitted by current uv build
+        # ("'2.5' is not a valid metadata version"), which failed the release. 7.0.0 accepts it.
+        run: uv tool run --from "twine==7.0.0" twine check dist/*
       # SLSA build provenance for the wheel + sdist. Verifiable with
       # `gh attestation verify <file> --repo paul007ex/breachsafe-ux`.
       - name: Attest build provenance for the distributions
