@@ -10,11 +10,33 @@ from __future__ import annotations
 
 import base64
 import html
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+# #4: a tool's captured stdout/stderr can carry ANSI escape sequences (e.g. `rich` colour,
+# cursor moves), which render as escape-code garbage in the web view. Strip them from any
+# human-readable text before display. Host-generic — no tool-specific logic. Never applied to
+# artifact JSON (that is structured data), only to output/detail strings shown to the user.
+_ANSI_RE = re.compile(
+    r"\x1b\[[0-9;?]*[ -/]*[@-~]"  # CSI / SGR (colour, style, cursor moves)
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC (e.g. window title), BEL- or ST-terminated
+    r"|\x1b[@-Z\\-_]"  # other 2-char C1 escapes
+    r"|\x1b"  # a lone/leftover ESC
+)
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences so console/`rich` output reads cleanly in the web view (#4).
+
+    Pure and host-generic: handles CSI/SGR, OSC, and single-char C1 escapes plus a lone ESC.
+    Newlines and all other content are preserved.
+    """
+    return _ANSI_RE.sub("", text)
+
 
 _ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
 _LOGO = _ASSETS / "logo.png"
@@ -74,7 +96,9 @@ def _action_output_md(ok: bool, output: str) -> str:
     """
     color = "#0ba0b6" if ok else "#b45309"
     verdict = "OK" if ok else "FAILED"
-    fence = output.replace("```", "'''")  # keep tool output from breaking the code fence
+    # #4: strip ANSI escapes from the tool's captured output so console/`rich` output reads
+    # cleanly, then keep it from breaking the code fence.
+    fence = _strip_ansi(output).replace("```", "'''")
     return f'<span style="color:{color};font-weight:700">{verdict}</span>\n\n```\n{fence}\n```'
 
 
@@ -112,7 +136,9 @@ def _badge(
     # #121: `detail` (validator output) and the highlight label/value (artifact-derived) are
     # untrusted strings; escape them before they land in the markdown/HTML the UI renders, so a
     # `<script>`-ish artifact value cannot inject markup. The static markup here is left as-is.
-    body = f"\n\n{html.escape(detail)}" if detail else ""
+    # #4: strip ANSI escapes from the validator `detail` (tool-derived) before escaping it, so
+    # console/`rich` output reads cleanly rather than as escape-code garbage.
+    body = f"\n\n{html.escape(_strip_ansi(detail))}" if detail else ""
     h = "\n".join(
         f"- **{html.escape(str(x['label']))}:** `{html.escape(str(x['value']))}`" for x in hi
     )

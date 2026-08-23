@@ -42,6 +42,7 @@ from breachsafe_ux.render import (
     _env_panel_md,
     _link,
     _posture_md,
+    _strip_ansi,
 )
 from breachsafe_ux.resolve import environment, tool_available
 
@@ -139,7 +140,8 @@ def _result(desc: dict[str, Any], res: dict[str, Any]) -> tuple[str, Any, str, s
     head_text = desc.get("render", {}).get("badge_text", {}).get(state)
     if "error" in res:
         # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
-        raw = f"```\n{res['error']}\n```"
+        # #4: strip ANSI escapes from the tool error/stderr text so the raw log reads cleanly.
+        raw = f"```\n{_strip_ansi(res['error'])}\n```"
         return _badge(state, detail, head_text=head_text), None, raw, None
     banner = _posture_md(_posture(desc, res.get("artifact")))
     return (
