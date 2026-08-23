@@ -183,6 +183,7 @@
       "properties": {
         "primary": { "type": "string", "description": "Which declared artifact / format is the primary display + validation target (e.g. an artifacts[].name)." },
         "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } },
+        "evaluation": { "$ref": "#/$defs/evaluation" },
         "posture": { "$ref": "#/$defs/posture" },
         "badge_text": {
           "type": "object",
@@ -219,6 +220,21 @@
       "properties": {
         "label": { "type": "string" },
         "find_prop": { "type": "string" }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axes"],
+      "description": "The tool's own per-axis evaluation, read from the artifact by property name and shown in a labelled box (#199). The host renders it verbatim; it computes no verdict.",
+      "properties": {
+        "title": { "type": "string" },
+        "headline_prop": { "type": "string", "description": "Artifact property holding a one-line summary shown under the axes." },
+        "axes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/highlight" }
+        }
       }
     },
     "action": {

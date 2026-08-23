@@ -31,15 +31,38 @@ def _find_prop(obj: Any, name: str) -> Any:
     return None
 
 
-def _highlights(desc: dict[str, Any], art: Any) -> list[dict[str, Any]]:
+def _prop_rows(art: Any, specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """label+value rows for each spec whose `find_prop` resolves in the artifact (read-only)."""
     out: list[dict[str, Any]] = []
-    if art is None:
-        return out
-    for h in desc.get("render", {}).get("highlights", []):
-        val = _find_prop(art, h["find_prop"]) if "find_prop" in h else None
+    for s in specs:
+        val = _find_prop(art, s["find_prop"]) if "find_prop" in s else None
         if val is not None:
-            out.append({"label": h["label"], "value": val})
+            out.append({"label": s["label"], "value": val})
     return out
+
+
+def _highlights(desc: dict[str, Any], art: Any) -> list[dict[str, Any]]:
+    if art is None:
+        return []
+    return _prop_rows(art, desc.get("render", {}).get("highlights", []))
+
+
+def _evaluation(desc: dict[str, Any], art: Any) -> dict[str, Any] | None:
+    """The per-axis evaluation the tool itself produced, for a display box (#199/#59).
+
+    Config-driven like `_highlights`: `render.evaluation` names each axis label + the property to
+    read (find_prop), and an optional headline property. The host renders whatever the tool
+    reports; it never computes a verdict (OSS scope). Returns None when nothing resolves (e.g. a
+    failed scan or a tool that declares no evaluation), so the box simply does not appear.
+    """
+    cfg = desc.get("render", {}).get("evaluation")
+    if not cfg or art is None:
+        return None
+    rows = _prop_rows(art, cfg.get("axes", []))
+    if not rows:
+        return None
+    headline = _find_prop(art, cfg["headline_prop"]) if "headline_prop" in cfg else None
+    return {"title": cfg.get("title", "Evaluation"), "rows": rows, "headline": headline}
 
 
 def _posture(desc: dict[str, Any], art: Any) -> dict[str, Any] | None:

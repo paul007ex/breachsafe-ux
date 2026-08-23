@@ -104,6 +104,16 @@ render:
     none: "Evidence: no external validator for this output"
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
+  # #199: qureddy's own per-axis interpretation, shown verbatim under the badge.
+  evaluation:
+    title: "Evaluation"
+    headline_prop: "qureddy:scan.headline"
+    axes:
+      - { label: "PQC support",          find_prop: "qureddy:scan.pqc_support" }
+      - { label: "Key exchange",         find_prop: "qureddy:scan.axis.key_exchange" }
+      - { label: "Downgrade resistance", find_prop: "qureddy:scan.axis.downgrade_resistance" }
+      - { label: "Authentication",       find_prop: "qureddy:scan.axis.authentication" }
+      - { label: "Protocol hygiene",     find_prop: "qureddy:scan.axis.protocol_hygiene" }
 actions:
   # SSH connection test: read the server's host keys with ssh-keyscan (shows the actual offer).
   - label: "Test connection"

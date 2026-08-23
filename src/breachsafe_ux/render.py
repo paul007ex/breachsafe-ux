@@ -116,6 +116,25 @@ def _posture_md(posture: dict[str, Any] | None) -> str:
     )
 
 
+def _evaluation_md(ev: dict[str, Any] | None) -> str:
+    """The tool's per-axis evaluation as a small labelled table, or "" when there is none (#199).
+
+    Renders exactly the axis label + value the tool reported (all escaped, artifact-derived), then
+    the headline. The host adds no interpretation of its own; it stays tool-agnostic.
+    """
+    if not ev or not ev.get("rows"):
+        return ""
+    title = html.escape(str(ev.get("title", "Evaluation")))
+    rows = "\n".join(
+        f"| {html.escape(str(r['label']))} | {html.escape(str(r['value']))} |" for r in ev["rows"]
+    )
+    out = f"**{title}**\n\n| | |\n|---|---|\n{rows}\n"
+    headline = ev.get("headline")
+    if headline:
+        out += f"\n{html.escape(str(headline))}\n"
+    return out + "\n"
+
+
 def _badge(
     state: str,
     detail: str,

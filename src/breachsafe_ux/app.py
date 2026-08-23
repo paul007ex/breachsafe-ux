@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
-from breachsafe_ux._render import _posture
+from breachsafe_ux._render import _evaluation, _posture
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
     feature_enabled,
@@ -40,6 +40,7 @@ from breachsafe_ux.render import (
     _empty,
     _env_advanced_md,
     _env_panel_md,
+    _evaluation_md,
     _link,
     _posture_md,
     _strip_ansi,
@@ -157,11 +158,15 @@ def _result(
             None,
         )
     banner = _posture_md(_posture(desc, res.get("artifact")))
+    # #199: the tool's own per-axis evaluation, rendered under the badge (config-driven, agnostic).
+    evaluation = _evaluation_md(_evaluation(desc, res.get("artifact")))
     # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
     raw = _raw_log_md(res, res.get("log") or "")
     art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
     return (
-        banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
+        banner
+        + _badge(state, detail, res.get("highlights", []), head_text=head_text)
+        + ("\n\n" + evaluation if evaluation else ""),
         raw,
         art_texts,
         res.get("artifact"),
