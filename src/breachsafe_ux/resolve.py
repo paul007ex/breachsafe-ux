@@ -68,7 +68,7 @@ def _run(
         return subprocess.run(
             argv, input=input_, capture_output=True, text=True, timeout=timeout, env=env
         )
-    except (OSError, ValueError, subprocess.SubprocessError):
+    except OSError, ValueError, subprocess.SubprocessError:
         return None
 
 
