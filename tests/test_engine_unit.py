@@ -15,12 +15,12 @@ import sys
 import pytest
 
 from breachsafe_ux import facade, resolve
+from breachsafe_ux._argv import _input_argv  # moved out of facade in #186
 from breachsafe_ux._render import _find_prop, _search_children
 from breachsafe_ux.facade import (
     _apply_badge_rule,
     _expand_brand,
     _fail_detail,
-    _input_argv,
     _match,
     _validate,
     run_descriptor,
