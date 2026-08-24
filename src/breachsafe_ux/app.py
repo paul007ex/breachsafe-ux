@@ -68,6 +68,21 @@ _DARK_ON_LOAD_JS = (
 )
 
 
+def _code_box(language: str | None = None) -> Any:
+    """A read-only text box with download + copy buttons.
+
+    Every output surface in a tool tab is one of these: Evaluation, Raw log, and one per declared
+    artifact. `gr.Code` is chosen over `gr.Markdown` because it supplies download and copy; a scan
+    log and a CBOM are evidence and have to be savable without selecting text in a browser.
+
+    `show_label=False` because the enclosing Accordion already names the box, and `wrap_lines=True`
+    because these are wide machine outputs the operator should not have to scroll horizontally.
+    Both were repeated at four call sites before this existed. `language=None` renders plain, which
+    is correct for a tool log, since it is not any one syntax.
+    """
+    return gr.Code(language=language, show_label=False, wrap_lines=True)
+
+
 def _enum_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Component:
     # Radio for 2-3 options (all visible), Dropdown for more (GOV.UK / NN/g).
     choices = spec["choices"]
@@ -302,23 +317,15 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
             # Syntax-highlight the `label: value` lines like the CBOM/JSON boxes (default yaml,
             # config-overridable). The tool's evaluation is aligned key:value text, which the yaml
             # lexer colours (keys vs values) the same way the artifact boxes colour JSON.
-            eval_outs.append(
-                gr.Code(
-                    language=eval_cfg.get("language", "yaml"), show_label=False, wrap_lines=True
-                )
-            )
+            eval_outs.append(_code_box(eval_cfg.get("language", "yaml")))
     with gr.Accordion("Raw log", open=False):
-        # gr.Code, not gr.Markdown: Code ships download + copy buttons, so the scan log can be
-        # saved as evidence instead of only selected and copied. Same affordance as the
-        # Evaluation and CBOM/JSON boxes. language=None keeps it plain, since a tool log is not
-        # any one syntax.
-        raw_log = gr.Code(language=None, show_label=False, wrap_lines=True)
+        raw_log = _code_box()
     artifacts = desc["run"].get("artifacts", [])
     outs: list[Any] = []
     if artifacts:
         for art in artifacts:
             with gr.Accordion(art.get("label", art["name"]), open=False):
-                outs.append(gr.Code(language="json", show_label=False, wrap_lines=True))
+                outs.append(_code_box("json"))
     else:  # legacy single-artifact tool: keep one JSON view
         outs.append(gr.JSON(label="artifact"))
     artifact_state = gr.State(None)
@@ -363,7 +370,7 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
     cbadge = gr.Markdown()
     cdl = gr.DownloadButton("Download output", visible=False)
     with gr.Accordion(f"{chain['to']} raw log", open=False):
-        craw = gr.Code(language=None, show_label=False, wrap_lines=True)
+        craw = _code_box()
     cout = gr.JSON(label=f"{chain['to']} output")
     cstate = gr.State(None)
     (
