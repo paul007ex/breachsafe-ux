@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.5.2-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,26 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-08-24
+
+### Changed
+- **The Evaluation box reads qureddy 0.2.58's protocol-neutral CISO evaluation**
+  (`scan.display.evaluation.*`) instead of assembling a view out of raw axis enums. Two of its
+  fields close gaps the previous layout had:
+  - `observed_facts` names the negotiated group: `TLS negotiated X25519MLKEM768 | Classical
+    alternative accepted: X25519 | ...`. "Key exchange: hybrid" alone was not auditable, because
+    a reader could not check it.
+  - `recommended_action` says what to do. The previous rows described state and stopped.
+- Row order is now: what this is, the two risk questions separately, the evidence behind them,
+  the action, severity, then the raw per-axis enums last for anyone who wants them.
+- The Evaluation headline is `scan.display.evaluation`, a single sentence
+  ("TLS hybrid post-quantum protection is working, but classical downgrade remains possible")
+  rather than the shorter `overall_status`.
+
+### Requires
+- **qureddy >= 0.2.58** for `scan.display.evaluation.*`. `ghcr.io/breachsafe/qureddy:latest` is
+  0.2.58 as of this release.
 
 ## [0.5.2] - 2026-08-24
 

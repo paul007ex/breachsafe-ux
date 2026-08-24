@@ -148,27 +148,39 @@ render:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
   # #199: qureddy's own per-axis interpretation, shown verbatim in an Evaluation box under the
   # badge. The host reads these properties and renders them; it computes no verdict of its own.
+  # qureddy 0.2.58 emits a purpose-built, protocol-neutral CISO evaluation
+  # (scan.display.evaluation.*). Read that instead of assembling a view out of raw axis enums.
+  #
+  # Two of its fields close gaps the previous layout had:
+  #   observed_facts     names the negotiated group ("TLS negotiated X25519MLKEM768 | Classical
+  #                      alternative accepted: X25519"). "Key exchange: hybrid" alone is not
+  #                      auditable; a reader cannot check it.
+  #   recommended_action says what to do. The previous rows described state and stopped.
+  #
+  # Order is deliberate: what this is, then the two risk questions separately, then the evidence,
+  # then the action, then severity, then the raw per-axis enums last for anyone who wants them.
   evaluation:
     title: "Evaluation"
-    # scan.display.* is qureddy 0.2.56's CISO-facing copy. It states the conclusion in
-    # words instead of leaving the reader to interpret five snake_case enum values.
-    headline_prop: "qureddy:scan.display.overall_status"
+    headline_prop: "qureddy:scan.display.evaluation"
     axes:
-      # Which endpoint this describes. The box previously had no subject at all.
-      - { label: "Endpoint",             find_prop: "qureddy:target.locator" }
-      # The two questions, answered separately.
-      - { label: "Future quantum risk",  find_prop: "qureddy:scan.display.future_quantum_risk" }
-      - { label: "Present-day risk",     find_prop: "qureddy:scan.display.current_hygiene" }
-      - { label: "Quantum protection",   find_prop: "qureddy:scan.display.quantum_protection" }
-      # Severity justifies amber over red, so show what the findings actually were.
-      - { label: "Highest severity",     find_prop: "qureddy:scan.highest_severity" }
-      - { label: "Findings",             find_prop: "qureddy:scan.finding_count" }
-      # Per-axis detail underneath.
-      - { label: "PQC support",          find_prop: "qureddy:scan.pqc_support" }
-      - { label: "Key exchange",         find_prop: "qureddy:scan.axis.key_exchange" }
-      - { label: "Downgrade resistance", find_prop: "qureddy:scan.axis.downgrade_resistance" }
-      - { label: "Authentication",       find_prop: "qureddy:scan.axis.authentication" }
-      - { label: "Protocol hygiene",     find_prop: "qureddy:scan.axis.protocol_hygiene" }
+      - { label: "Endpoint",                  find_prop: "qureddy:target.locator" }
+      # The two independent questions. BreachSAFE/qureddy#453 records why one verdict cannot
+      # rank them against each other.
+      - { label: "Harvest-now-decrypt-later", find_prop: "qureddy:scan.display.evaluation.hndl_risk" }
+      - { label: "Quantum protection",        find_prop: "qureddy:scan.display.evaluation.protection" }
+      - { label: "Present-day hardening",     find_prop: "qureddy:scan.display.evaluation.hardening" }
+      # The evidence behind the two lines above, so a reader can verify instead of trusting.
+      - { label: "Observed",                  find_prop: "qureddy:scan.display.evaluation.observed_facts" }
+      - { label: "Recommended action",        find_prop: "qureddy:scan.display.evaluation.recommended_action" }
+      # Severity is what justifies amber over red, so it stays visible.
+      - { label: "Highest severity",          find_prop: "qureddy:scan.highest_severity" }
+      - { label: "Findings",                  find_prop: "qureddy:scan.finding_count" }
+      # Raw per-axis values last.
+      - { label: "PQC support",               find_prop: "qureddy:scan.pqc_support" }
+      - { label: "Key exchange",              find_prop: "qureddy:scan.axis.key_exchange" }
+      - { label: "Downgrade resistance",      find_prop: "qureddy:scan.axis.downgrade_resistance" }
+      - { label: "Authentication",            find_prop: "qureddy:scan.axis.authentication" }
+      - { label: "Protocol hygiene",          find_prop: "qureddy:scan.axis.protocol_hygiene" }
 actions:
   # Preflight, now descriptor-declared argv instead of a hardcoded engine function (#5, #21).
   # stdin is closed by the engine so s_client does not hang; exit 0 = handshake completed.
