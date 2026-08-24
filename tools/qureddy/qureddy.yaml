@@ -119,16 +119,25 @@ render:
   # #1: readiness posture comes from the scan FINDINGS, shown separately from the evidence badge.
   # A schema-valid CBOM (green badge) does NOT mean the endpoint is PQC-ready — this banner says
   # what the scan actually found. Values are the qureddy Readiness enum.
+  # Reads qureddy 0.2.56's HNDL axis instead of the single rolled-up readiness.
+  #
+  # scan.readiness collapses five independent axes into one ordinal value, and its
+  # precedence puts classically_weak first. The result: cloudflare.com, which negotiates
+  # X25519MLKEM768, was banner'd "Classically weak: broken or legacy primitives in use"
+  # in red, off two medium findings (TLS 1.0 and 1.1 accepted). The banner contradicted
+  # the Evaluation box directly beneath it. See BreachSAFE/qureddy#453.
+  #
+  # This is the HNDL question only: is recorded traffic decryptable later. Whether the
+  # endpoint is exploitable TODAY is a different question, carried by hygiene_status and
+  # shown in the Evaluation box. scan.readiness stays in the artifact untouched.
   posture:
-    from: "qureddy:scan.readiness"
+    from: "qureddy:scan.hndl_exposure"
     cases:
-      quantum_vulnerable:  { text: "Quantum-vulnerable: classical-only key exchange (harvest-now, decrypt-later risk)", level: high }
-      classically_weak:    { text: "Classically weak: broken or legacy primitives in use", level: high }
-      transitional_hybrid: { text: "Transitional: hybrid post-quantum + classical key exchange", level: medium }
-      quantum_safe:        { text: "Quantum-safe: post-quantum key exchange in use", level: ok }
-      unknown:             { text: "Readiness unknown: the probe was inconclusive", level: unknown }
-      not_applicable:      { text: "Readiness not applicable to this target", level: unknown }
-    default: { text: "Readiness could not be determined", level: unknown }
+      at_risk:              { text: "Harvest-now-decrypt-later: recorded traffic is decryptable once a quantum computer exists", level: high }
+      protected_defeasible: { text: "Harvest-now-decrypt-later: protected today, a classical downgrade path remains", level: medium }
+      protected:            { text: "Harvest-now-decrypt-later: recorded traffic is protected, no classical fallback offered", level: ok }
+      unknown:              { text: "Harvest-now-decrypt-later exposure could not be determined: the probe was inconclusive", level: unknown }
+    default: { text: "Harvest-now-decrypt-later exposure could not be determined", level: unknown }
   # The evidence badge checks CBOM shape, not readiness — word it so green can't read as "secure".
   badge_text:
     valid: "Evidence: CBOM is well-formed (CycloneDX 1.7)"
@@ -141,8 +150,20 @@ render:
   # badge. The host reads these properties and renders them; it computes no verdict of its own.
   evaluation:
     title: "Evaluation"
-    headline_prop: "qureddy:scan.headline"
+    # scan.display.* is qureddy 0.2.56's CISO-facing copy. It states the conclusion in
+    # words instead of leaving the reader to interpret five snake_case enum values.
+    headline_prop: "qureddy:scan.display.overall_status"
     axes:
+      # Which endpoint this describes. The box previously had no subject at all.
+      - { label: "Endpoint",             find_prop: "qureddy:target.locator" }
+      # The two questions, answered separately.
+      - { label: "Future quantum risk",  find_prop: "qureddy:scan.display.future_quantum_risk" }
+      - { label: "Present-day risk",     find_prop: "qureddy:scan.display.current_hygiene" }
+      - { label: "Quantum protection",   find_prop: "qureddy:scan.display.quantum_protection" }
+      # Severity justifies amber over red, so show what the findings actually were.
+      - { label: "Highest severity",     find_prop: "qureddy:scan.highest_severity" }
+      - { label: "Findings",             find_prop: "qureddy:scan.finding_count" }
+      # Per-axis detail underneath.
       - { label: "PQC support",          find_prop: "qureddy:scan.pqc_support" }
       - { label: "Key exchange",         find_prop: "qureddy:scan.axis.key_exchange" }
       - { label: "Downgrade resistance", find_prop: "qureddy:scan.axis.downgrade_resistance" }
