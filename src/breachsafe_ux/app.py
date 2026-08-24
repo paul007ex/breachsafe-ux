@@ -384,7 +384,9 @@ def _wire_run(
                         # Rich output is a distinct machine-produced report, not the diagnostic
                         # log. Keep it copyable/downloadable and preserve the declared handler
                         # slot so the archive and UI stay aligned.
-                        outs.append(_code_box(art.get("language", "text")))
+                        # Rich text is not JSON, but YAML-style highlighting gives its headings,
+                        # labels, and values useful visual structure without rewriting the report.
+                        outs.append(_code_box("yaml"))
                     continue
                 label = {"json": "JSON", "jsonl": "Findings"}.get(
                     art["name"], art.get("label", art["name"])
@@ -401,7 +403,9 @@ def _wire_run(
         # Keep diagnostics last: the evidence/report tabs lead, while connection and process
         # diagnostics remain available without competing with the audit result.
         with gr.Tab("Raw Log"):
-            raw_log = _code_box()
+            # Log lines are not a single JSON document; YAML highlighting gives timestamps,
+            # keys, and values useful visual structure without changing the captured log.
+            raw_log = _code_box("yaml")
     if auto_chain and export_outputs:
         download_button = gr.DownloadButton("Download", visible=True, interactive=False)
         export_outputs = (*export_outputs[:3], download_button, *export_outputs[4:])

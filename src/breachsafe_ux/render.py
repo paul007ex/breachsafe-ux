@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import html
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -38,6 +39,24 @@ def _strip_ansi(text: str) -> str:
     Newlines and all other content are preserved.
     """
     return _ANSI_RE.sub("", text)
+
+
+def _pretty_jsonl(text: str) -> str:
+    """Format JSONL findings as readable, indented objects for the UI only.
+
+    The evidence archive remains byte-for-byte authoritative; this is the presentation projection
+    equivalent of ``jq .`` applied independently to each JSONL record.
+    """
+    rows: list[str] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.dumps(json.loads(line), indent=2, ensure_ascii=False))
+        except json.JSONDecodeError:
+            # Preserve an unexpected line rather than hiding evidence behind a formatter error.
+            rows.append(line)
+    return "\n\n".join(rows)
 
 
 _ASSETS = Path(__file__).resolve().parent / "assets"  # bundled in the package (works installed)
@@ -292,7 +311,10 @@ def _result(
     evaluation = _evaluation_text(_evaluation(desc, res.get("artifact")))
     # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
     raw = _raw_log_text(res, res.get("log") or "")
-    art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
+    art_texts = {
+        name: _pretty_jsonl(a.get("text", "")) if name == "jsonl" else a.get("text", "")
+        for name, a in res.get("artifacts", {}).items()
+    }
     return (
         banner
         + _badge(
