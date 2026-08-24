@@ -37,7 +37,7 @@ def evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ..
                 gr.update(visible=False),
             )
         return (
-            "### Report ready",
+            "",
             output,
             output.get("log", ""),
             gr.update(value=output.get("archive"), visible=bool(output.get("archive"))),
