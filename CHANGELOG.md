@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,34 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-08-24
+
+### Changed
+- **The SSH tab now matches the TLS tab.** Its banner read `qureddy:scan.readiness`, which
+  collapses five independent axes into one ordinal whose precedence ranks `classically_weak`
+  first, so an SSH endpoint negotiating `sntrup761x25519-sha512` was banner'd
+  **"Classically weak: broken or legacy primitives in use"** in red. Verified on qureddy 0.2.60:
+  `ssh://github.com:22` reports `readiness=classically_weak` with `hndl_exposure=protected`.
+  The banner now reads `hndl_exposure` and renders green for that endpoint.
+  (BreachSAFE/qureddy#453)
+- **SSH declares all four artifacts**, up from two. An SSH scan writes `scan.jsonl` and
+  `scan.rich.txt` the same as TLS; both were unreachable inside the container.
+- **SSH shows 13 evaluation rows**, up from 5, reading qureddy's protocol-neutral CISO
+  evaluation.
+- **The evidence badge is one grey line instead of an H3 heading.** It answers whether the
+  artifact parses, which is a different question from the posture banner above it. At heading
+  weight the two competed and neither read as primary. New `render.badge_inline`.
+- **The Evaluation box opens on load.** It carries the conclusion; it was collapsed. New
+  `evaluation.open`.
+- Copy cut: TLS description 71 words to 31, SSH 52 to 27. Badge text
+  `Evidence: CBOM is well-formed (CycloneDX 1.7)` to `CBOM well-formed`. Artifact label
+  `CBOM (CycloneDX 1.7)` to `CBOM`.
+
+### Known issue
+- The SSH **Present-day hardening** row can read "No immediate hardening issue identified"
+  while `hygiene_status=weak` and `ssh-rsa` is offered. That contradiction is in the engine
+  (BreachSAFE/qureddy#457); the descriptor renders what it is given.
 
 ## [0.7.0] - 2026-08-24
 
