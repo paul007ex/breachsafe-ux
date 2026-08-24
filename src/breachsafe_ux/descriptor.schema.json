@@ -4,7 +4,10 @@
   "title": "breachsafe-ux tool descriptor",
   "description": "One tool = one YAML under tools/<id>/<id>.yaml. The host renders it, builds a no-shell argv, runs the tool, runs an external validator, and derives the 3-state badge. See docs/adr/0002-host-descriptor-boundary.md.",
   "type": "object",
-  "required": ["id", "run"],
+  "required": [
+    "id",
+    "run"
+  ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
@@ -12,7 +15,10 @@
       "minimum": 1,
       "description": "Descriptor schema version. Absent is treated as 1 (see #49)."
     },
-    "order": { "type": "integer", "description": "Tab sort order (lower first)." },
+    "order": {
+      "type": "integer",
+      "description": "Tab sort order (lower first)."
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$",
@@ -26,16 +32,46 @@
       "type": "string",
       "description": "Gate this descriptor behind env BREACHSAFE_UX_<FLAG> (default ON). Off => not loaded (no tab). Hides Pro features in the OSS base edition (#67, e.g. mint_oscal)."
     },
-    "title": { "type": "string" },
-    "run_label": { "type": "string", "description": "Run-button label (e.g. 'HNDL Audit (TLS)'). Absent => 'Run <id>'." },
-    "description": { "type": "string" },
-    "brand": { "$ref": "#/$defs/brand" },
-    "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" } },
-    "run": { "$ref": "#/$defs/run" },
-    "validate": { "$ref": "#/$defs/validate" },
-    "render": { "$ref": "#/$defs/render" },
-    "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
-    "chains": { "type": "array", "items": { "$ref": "#/$defs/chain" } }
+    "title": {
+      "type": "string"
+    },
+    "run_label": {
+      "type": "string",
+      "description": "Run-button label (e.g. 'HNDL Audit (TLS)'). Absent => 'Run <id>'."
+    },
+    "description": {
+      "type": "string"
+    },
+    "brand": {
+      "$ref": "#/$defs/brand"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/input"
+      }
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "validate": {
+      "$ref": "#/$defs/validate"
+    },
+    "render": {
+      "$ref": "#/$defs/render"
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    },
+    "chains": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/chain"
+      }
+    }
   },
   "$defs": {
     "brand": {
@@ -43,48 +79,174 @@
       "additionalProperties": false,
       "description": "Display-only header/footer metadata. String values may reference env vars (e.g. ${QUREDDY_VERSION}); expanded before render, never in run/validate argv.",
       "properties": {
-        "product": { "type": "string" },
-        "version": { "type": "string" },
-        "version_cmd": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Display-only: run this to derive the shown version from the installed tool (single-source, #51); falls back to `version`. Env single-sourcing also works via version: \"${VAR}\"." },
-        "url": { "type": "string" },
-        "repo": { "type": "string" }
+        "product": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "version_cmd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Display-only: run this to derive the shown version from the installed tool (single-source, #51); falls back to `version`. Env single-sourcing also works via version: \"${VAR}\"."
+        },
+        "url": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        }
       }
     },
     "input": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type"],
+      "required": [
+        "name",
+        "type"
+      ],
       "description": "A form field. It maps to argv by AT MOST ONE of positional/flag/arg/repeat_flag; an input with none is a token-only value referenced via {name} in run.positional_from / run.argv / validate.argv (e.g. host, port composed into positional_from).",
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "type": { "enum": ["text", "int", "float", "bool", "enum", "file"] },
-        "label": { "type": "string" },
-        "placeholder": { "type": "string" },
-        "info": { "type": "string" },
-        "required": { "type": "boolean" },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "text",
+            "int",
+            "float",
+            "bool",
+            "enum",
+            "file"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "info": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
         "default": {},
-        "min": { "type": "number" },
-        "max": { "type": "number" },
-        "widget": { "enum": ["slider"] },
-        "choices": { "type": "array" },
-        "group": { "enum": ["advanced"] },
-        "arg": { "type": "string" },
-        "flag": { "type": "string" },
-        "repeat_flag": { "type": "string", "description": "A count input: the level value emits this flag N times. A short flag (-v) collapses to one token (-vvv); a long flag repeats as separate tokens." },
-        "positional": { "type": "boolean" },
-        "verify_argv": { "type": "array", "items": { "type": "string" } },
-        "accept": { "type": "array", "items": { "type": "string" } }
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "widget": {
+          "enum": [
+            "slider"
+          ]
+        },
+        "choices": {
+          "type": "array"
+        },
+        "group": {
+          "enum": [
+            "advanced"
+          ]
+        },
+        "arg": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string"
+        },
+        "repeat_flag": {
+          "type": "string",
+          "description": "A count input: the level value emits this flag N times. A short flag (-v) collapses to one token (-vvv); a long flag repeats as separate tokens."
+        },
+        "positional": {
+          "type": "boolean"
+        },
+        "verify_argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accept": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       },
       "allOf": [
-        { "not": { "required": ["arg", "flag"] } },
-        { "not": { "required": ["arg", "positional"] } },
-        { "not": { "required": ["flag", "positional"] } },
-        { "not": { "required": ["repeat_flag", "arg"] } },
-        { "not": { "required": ["repeat_flag", "flag"] } },
-        { "not": { "required": ["repeat_flag", "positional"] } },
         {
-          "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] },
-          "then": { "required": ["choices"] }
+          "not": {
+            "required": [
+              "arg",
+              "flag"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "arg",
+              "positional"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "flag",
+              "positional"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "repeat_flag",
+              "arg"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "repeat_flag",
+              "flag"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "repeat_flag",
+              "positional"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "enum"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "choices"
+            ]
+          }
         }
       ]
     },
@@ -93,12 +255,37 @@
       "additionalProperties": false,
       "description": "How the tool is executed (no shell). Exactly one of base/argv.",
       "properties": {
-        "base": { "type": "array", "items": { "type": "string" }, "description": "Fixed command prefix, e.g. [qureddy, scan, tls]. Options + positionals are appended." },
-        "argv": { "type": "array", "items": { "type": "string" }, "description": "Fully static argv; no input-driven assembly. Tokens: {name} = an input value; engine-provided {share} {workdir} {artifact} {artifact_name} {python}. {{ and }} are literal braces. See docs/reference/descriptor-tokens.md." },
-        "positional_from": { "type": "string", "description": "Compose one positional from a template, e.g. {host}:{port}." },
-        "artifact_from": { "enum": ["stdout"], "description": "Where the artifact comes from; omit if the tool writes the artifact file itself." },
-        "artifact_name": { "type": "string" },
-        "output_dir_flag": { "type": "string", "description": "Flag passed as `<flag> <workdir>` so the tool writes correlated artifacts into the run dir (e.g. --output-dir). Used with `artifacts`." },
+        "base": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fixed command prefix, e.g. [qureddy, scan, tls]. Options + positionals are appended."
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fully static argv; no input-driven assembly. Tokens: {name} = an input value; engine-provided {share} {workdir} {artifact} {artifact_name} {python}. {{ and }} are literal braces. See docs/reference/descriptor-tokens.md."
+        },
+        "positional_from": {
+          "type": "string",
+          "description": "Compose one positional from a template, e.g. {host}:{port}."
+        },
+        "artifact_from": {
+          "enum": [
+            "stdout"
+          ],
+          "description": "Where the artifact comes from; omit if the tool writes the artifact file itself."
+        },
+        "artifact_name": {
+          "type": "string"
+        },
+        "output_dir_flag": {
+          "type": "string",
+          "description": "Flag passed as `<flag> <workdir>` so the tool writes correlated artifacts into the run dir (e.g. --output-dir). Used with `artifacts`."
+        },
         "artifacts": {
           "type": "array",
           "minItems": 1,
@@ -106,24 +293,61 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "file"],
+            "required": [
+              "name",
+              "file"
+            ],
             "properties": {
-              "name": { "type": "string" },
-              "file": { "type": "string" },
-              "label": { "type": "string" },
-              "primary": { "type": "boolean" },
-              "language": { "type": ["string", "null"], "description": "Syntax-highlighting language for this artifact's box. Defaults to json. Use null for plain text: a rendered report or a newline-delimited stream is not a single JSON value, so highlighting it as one mis-colours it." }
+              "name": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "primary": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Syntax-highlighting language for this artifact's box. Defaults to json. Use null for plain text: a rendered report or a newline-delimited stream is not a single JSON value, so highlighting it as one mis-colours it."
+              }
             }
           }
         },
-        "image": { "type": "string", "description": "Docker image; the tool binary is the ENTRYPOINT. Pin by @sha256." },
-        "timeout_s": { "type": "integer", "minimum": 1 },
-        "trust_artifact_on_nonzero": { "type": "boolean", "description": "Opt in: a nonzero exit may still badge from the artifact (default: nonzero -> unavailable)." },
-        "no_end_of_options": { "type": "boolean", "description": "Opt out of the '--' end-of-options guard (weaker posture; for tools whose parser does not support '--')." }
+        "image": {
+          "type": "string",
+          "description": "Docker image; the tool binary is the ENTRYPOINT. Pin by @sha256."
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "trust_artifact_on_nonzero": {
+          "type": "boolean",
+          "description": "Opt in: a nonzero exit may still badge from the artifact (default: nonzero -> unavailable)."
+        },
+        "no_end_of_options": {
+          "type": "boolean",
+          "description": "Opt out of the '--' end-of-options guard (weaker posture; for tools whose parser does not support '--')."
+        }
       },
       "oneOf": [
-        { "required": ["base"] },
-        { "required": ["argv"] }
+        {
+          "required": [
+            "base"
+          ]
+        },
+        {
+          "required": [
+            "argv"
+          ]
+        }
       ]
     },
     "validate": {
@@ -131,27 +355,121 @@
       "additionalProperties": false,
       "description": "External validator. Either a single validator (argv + badge_rule), OR one selected by an input value via `by`/`cases` (#43). Fail-closed: a variant with no validator badges 'none', never a green.",
       "properties": {
-        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Validator argv. Tokens: engine-provided {share} {workdir} {artifact} {artifact_name} {stdout_file} {python}. {{ and }} are literal braces. See docs/reference/descriptor-tokens.md." },
-        "timeout_s": { "type": "integer", "minimum": 1 },
-        "badge_rule": { "$ref": "#/$defs/badge_rule" },
-        "by": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Input name(s) that select the validator; multi-key values are joined with '|'." },
-        "cases": { "type": "object", "additionalProperties": { "oneOf": [ { "type": "null" }, { "$ref": "#/$defs/validator_case" } ] }, "description": "Keyed by the joined `by` values. A null case = explicit 'no validator' (badge 'none')." },
-        "default": { "oneOf": [ { "type": "null" }, { "$ref": "#/$defs/validator_case" } ], "description": "Used when no case matches; null (or absent) = no validator." }
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Validator argv. Tokens: engine-provided {share} {workdir} {artifact} {artifact_name} {stdout_file} {python}. {{ and }} are literal braces. See docs/reference/descriptor-tokens.md."
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "badge_rule": {
+          "$ref": "#/$defs/badge_rule"
+        },
+        "by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Input name(s) that select the validator; multi-key values are joined with '|'."
+        },
+        "cases": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/validator_case"
+              }
+            ]
+          },
+          "description": "Keyed by the joined `by` values. A null case = explicit 'no validator' (badge 'none')."
+        },
+        "default": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/validator_case"
+            }
+          ],
+          "description": "Used when no case matches; null (or absent) = no validator."
+        }
       },
       "oneOf": [
-        { "required": ["argv", "badge_rule"], "not": { "anyOf": [ { "required": ["by"] }, { "required": ["cases"] } ] } },
-        { "required": ["by", "cases"], "not": { "anyOf": [ { "required": ["argv"] }, { "required": ["badge_rule"] } ] } }
+        {
+          "required": [
+            "argv",
+            "badge_rule"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "by"
+                ]
+              },
+              {
+                "required": [
+                  "cases"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "by",
+            "cases"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "argv"
+                ]
+              },
+              {
+                "required": [
+                  "badge_rule"
+                ]
+              }
+            ]
+          }
+        }
       ]
     },
     "validator_case": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["argv", "badge_rule"],
+      "required": [
+        "argv",
+        "badge_rule"
+      ],
       "description": "One validator variant for validate.by (#43).",
       "properties": {
-        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "timeout_s": { "type": "integer", "minimum": 1 },
-        "badge_rule": { "$ref": "#/$defs/badge_rule" }
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "badge_rule": {
+          "$ref": "#/$defs/badge_rule"
+        }
       }
     },
     "badge_rule": {
@@ -159,11 +477,26 @@
       "additionalProperties": false,
       "description": "Maps validator output to a badge state. Fail-closed: an empty/unknown condition never passes.",
       "properties": {
-        "unavailable_if": { "$ref": "#/$defs/condition" },
-        "pass_if": { "$ref": "#/$defs/condition" },
-        "fail_if": { "$ref": "#/$defs/condition" },
-        "otherwise": { "enum": ["valid", "invalid", "unavailable", "none"] },
-        "fail_detail_grep": { "type": "string" }
+        "unavailable_if": {
+          "$ref": "#/$defs/condition"
+        },
+        "pass_if": {
+          "$ref": "#/$defs/condition"
+        },
+        "fail_if": {
+          "$ref": "#/$defs/condition"
+        },
+        "otherwise": {
+          "enum": [
+            "valid",
+            "invalid",
+            "unavailable",
+            "none"
+          ]
+        },
+        "fail_detail_grep": {
+          "type": "string"
+        }
       }
     },
     "condition": {
@@ -172,95 +505,206 @@
       "minProperties": 1,
       "description": "All present sub-conditions must hold (AND). An empty condition is rejected (fail-closed).",
       "properties": {
-        "stdout_contains": { "type": "string" },
-        "stdout_contains_any": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "stdout_not_contains": { "type": "string" },
-        "exit": { "type": "integer" }
+        "stdout_contains": {
+          "type": "string"
+        },
+        "stdout_contains_any": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "stdout_not_contains": {
+          "type": "string"
+        },
+        "exit": {
+          "type": "integer"
+        }
       }
     },
     "render": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "primary": { "type": "string", "description": "Which declared artifact / format is the primary display + validation target (e.g. an artifacts[].name)." },
-        "highlights": { "type": "array", "items": { "$ref": "#/$defs/highlight" } },
-        "evaluation": { "$ref": "#/$defs/evaluation" },
-        "posture": { "$ref": "#/$defs/posture" },
+        "primary": {
+          "type": "string",
+          "description": "Which declared artifact / format is the primary display + validation target (e.g. an artifacts[].name)."
+        },
+        "highlights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/highlight"
+          }
+        },
+        "evaluation": {
+          "$ref": "#/$defs/evaluation"
+        },
+        "posture": {
+          "$ref": "#/$defs/posture"
+        },
         "badge_text": {
           "type": "object",
-          "propertyNames": { "enum": ["valid", "invalid", "unavailable", "none"] },
-          "additionalProperties": { "type": "string" },
+          "propertyNames": {
+            "enum": [
+              "valid",
+              "invalid",
+              "unavailable",
+              "none"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Per-badge-state headline override, so a green badge states what was checked (e.g. 'Evidence: CBOM well-formed') rather than implying a security verdict (#1)."
+        },
+        "badge_inline": {
+          "type": "boolean",
+          "description": "Render the evidence verdict as a small grey status line instead of an H3 heading. Use when a posture banner is also present, so only one element carries visual weight."
         }
       }
     },
     "posture": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["from", "cases"],
+      "required": [
+        "from",
+        "cases"
+      ],
       "description": "Readiness banner derived from the artifact findings, decoupled from the evidence badge (#1). The host reads `from` out of the artifact and maps the value to a banner; it never computes the verdict itself.",
       "properties": {
-        "from": { "type": "string", "description": "find_prop into the artifact for the posture value." },
-        "cases": { "type": "object", "additionalProperties": { "$ref": "#/$defs/posture_case" } },
-        "default": { "$ref": "#/$defs/posture_case" }
+        "from": {
+          "type": "string",
+          "description": "find_prop into the artifact for the posture value."
+        },
+        "cases": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/posture_case"
+          }
+        },
+        "default": {
+          "$ref": "#/$defs/posture_case"
+        }
       }
     },
     "posture_case": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text", "level"],
+      "required": [
+        "text",
+        "level"
+      ],
       "properties": {
-        "text": { "type": "string" },
-        "level": { "enum": ["high", "medium", "ok", "unknown"] }
+        "text": {
+          "type": "string"
+        },
+        "level": {
+          "enum": [
+            "high",
+            "medium",
+            "ok",
+            "unknown"
+          ]
+        }
       }
     },
     "highlight": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "properties": {
-        "label": { "type": "string" },
-        "find_prop": { "type": "string" }
+        "label": {
+          "type": "string"
+        },
+        "find_prop": {
+          "type": "string"
+        }
       }
     },
     "evaluation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["axes"],
+      "required": [
+        "axes"
+      ],
       "description": "The tool's own per-axis evaluation, read from the artifact by property name and shown in a labelled box (#199). The host renders it verbatim; it computes no verdict.",
       "properties": {
-        "title": { "type": "string" },
-        "language": { "type": "string", "description": "Syntax-highlight language for the evaluation box (default 'yaml'), matching the CBOM/JSON boxes' colouring." },
-        "headline_prop": { "type": "string", "description": "Artifact property holding a one-line summary shown under the axes." },
+        "title": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "description": "Syntax-highlight language for the evaluation box (default 'yaml'), matching the CBOM/JSON boxes' colouring."
+        },
+        "headline_prop": {
+          "type": "string",
+          "description": "Artifact property holding a one-line summary shown under the axes."
+        },
         "axes": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/highlight" }
+          "items": {
+            "$ref": "#/$defs/highlight"
+          }
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Expand this box on load. Use for the box that carries the conclusion."
         }
       }
     },
     "action": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label", "argv"],
+      "required": [
+        "label",
+        "argv"
+      ],
       "description": "A descriptor-declared button that runs its own argv against the inputs and shows OK/FAIL. Generalizes the old preflight/'Test connection' button (argv, not a host function).",
       "properties": {
-        "label": { "type": "string" },
-        "argv": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Action argv template. Same token namespace as run.argv (see docs/reference/descriptor-tokens.md); stdin is closed." },
-        "ok_if": { "$ref": "#/$defs/condition" },
-        "timeout_s": { "type": "integer", "minimum": 1 }
+        "label": {
+          "type": "string"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Action argv template. Same token namespace as run.argv (see docs/reference/descriptor-tokens.md); stdin is closed."
+        },
+        "ok_if": {
+          "$ref": "#/$defs/condition"
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "chain": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["to"],
+      "required": [
+        "to"
+      ],
       "description": "Hand this tool's artifact to another descriptor via a button.",
       "properties": {
-        "to": { "type": "string" },
-        "label": { "type": "string" },
-        "pass_artifact_as": { "type": "string" },
-        "with": { "type": "object" },
+        "to": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "pass_artifact_as": {
+          "type": "string"
+        },
+        "with": {
+          "type": "object"
+        },
         "feature_flag": {
           "type": "string",
           "description": "Gate this chain button behind env BREACHSAFE_UX_<FLAG> (default ON). Off => the button is hidden (#67)."

@@ -136,11 +136,29 @@ def _evaluation_text(ev: dict[str, Any] | None) -> str:
     return text
 
 
+def _badge_inline(head: str, detail: str, hi: Sequence[dict[str, Any]]) -> str:
+    """The evidence verdict as one grey line, no heading weight.
+
+    This verdict answers whether the artifact is well-formed, which is a different question from
+    the posture banner above it. Rendered at heading weight the two competed and neither read as
+    primary. Highlights collapse onto the same line as `label value` pairs. `detail` and highlight
+    text stay escaped (#121); the static markup here is ours.
+    """
+    parts = [html.escape(_strip_ansi(detail))] if detail else []
+    parts += [f"{html.escape(str(x['label']))} {html.escape(str(x['value']))}" for x in hi]
+    tail = " · ".join(x for x in parts if x)
+    return (
+        '<span style="color:#94a3b8;font-size:13px;display:inline-flex;'
+        f'align-items:center;gap:6px">{head}{" · " + tail if tail else ""}</span>'
+    )
+
+
 def _badge(
     state: str,
     detail: str,
     hi: Sequence[dict[str, Any]] = (),
     head_text: str | None = None,
+    inline: bool = False,
 ) -> str:
     """Render the 3-state evidence verdict; never green markup for a non-valid state.
 
@@ -162,6 +180,8 @@ def _badge(
     h = "\n".join(
         f"- **{html.escape(str(x['label']))}:** `{html.escape(str(x['value']))}`" for x in hi
     )
+    if inline:
+        return _badge_inline(head, detail, hi)
     return f"### {head}{body}" + (f"\n\n{h}" if h else "")
 
 
@@ -260,10 +280,11 @@ def _result(
     """
     state, detail = res["badge"]
     head_text = desc.get("render", {}).get("badge_text", {}).get(state)
+    inline_badge = bool(desc.get("render", {}).get("badge_inline", False))
     if "error" in res:
         # A failed run has no artifact, so no posture banner — we never claim readiness on failure.
         return (
-            _badge(state, detail, head_text=head_text),
+            _badge(state, detail, head_text=head_text, inline=inline_badge),
             "",
             _raw_log_text(res, res["error"]),
             {},
@@ -277,7 +298,14 @@ def _result(
     raw = _raw_log_text(res, res.get("log") or "")
     art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
     return (
-        banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),
+        banner
+        + _badge(
+            state,
+            detail,
+            res.get("highlights", []),
+            head_text=head_text,
+            inline=inline_badge,
+        ),
         evaluation,
         raw,
         art_texts,

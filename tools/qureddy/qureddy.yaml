@@ -6,13 +6,9 @@ id: qureddy
 standalone: true
 title: "HNDL Audit (TLS)"
 run_label: "HNDL Audit (TLS)"
-description: >
-  Measures harvest-now-decrypt-later exposure at a TLS endpoint: whether the key exchange
-  it offers is post-quantum, hybrid, or classical-only. Traffic captured today can be
-  decrypted later once a cryptographically relevant quantum computer exists, so
-  classical-only key exchange is a present-day confidentiality risk. Also reports the
-  certificate signature algorithm and any legacy protocol offers. Output is a CycloneDX 1.7
-  CBOM. A full scan runs several handshakes and takes 30 seconds to 2 minutes.
+description: >-
+  Measures harvest-now-decrypt-later exposure at a TLS endpoint. Reports whether the key exchange is post-quantum, hybrid, or classical-only, plus the certificate signature algorithm and any legacy protocol offers. Takes 30s to 2min.
+
 brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)
@@ -98,7 +94,7 @@ run:
   # engine reads each declared artifact; `primary` is the one the badge/posture validate against.
   output_dir_flag: "--output-dir"
   artifacts:
-    - { name: cbom, file: scan.cdx.json, label: "CBOM (CycloneDX 1.7)", primary: true }
+    - { name: cbom, file: scan.cdx.json, label: "CBOM", primary: true }
     - { name: json, file: scan.json,     label: "JSON (raw scan)" }
     # qureddy 0.2.59 (d630811 "emit complete scan artifact bundle with JSONL") writes four
     # files, not two. Declaring the other two gives each its own box with download and copy,
@@ -150,10 +146,13 @@ render:
     default: { text: "Harvest-now-decrypt-later exposure could not be determined", level: unknown }
   # The evidence badge checks CBOM shape, not readiness — word it so green can't read as "secure".
   badge_text:
-    valid: "Evidence: CBOM is well-formed (CycloneDX 1.7)"
-    invalid: "Evidence: CBOM failed schema validation"
-    unavailable: "Evidence: validator could not run"
-    none: "Evidence: no external validator for this output"
+    valid: "CBOM well-formed"
+    invalid: "CBOM failed schema validation"
+    unavailable: "Validator could not run"
+    none: "No external validator for this output"
+  # The posture banner is the verdict and owns the colour. This answers a different question,
+  # whether the artifact parses, and at heading weight it competed with the banner.
+  badge_inline: true
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
   # #199: qureddy's own per-axis interpretation, shown verbatim in an Evaluation box under the
@@ -171,6 +170,7 @@ render:
   # then the action, then severity, then the raw per-axis enums last for anyone who wants them.
   evaluation:
     title: "Evaluation"
+    open: true
     headline_prop: "qureddy:scan.display.evaluation"
     axes:
       - { label: "Endpoint",                  find_prop: "qureddy:target.locator" }

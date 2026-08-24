@@ -313,7 +313,10 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     eval_cfg = desc.get("render", {}).get("evaluation")
     eval_outs: list[Any] = []
     if eval_cfg:
-        with gr.Accordion(eval_cfg.get("title", "Evaluation"), open=False):
+        with gr.Accordion(
+            eval_cfg.get("title", "Evaluation"),
+            open=bool(eval_cfg.get("open", False)),
+        ):
             # Syntax-highlight the `label: value` lines like the CBOM/JSON boxes (default yaml,
             # config-overridable). The tool's evaluation is aligned key:value text, which the yaml
             # lexer colours (keys vs values) the same way the artifact boxes colour JSON.

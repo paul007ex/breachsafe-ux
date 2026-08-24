@@ -6,12 +6,9 @@ id: qureddy-ssh
 standalone: true
 title: "HNDL Audit (SSH)"
 run_label: "HNDL Audit (SSH)"
-description: >
-  Measures harvest-now-decrypt-later exposure at an SSH endpoint: whether the key exchange
-  it offers is post-quantum, hybrid, or classical-only. Traffic captured today can be
-  decrypted later once a cryptographically relevant quantum computer exists, so
-  classical-only key exchange is a present-day confidentiality risk. Reads the server's
-  KEXINIT offer and completes in a few seconds.
+description: >-
+  Measures harvest-now-decrypt-later exposure at an SSH endpoint. Reads the server's KEXINIT offer and reports whether the key exchange is post-quantum, hybrid, or classical-only. Takes a few seconds.
+
 brand:
   product: "BreachSAFE QuReddy"
   version_cmd: ["qureddy", "--version"]   # single-source from the installed tool (#51)
@@ -69,8 +66,12 @@ run:
   # and JSON together with no format toggle and no second scan.
   output_dir_flag: "--output-dir"
   artifacts:
-    - { name: cbom, file: scan.cdx.json, label: "CBOM (CycloneDX 1.7)", primary: true }
+    - { name: cbom, file: scan.cdx.json, label: "CBOM", primary: true }
     - { name: json, file: scan.json,     label: "JSON (raw scan)" }
+    # Verified on 0.2.60: an SSH scan of github.com:22 writes all four files, same as TLS.
+    # Declaring two left scan.jsonl and scan.rich.txt unreachable inside the container.
+    - { name: jsonl, file: scan.jsonl,    label: "Findings (JSONL)", language: null }
+    - { name: rich,  file: scan.rich.txt, label: "Report (text)",    language: null }
   timeout_s: 180
 validate:
   # Always validate the CBOM (primary artifact): CycloneDX 1.7 schema-conformance under the app's
@@ -87,33 +88,48 @@ validate:
 render:
   primary: cbom
   # #1: readiness posture from the scan FINDINGS, separate from the evidence badge.
+  # Parity with TLS. scan.readiness collapses five independent axes into one ordinal whose
+  # precedence ranks classically_weak first, so an SSH endpoint negotiating
+  # sntrup761x25519-sha512 was banner'd "Classically weak" in red. Verified on 0.2.60:
+  # ssh://github.com:22 reports readiness=classically_weak with hndl_exposure=protected.
+  # BreachSAFE/qureddy#453.
   posture:
-    from: "qureddy:scan.readiness"
+    from: "qureddy:scan.hndl_exposure"
     cases:
-      quantum_vulnerable:  { text: "Quantum-vulnerable: classical-only key exchange (harvest-now, decrypt-later risk)", level: high }
-      classically_weak:    { text: "Classically weak: broken or legacy primitives in use", level: high }
-      transitional_hybrid: { text: "Transitional: hybrid post-quantum + classical key exchange", level: medium }
-      quantum_safe:        { text: "Quantum-safe: post-quantum key exchange in use", level: ok }
-      unknown:             { text: "Readiness unknown: the probe was inconclusive", level: unknown }
-      not_applicable:      { text: "Readiness not applicable to this target", level: unknown }
-    default: { text: "Readiness could not be determined", level: unknown }
+      at_risk:              { text: "Harvest-now-decrypt-later: recorded traffic is decryptable once a quantum computer exists", level: high }
+      protected_defeasible: { text: "Harvest-now-decrypt-later: protected today, a classical downgrade path remains", level: medium }
+      protected:            { text: "Harvest-now-decrypt-later: recorded traffic is protected, no classical fallback offered", level: ok }
+      unknown:              { text: "Harvest-now-decrypt-later exposure could not be determined: the probe was inconclusive", level: unknown }
+    default: { text: "Harvest-now-decrypt-later exposure could not be determined", level: unknown }
   badge_text:
-    valid: "Evidence: CBOM is well-formed (CycloneDX 1.7)"
-    invalid: "Evidence: CBOM failed schema validation"
-    unavailable: "Evidence: validator could not run"
-    none: "Evidence: no external validator for this output"
+    valid: "CBOM well-formed"
+    invalid: "CBOM failed schema validation"
+    unavailable: "Validator could not run"
+    none: "No external validator for this output"
+  # The posture banner is the verdict and owns the colour. This answers a different question,
+  # whether the artifact parses, and at heading weight it competed with the banner.
+  badge_inline: true
   highlights:
     - { label: "scan.status", find_prop: "qureddy:scan.status" }
   # #199: qureddy's own per-axis interpretation, shown verbatim under the badge.
   evaluation:
     title: "Evaluation"
-    headline_prop: "qureddy:scan.headline"
+    open: true
+    headline_prop: "qureddy:scan.display.evaluation"
     axes:
-      - { label: "PQC support",          find_prop: "qureddy:scan.pqc_support" }
-      - { label: "Key exchange",         find_prop: "qureddy:scan.axis.key_exchange" }
-      - { label: "Downgrade resistance", find_prop: "qureddy:scan.axis.downgrade_resistance" }
-      - { label: "Authentication",       find_prop: "qureddy:scan.axis.authentication" }
-      - { label: "Protocol hygiene",     find_prop: "qureddy:scan.axis.protocol_hygiene" }
+      - { label: "Endpoint",                  find_prop: "qureddy:target.locator" }
+      - { label: "Harvest-now-decrypt-later", find_prop: "qureddy:scan.display.evaluation.hndl_risk" }
+      - { label: "Quantum protection",        find_prop: "qureddy:scan.display.evaluation.protection" }
+      - { label: "Present-day hardening",     find_prop: "qureddy:scan.display.evaluation.hardening" }
+      - { label: "Observed",                  find_prop: "qureddy:scan.display.evaluation.observed_facts" }
+      - { label: "Recommended action",        find_prop: "qureddy:scan.display.evaluation.recommended_action" }
+      - { label: "Highest severity",          find_prop: "qureddy:scan.highest_severity" }
+      - { label: "Findings",                  find_prop: "qureddy:scan.finding_count" }
+      - { label: "PQC support",               find_prop: "qureddy:scan.pqc_support" }
+      - { label: "Key exchange",              find_prop: "qureddy:scan.axis.key_exchange" }
+      - { label: "Downgrade resistance",      find_prop: "qureddy:scan.axis.downgrade_resistance" }
+      - { label: "Authentication",            find_prop: "qureddy:scan.axis.authentication" }
+      - { label: "Protocol hygiene",          find_prop: "qureddy:scan.axis.protocol_hygiene" }
 actions:
   # SSH connection test: read the server's host keys with ssh-keyscan (shows the actual offer).
   - label: "Test connection"
