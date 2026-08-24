@@ -145,7 +145,7 @@ def test_presentation_helpers_and_handler(monkeypatch, tmp_path: Path) -> None:
         lambda _chain, _path: (True, {"archive": "bundle.zip", "pdf": None, "log": "ok"}),
     )
     ready = evidence_ui.evidence_chain_handler(_chain())(None, lambda *_args, **_kwargs: None)
-    assert ready[0] == "### Report ready"
+    assert ready[0] == ""
 
 
 def test_presentation_pdf_render(monkeypatch, tmp_path: Path) -> None:
