@@ -109,6 +109,28 @@ def test_repeat_flag_ignores_non_numeric_level():
     assert _argv(d, {"verbosity": "x"}) == ["tool"]
 
 
+def test_user_value_with_braces_is_literal_not_a_token():
+    # A user input value that contains `{word}` must reach the tool verbatim, not be resolved
+    # against the engine's token namespace nor fail the run closed. Regex quantifiers ({2,3}),
+    # JSON, and Jinja fragments all contain braces and are legitimate free-text input.
+    d = _desc([{"name": "pat", "type": "text", "arg": "--pattern"}])
+    mapping = {"pat": "a{2,3}b", "workdir": "/run/wd", "artifact": "/run/wd/a.json"}
+    assert _build_argv(d, {"pat": "a{2,3}b"}, mapping) == ["tool", "--pattern", "a{2,3}b"]
+
+
+def test_user_value_cannot_inject_an_engine_token():
+    # A value equal to `{artifact}` must NOT be expanded to the engine's internal artifact path.
+    d = _desc([{"name": "note", "type": "text", "arg": "--note", "positional": False}])
+    mapping = {"note": "{artifact}", "workdir": "/run/wd", "artifact": "/run/wd/secret.json"}
+    assert _build_argv(d, {"note": "{artifact}"}, mapping) == ["tool", "--note", "{artifact}"]
+
+
+def test_positional_value_with_braces_is_literal():
+    d = _desc([{"name": "target", "type": "text", "positional": True}])
+    mapping = {"target": "host{env}", "workdir": "/run/wd"}
+    assert _build_argv(d, {"target": "host{env}"}, mapping) == ["tool", "--", "host{env}"]
+
+
 def test_output_dir_flag_is_an_option_before_end_of_options():
     # #199: --output-dir is an OPTION, so it must land before the "--" positional guard, with the
     # engine-provided workdir as its value.

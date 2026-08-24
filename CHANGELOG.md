@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.8.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.9.0] - 2026-08-24
+
+### Fixed
+- **User input values are no longer re-rendered through the argv token engine.** `_build_argv`
+  previously substituted every assembled argv element, including literal user input, against the
+  engine token namespace. A value like `--sni {artifact}` expanded to an internal path, and a
+  value containing any `{word}` (a regex quantifier such as `a{2,3}b`, JSON, a Jinja fragment)
+  failed the whole run as a false "descriptor error". Only descriptor-authored templates
+  (`run.argv`, `run.base`, `positional_from`) are rendered now; user values reach the tool
+  verbatim. (#224)
+
+### Notes
+- Validated against QuReddy 0.2.62. The richer SSH weak-KEX evidence in 0.2.62 surfaces through
+  the existing `display.evaluation.observed_facts` "Observed" axis with no descriptor change.
 
 ## [0.8.0] - 2026-08-24
 
