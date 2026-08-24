@@ -7,7 +7,7 @@ standalone: true
 title: "HNDL Audit (SSH)"
 run_label: "HNDL Audit (SSH)"
 description: >-
-  Measures harvest-now-decrypt-later exposure at an SSH endpoint. Reads the server's KEXINIT offer and reports whether the key exchange is post-quantum, hybrid, or classical-only. Takes a few seconds.
+  Audits an SSH endpoint for harvest-now-decrypt-later exposure. The assessment records the server's KEXINIT offer and whether the advertised key exchange is post-quantum, hybrid, or classical-only. Use the evidence outputs to support remediation decisions; the scan reports observed protocol behavior and does not certify overall security.
 
 brand:
   product: "BreachSAFE QuReddy"
@@ -54,7 +54,6 @@ inputs:
     max: 3
     default: 1
     info: "Diagnostic log detail, shown in Raw log below. 0 = quiet, 1 = -v, 2 = -vv, 3 = -vvv (every subprocess start and completion)."
-    group: advanced
     repeat_flag: "-v"
 run:
   # JSON avoids the upstream rich-renderer edge case when offered SSH evidence has no
@@ -98,11 +97,11 @@ render:
   posture:
     from: "qureddy:scan.hndl_exposure"
     cases:
-      at_risk:              { text: "Harvest-now-decrypt-later: recorded traffic is decryptable once a quantum computer exists", level: high }
-      protected_defeasible: { text: "Harvest-now-decrypt-later: protected today, a classical downgrade path remains", level: medium }
-      protected:            { text: "Harvest-now-decrypt-later: recorded traffic is protected, no classical fallback offered", level: ok }
-      unknown:              { text: "Harvest-now-decrypt-later exposure could not be determined: the probe was inconclusive", level: unknown }
-    default: { text: "Harvest-now-decrypt-later exposure could not be determined", level: unknown }
+      at_risk:              { text: "Audit finding: classical key exchange remains available; recorded traffic may be exposed to future decryption", level: high }
+      protected_defeasible: { text: "Audit finding: hybrid key exchange observed, but classical fallback remains available", level: medium }
+      protected:            { text: "Audit finding: no classical key-exchange fallback was observed in this probe", level: ok }
+      unknown:              { text: "Audit finding: endpoint behavior was inconclusive for this probe", level: unknown }
+    default: { text: "Audit finding: endpoint behavior was inconclusive for this probe", level: unknown }
   badge_text:
     valid: "CBOM well-formed"
     invalid: "CBOM failed schema validation"

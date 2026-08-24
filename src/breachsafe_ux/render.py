@@ -185,13 +185,9 @@ def _badge(
     return f"### {head}{body}" + (f"\n\n{h}" if h else "")
 
 
-def _empty(desc: dict[str, Any]) -> str:
-    """Pre-run empty state: what the tool produces + how to read the verdict."""
-    artifact = desc["run"].get("artifact_name", "artifact.json")
-    return (
-        f"### Ready\nProduces `{artifact}`. The verdict below shows the external validator "
-        "result: VALID, INVALID, or VALIDATOR-UNAVAILABLE."
-    )
+def _empty() -> str:
+    """Pre-run empty state: no filler text before the tool has produced evidence."""
+    return ""
 
 
 _CHIP = (

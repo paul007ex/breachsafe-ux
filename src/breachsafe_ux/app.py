@@ -52,6 +52,8 @@ try:
     _HOST_VERSION = _pkg_version("breachsafe-ux")  # the EnXemble UX host's own version (#95)
 except PackageNotFoundError:  # running from a source tree without an installed dist
     _HOST_VERSION = "0.0.0"
+# Temporary pressure-test label; remove when this candidate is merged/released.
+_HOST_VERSION = os.environ.get("BREACHSAFE_UX_BUILD_VERSION", f"{_HOST_VERSION}.codex")
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
@@ -153,6 +155,10 @@ def _handler(desc: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
         res = run_descriptor(desc, params)
         progress(1)
         badge, evaluation, raw, art_texts, primary, path = _result(desc, res)
+        # A successful run is represented by the evidence surface; do not add a redundant
+        # success banner above it. Failure diagnostics remain visible in the output surface.
+        if "error" not in res and res.get("artifact_path"):
+            badge = ""
         # Reset the Run button here, atomic with the result, so it always clears "Running…"
         # (a trailing .then could be skipped; _result never raises, so this return always runs).
         reset = gr.update(value=_run_label(desc), interactive=True)
@@ -266,10 +272,22 @@ def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list
     Basic widgets render inline, advanced behind an Accordion with the binary provenance panel.
     Returns the desc-ordered widget list for the handler wiring.
     """
-    widgets, advanced_widgets = [], []
-    for spec in desc.get("inputs", []):
-        if spec.get("group") != "advanced":
-            widgets.append(_widget(spec))
+    widgets: list[Any] = []
+    advanced_widgets: list[Any] = []
+    basic_specs = [s for s in desc.get("inputs", []) if s.get("group") != "advanced"]
+    index = 0
+    while index < len(basic_specs):
+        spec = basic_specs[index]
+        # Endpoint identity is a compact pair in both TLS and SSH surfaces.
+        if spec.get("name") == "host" and index + 1 < len(basic_specs):
+            port = basic_specs[index + 1]
+            if port.get("name") == "port":
+                with gr.Row():
+                    widgets.extend((_widget(spec), _widget(port)))
+                index += 2
+                continue
+        widgets.append(_widget(spec))
+        index += 1
     # Progressive disclosure: advanced params collapsed by default (NN/g). The binary provenance
     # (#75) lives here too — greyed, read-only, below the editable params.
     adv_specs = [s for s in desc.get("inputs", []) if s.get("group") == "advanced"]
@@ -288,7 +306,13 @@ def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list
     return _order_widgets(desc, widgets, advanced_widgets)
 
 
-def _wire_actions(desc: dict[str, Any], ordered: list[Any]) -> None:
+def _wire_actions(
+    desc: dict[str, Any],
+    ordered: list[Any],
+    output: Any | None = None,
+    panel: Any | None = None,
+    buttons: list[Any] | None = None,
+) -> None:
     """Wire the descriptor-declared action buttons (#5).
 
     Each runs its own argv against the current inputs and shows the tool's actual output.
@@ -297,13 +321,16 @@ def _wire_actions(desc: dict[str, Any], ordered: list[Any]) -> None:
     actions = desc.get("actions", [])
     if not actions:
         return
-    # Connection probes are diagnostic affordances, not part of the primary scan path. Keep the
-    # main surface to Run -> Export while retaining the tool's real preflight for troubleshooting.
-    with gr.Accordion("Diagnostics", open=False):
-        for action in actions:
-            ab = gr.Button(action["label"], size="sm", variant="secondary")
-            ar = gr.Markdown()
-            ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
+    for index, action in enumerate(actions):
+        ab = (
+            buttons[index]
+            if buttons and index < len(buttons)
+            else gr.Button(action["label"].title(), size="sm", variant="secondary")
+        )
+        ar = output if output is not None else gr.Code(visible=False)
+        event = ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
+        if panel is not None:
+            event.then(lambda: gr.update(visible=True), None, panel)
 
 
 def _wire_run(
@@ -314,36 +341,70 @@ def _wire_run(
     The button reset is an atomic handler OUTPUT (no trailing .then that could leave it stuck on
     'Running…').
     """
+    action_buttons = [
+        gr.Button(
+            action["label"].title(),
+            variant="secondary",
+            elem_classes=["bs-test-connection"],
+        )
+        for action in desc.get("actions", [])
+    ]
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
-    badge = gr.Markdown(_empty(desc))
-    # Consistent output surfaces (#199): every box is a collapsed, copyable gr.Code accordion.
-    # The Evaluation box (the tool's own interpretation, config-driven) sits alongside the CBOM/
-    # JSON boxes with the same structure. Order: Evaluation, Raw log, then one box per artifact.
+    badge = gr.Markdown(_empty())
+    # Keep one compact evidence surface. Tabs select one result at a time while each machine
+    # artifact retains the gr.Code copy/download toolbar and syntax highlighting.
     eval_cfg = desc.get("render", {}).get("evaluation")
     eval_outs: list[Any] = []
-    if eval_cfg:
-        with gr.Accordion(
-            eval_cfg.get("title", "Evaluation"),
-            open=bool(eval_cfg.get("open", False)),
-        ):
-            # Syntax-highlight the `label: value` lines like the CBOM/JSON boxes (default yaml,
-            # config-overridable). The tool's evaluation is aligned key:value text, which the yaml
-            # lexer colours (keys vs values) the same way the artifact boxes colour JSON.
-            eval_outs.append(_code_box(eval_cfg.get("language", "yaml")))
-    with gr.Accordion("Raw log", open=False):
-        raw_log = _code_box()
     artifacts = desc["run"].get("artifacts", [])
     outs: list[Any] = []
-    if artifacts:
-        for art in artifacts:
-            with gr.Accordion(art.get("label", art["name"]), open=False):
-                # Per-artifact language, defaulting to json for the existing CBOM/JSON boxes.
-                # qureddy 0.2.59 also writes scan.jsonl and scan.rich.txt; highlighting a
-                # rendered text report or a newline-delimited stream as one JSON document
-                # mis-colours it, since neither is a single JSON value.
-                outs.append(_code_box(art.get("language", "json")))
-    else:  # legacy single-artifact tool: keep one JSON view
-        outs.append(gr.JSON(label="artifact"))
+    export_outputs: tuple[Any, Any, Any, Any, Any, Any] | None = None
+    download_button: Any | None = None
+    with gr.Accordion("Evidence", open=True, visible=False) as evidence_panel, gr.Tabs():
+        if auto_chain:
+            with gr.Tab("Executive Summary"):
+                # Metadata and export log remain in the ZIP but are intentionally hidden from the
+                # primary evidence surface. The visible outputs are preview, open, and download.
+                export_outputs = (
+                    gr.Markdown(visible=False),
+                    gr.JSON(visible=False),
+                    gr.Code(visible=False),
+                    None,
+                    gr.HTML(visible=False),
+                    gr.HTML(visible=False),
+                )
+        if eval_cfg:
+            with gr.Tab("Technical Summary"):
+                # Summary is line-oriented evidence, so keep the same colored, copyable,
+                # downloadable viewer as CBOM/log artifacts. Markdown would collapse newlines.
+                eval_outs.append(_code_box(eval_cfg.get("language", "yaml")))
+        if artifacts:
+            for art in artifacts:
+                if art["name"] == "rich":
+                    with gr.Tab("Output"):
+                        # Rich output is a distinct machine-produced report, not the diagnostic
+                        # log. Keep it copyable/downloadable and preserve the declared handler
+                        # slot so the archive and UI stay aligned.
+                        outs.append(_code_box(art.get("language", "text")))
+                    continue
+                label = {"json": "JSON", "jsonl": "Findings"}.get(
+                    art["name"], art.get("label", art["name"])
+                )
+                with gr.Tab(label):
+                    # JSONL is still one JSON object per line, not a single foldable document;
+                    # use the JSON lexer so it has the same colored evidence surface and toolbar
+                    # without rewriting or normalizing the authoritative artifact.
+                    language = "json" if art["name"] == "jsonl" else art.get("language", "json")
+                    outs.append(_code_box(language))
+        else:  # legacy single-artifact tool: keep one JSON view
+            with gr.Tab("Artifact"):
+                outs.append(gr.JSON(label="artifact"))
+        # Keep diagnostics last: the evidence/report tabs lead, while connection and process
+        # diagnostics remain available without competing with the audit result.
+        with gr.Tab("Raw Log"):
+            raw_log = _code_box()
+    if auto_chain and export_outputs:
+        download_button = gr.DownloadButton("Download", visible=True, interactive=False)
+        export_outputs = (*export_outputs[:3], download_button, *export_outputs[4:])
     artifact_state = gr.State(None)
     heavy = desc["run"].get("timeout_s", 0) >= _HEAVY_TIMEOUT_S
     run_event = run_btn.click(lambda d=did: _busy(d), None, run_btn).then(
@@ -353,8 +414,15 @@ def _wire_run(
         show_progress="full",
         concurrency_limit=1 if heavy else None,
     )
-    if auto_chain:
-        wire_auto_evidence(auto_chain, run_event, artifact_state)
+    run_event.then(
+        lambda path: gr.update(visible=bool(path)),
+        artifact_state,
+        evidence_panel,
+    )
+    if action_buttons:
+        _wire_actions(desc, ordered, raw_log, evidence_panel, action_buttons)
+    if auto_chain and export_outputs:
+        wire_auto_evidence(auto_chain, run_event, artifact_state, export_outputs)
     return artifact_state
 
 
@@ -413,7 +481,6 @@ def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
         gr.Markdown(desc.get("description", ""))
         env_rows = environment(desc)
         ordered = _render_inputs(desc, env_rows)
-        _wire_actions(desc, ordered)
         auto_chain = next(
             (chain for chain in desc.get("chains", []) if chain.get("kind") == "pdf_export"),
             None,

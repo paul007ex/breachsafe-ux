@@ -32,7 +32,7 @@ def evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ..
                 f"### Export failed\n{output.get('error', 'unknown error')}",
                 output,
                 output.get("log", ""),
-                gr.update(visible=False),
+                gr.update(interactive=False, visible=True),
                 gr.update(visible=False),
                 gr.update(visible=False),
             )
@@ -40,7 +40,9 @@ def evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ..
             "",
             output,
             output.get("log", ""),
-            gr.update(value=output.get("archive"), visible=bool(output.get("archive"))),
+            gr.update(
+                value=output.get("archive"), interactive=bool(output.get("archive")), visible=True
+            ),
             gr.update(value=pdf_preview_html(output.get("pdf")), visible=bool(output.get("pdf"))),
             gr.update(value=pdf_open_link(output.get("pdf")), visible=bool(output.get("pdf"))),
         )
@@ -100,17 +102,18 @@ def pdf_open_link(path: str | None) -> str:
     )
 
 
-def wire_auto_evidence(chain: dict[str, Any], run_event: Any, artifact_state: Any) -> None:
-    """Attach PDF/export generation to a successful scan; expose only finished outputs."""
-    cbadge = gr.Markdown()
-    with gr.Accordion("export metadata", open=False):
-        cout = gr.JSON()
-    with gr.Accordion("evidence export raw log", open=False):
-        craw = gr.Code()
-    with gr.Accordion("Preview report", open=False):
-        preview = gr.HTML(visible=False)
-    pdf_link = gr.HTML(visible=False)
-    cdl = gr.DownloadButton("Download", visible=False)
+def wire_auto_evidence(
+    chain: dict[str, Any],
+    run_event: Any,
+    artifact_state: Any,
+    outputs: tuple[Any, Any, Any, Any, Any, Any],
+) -> None:
+    """Attach PDF/export generation to the PDF report tab.
+
+    Metadata and the export log are still produced by the composer and included in the archive,
+    but their hidden components are not part of the primary UX surface.
+    """
+    cbadge, cout, craw, cdl, preview, pdf_link = outputs
     run_event.then(
         evidence_chain_handler(chain),
         [artifact_state],
