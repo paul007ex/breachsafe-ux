@@ -57,26 +57,32 @@ def test_posture_none_without_artifact():
 
 def test_qureddy_resolves_a_representative_cbom():
     """Drift catcher: the shipped descriptor resolves a real-shaped CBOM to a real case.
-    If qureddy moves/renames scan.readiness, update the fixture — this test then flags it."""
+    If qureddy moves/renames scan.hndl_exposure, update the fixture — this test then flags it.
+    It did exactly that when the banner moved off scan.readiness in v0.5.0."""
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cbom = json.loads(FIXTURE.read_text())
     p = _posture(q, cbom)
-    assert p and p["level"] == "high"  # quantum_vulnerable -> high
-    assert q["render"]["posture"]["from"] == "qureddy:scan.readiness"  # #287-stable surface
+    assert p and p["level"] == "high"  # at_risk -> high
+    # v0.5.0: the banner answers the harvest-now-decrypt-later question only. scan.readiness
+    # collapses five independent axes into one ordinal whose precedence ranks classically_weak
+    # above everything, so a PQC-capable endpoint was banner'd worst-tier off medium findings.
+    # See BreachSAFE/qureddy#453.
+    assert q["render"]["posture"]["from"] == "qureddy:scan.hndl_exposure"
 
 
-def test_qureddy_maps_the_full_readiness_enum():
+def test_qureddy_maps_the_full_hndl_exposure_enum():
+    """Every HndlExposure value qureddy can emit must map to a case, or the banner silently
+    falls through to `default` and the operator sees 'could not be determined' for a scan that
+    succeeded."""
     q = yaml.safe_load((ROOT / "tools" / "qureddy" / "qureddy.yaml").read_text())
     cases = q["render"]["posture"]["cases"]
     for v in [
-        "quantum_vulnerable",
-        "classically_weak",
-        "transitional_hybrid",
-        "quantum_safe",
+        "at_risk",
+        "protected_defeasible",
+        "protected",
         "unknown",
-        "not_applicable",
     ]:
-        assert v in cases, f"readiness value {v!r} not mapped (qureddy Readiness enum)"
+        assert v in cases, f"hndl_exposure value {v!r} not mapped (qureddy HndlExposure enum)"
 
 
 def test_result_shows_banner_and_reworded_evidence_badge():

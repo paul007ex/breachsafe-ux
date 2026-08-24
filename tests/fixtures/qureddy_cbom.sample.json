@@ -4,16 +4,66 @@
   "metadata": {
     "timestamp": "2026-08-22T00:00:00+00:00",
     "properties": [
-      { "name": "qureddy:scan.status", "value": "completed" },
-      { "name": "qureddy:scan.readiness", "value": "quantum_vulnerable" },
-      { "name": "qureddy:target.host", "value": "example.com" }
+      {
+        "name": "qureddy:scan.status",
+        "value": "completed"
+      },
+      {
+        "name": "qureddy:scan.readiness",
+        "value": "quantum_vulnerable"
+      },
+      {
+        "name": "qureddy:target.host",
+        "value": "example.com"
+      },
+      {
+        "name": "qureddy:scan.hndl_exposure",
+        "value": "at_risk"
+      },
+      {
+        "name": "qureddy:scan.hygiene_status",
+        "value": "action_needed"
+      },
+      {
+        "name": "qureddy:scan.display.overall_status",
+        "value": "Classical key exchange only"
+      },
+      {
+        "name": "qureddy:scan.display.future_quantum_risk",
+        "value": "Recorded traffic is decryptable once a quantum computer exists"
+      },
+      {
+        "name": "qureddy:scan.display.current_hygiene",
+        "value": "Protocol hardening is required"
+      },
+      {
+        "name": "qureddy:scan.display.quantum_protection",
+        "value": "No post-quantum key exchange observed"
+      },
+      {
+        "name": "qureddy:scan.highest_severity",
+        "value": "medium"
+      },
+      {
+        "name": "qureddy:scan.finding_count",
+        "value": "3"
+      }
     ]
   },
   "components": [
-    { "name": "TLSv1.2", "properties": [
-      { "name": "qureddy:readiness", "value": "quantum_vulnerable" },
-      { "name": "qureddy:severity", "value": "low" }
-    ] }
+    {
+      "name": "TLSv1.2",
+      "properties": [
+        {
+          "name": "qureddy:readiness",
+          "value": "quantum_vulnerable"
+        },
+        {
+          "name": "qureddy:severity",
+          "value": "low"
+        }
+      ]
+    }
   ],
   "annotations": []
 }
