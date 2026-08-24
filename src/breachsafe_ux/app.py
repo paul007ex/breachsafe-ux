@@ -12,27 +12,22 @@ UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
 
 from __future__ import annotations
 
-import html
 import os
-import shutil
-import subprocess
 import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote
 
 import gradio as gr
 
 from breachsafe_ux.brand import BRAND, CSS, THEME
+from breachsafe_ux.evidence_ui import wire_auto_evidence
 from breachsafe_ux.facade import (
     RUN_ROOT,
     feature_enabled,
     load_descriptors,
     run_action,
     run_descriptor,
-    run_evidence_report,
     verify_path,
 )
 from breachsafe_ux.render import (
@@ -198,86 +193,6 @@ def _chain_handler(chain: dict[str, Any], descs: dict[str, Any]) -> Callable[...
     return run
 
 
-def _evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
-    """Adapter for the YAML-declared Export to PDF action (no tool-specific UI code)."""
-
-    def run(artifact_path: str | None, progress: Any = gr.Progress()) -> tuple[Any, ...]:
-        progress(0, desc="building evidence PDF and export bundle…")
-        ok, output = run_evidence_report(chain, artifact_path)
-        progress(1)
-        if not ok:
-            return (
-                f"### Export failed\n{output.get('error', 'unknown error')}",
-                output,
-                output.get("log", ""),
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(visible=False),
-            )
-        return (
-            "### Report ready",
-            output,
-            output.get("log", ""),
-            gr.update(value=output.get("archive"), visible=bool(output.get("archive"))),
-            gr.update(value=_pdf_preview_html(output.get("pdf")), visible=bool(output.get("pdf"))),
-            gr.update(value=_pdf_open_link(output.get("pdf")), visible=bool(output.get("pdf"))),
-        )
-
-    return run
-
-
-def _pdf_preview_html(path: str | None) -> str:
-    """Render PDF pages as in-app images, avoiding the browser PDF viewer chrome."""
-    if not path:
-        return ""
-    pdf = Path(path).resolve()
-    root = RUN_ROOT.resolve()
-    if not pdf.is_file() or not pdf.is_relative_to(root):
-        return ""
-    preview_dir = pdf.parent / "pdf-preview"
-    try:
-        pdftoppm = shutil.which("pdftoppm")
-        if not pdftoppm:
-            return ""
-        preview_dir.mkdir(exist_ok=True)
-        for old in preview_dir.glob("page-*.png"):
-            old.unlink()
-        subprocess.run(
-            [pdftoppm, "-png", "-r", "120", str(pdf), str(preview_dir / "page")],
-            check=True,
-            capture_output=True,
-            timeout=60,
-        )
-        pages = sorted(preview_dir.glob("page-*.png"))
-    except OSError, subprocess.SubprocessError:
-        return ""
-    images = "".join(
-        f'<img alt="PDF page {i}" src="/gradio_api/file={quote(str(page), safe="")}" '
-        'style="display:block;width:min(100%,900px);height:auto;margin:0 auto 18px;" />'
-        for i, page in enumerate(pages, 1)
-    )
-    return (
-        '<div aria-label="Rendered PDF preview" '
-        'style="max-height:780px;overflow-y:auto;padding:18px;background:#1b1b1b;" '
-        f'data-pages="{len(pages)}">{images}</div>'
-        if pages
-        else ""
-    )
-
-
-def _pdf_open_link(path: str | None) -> str:
-    """Expose the generated PDF as a normal browser-openable link."""
-    if not path:
-        return ""
-    return (
-        '<a class="pdf-open-button" target="_blank" rel="noopener" '
-        'style="display:block;text-align:center;padding:12px;margin-top:12px;'
-        'border:1px solid #94a3b8;border-radius:8px;color:inherit;text-decoration:none;" '
-        f'href="/gradio_api/file={quote(path, safe="")}">'
-        f"{html.escape('PDF')}<span> ↗</span></a>"
-    )
-
-
 def _run_label(desc: dict[str, Any]) -> str:
     # Descriptor-set run-button label (e.g. "HNDL Audit (TLS)"), else "Run <id>". Lets two
     # tabs backed by the same tool (qureddy TLS + SSH) read distinctly, not "Run qureddy" twice.
@@ -439,28 +354,8 @@ def _wire_run(
         concurrency_limit=1 if heavy else None,
     )
     if auto_chain:
-        _wire_auto_evidence(auto_chain, run_event, artifact_state)
+        wire_auto_evidence(auto_chain, run_event, artifact_state)
     return artifact_state
-
-
-def _wire_auto_evidence(chain: dict[str, Any], run_event: Any, artifact_state: Any) -> None:
-    """Attach PDF/export generation to a successful scan; expose only finished outputs."""
-    cbadge = gr.Markdown()
-    with gr.Accordion("export metadata", open=False):
-        cout = gr.JSON()
-    with gr.Accordion("evidence export raw log", open=False):
-        craw = _code_box()
-    with gr.Accordion("Preview report", open=False):
-        preview = gr.HTML(visible=False)
-    pdf_link = gr.HTML(visible=False)
-    cdl = gr.DownloadButton("Download", visible=False)
-    run_event.then(
-        _evidence_chain_handler(chain),
-        [artifact_state],
-        [cbadge, cout, craw, cdl, preview, pdf_link],
-        show_progress="full",
-        concurrency_limit=1,
-    )
 
 
 def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: Any) -> None:
@@ -513,11 +408,7 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
 
 
 def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
-    """Render one descriptor as its own tab.
-
-    Renders the description, inputs, actions, the Run surface, and any Convert-to-next-tool chain
-    buttons.
-    """
+    """Render one descriptor tab and its declared actions/chains."""
     with gr.Tab(desc.get("title", did)):
         gr.Markdown(desc.get("description", ""))
         env_rows = environment(desc)
@@ -549,12 +440,7 @@ def build() -> gr.Blocks:
 
 
 def _check() -> int:
-    """Resolve every descriptor's environment, print it, and exit nonzero if any is missing.
-
-    `breachsafe-ux --check`. A curl on `/` is false-healthy — the Gradio shell serves even when
-    the underlying tool is absent — so this is the real Docker HEALTHCHECK signal: it verifies
-    the binaries the descriptors declare actually resolve on this system (#75).
-    """
+    """Resolve every descriptor environment for the Docker healthcheck."""
     ok = True
     for did, desc in load_descriptors().items():
         rows = environment(desc)
