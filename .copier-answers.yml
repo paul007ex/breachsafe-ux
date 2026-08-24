@@ -17,9 +17,9 @@ description: The BreachSAFE EnXemble UX host — a Gradio-based tool facade for 
 github_owner: paul007ex
 project_type: python-cli
 license: Apache-2.0
-python_version: "3.12"
+python_version: "3.14"
 coverage_min: 70
 common_ref: v1
-# container_tag reflects the platform 3.14 toolchain image; breachsafe-ux is 3.12 today and
+# container_tag reflects the platform 3.14 toolchain image; breachsafe-ux is 3.14 and
 # does not yet consume the reusable workflows/container — adoption tracks the 3.14 migration (#100).
 container_tag: "3.14-openssl3.5.7"
