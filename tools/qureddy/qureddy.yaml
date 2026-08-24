@@ -204,3 +204,28 @@ chains:
     pass_artifact_as: source_file
     with: { source: cbom }
     feature_flag: mint_oscal   # #67: hide the Convert button in the OSS base edition
+  - to: breachsafe-evidence
+    kind: pdf_export
+    label: "Export Results"
+    argv: [breachsafe-evidence, render, --profile, "{profile}", --request, "{request}", --scan-json, "{scan}", --cbom, "{inventory}", --pdf, "{pdf}", --result, "{result}", --log, "{log}", --zip, "{archive}"]
+    profile: breachsafe/community
+    request_file: request.json
+    artifact_files: { inventory: scan.cdx.json, scan: scan.json }
+    output_files: { pdf: report.pdf, result: report.result.json, log: pdf-render.log, archive: results.zip }
+    request_artifacts:
+      inventory: { request_key: cbom }
+      scan: { request_key: scan_json }
+    request_template:
+      schema_version: breachsafe.report.request.community-single-scan/v1alpha1
+      identity:
+        report_id: pending
+        name: Quantum Readiness Evidence Report
+        generated_at: pending
+        language: en-US
+        organization_display_name: BreachSAFE UX
+        classification: COMMUNITY / EVIDENCE REPORT
+      cbom: { media_type: application/vnd.cyclonedx+json, schema: cyclonedx:1.7, expected_sha256: pending }
+      scan_json: { media_type: application/json, schema: qureddy.scan.v1, expected_sha256: pending }
+      render_options: { page_size: a4, timezone: UTC, color_mode: color, accessibility_profile: none }
+      allow_correlation_mismatch: false
+    feature_flag: evidence_pdf

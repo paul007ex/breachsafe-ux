@@ -20,6 +20,7 @@
 # wheel + its deps are installed here (same digest-pinned python as the qureddy base, so the
 # site-packages ABI matches) and COPYed into the final image. qureddy itself comes from the
 # base image — never pip/TestPyPI.
+ARG EVIDENCE_IMAGE=ghcr.io/paul007ex/breachsafe-evidence-go:latest
 FROM python:3.14-slim-bookworm@sha256:23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52 AS ux-builder
 COPY dist/breachsafe_ux-*.whl /tmp/
 RUN set -eux; \
@@ -31,6 +32,10 @@ RUN set -eux; \
            /install/lib/python3.14/site-packages/pkg_resources \
            /install/bin/pip /install/bin/pip3 /install/bin/pip3.14
 
+# The OSS customer image carries the PDF renderer. ePack remains outside this image for the
+# enterprise evidence workflow. Override this source image for pressure tests.
+FROM ${EVIDENCE_IMAGE} AS evidence
+
 FROM ghcr.io/breachsafe/qureddy:latest
 LABEL org.opencontainers.image.title="qureddy-ux" \
       org.opencontainers.image.vendor="BreachSAFE" \
@@ -41,12 +46,16 @@ LABEL org.opencontainers.image.title="qureddy-ux" \
 USER root
 # ssh-keyscan for the SSH tab's "Test connection" action (openssl for TLS is already in the base)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssh-client \
+    && apt-get install -y --no-install-recommends openssh-client poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 # add the EnXemble host (gradio + engine) on top of the qureddy tool image.
 # Installed in the ux-builder stage (the qureddy base has no pip, #385); COPY the resolved tree
 # into the base's /usr/local (site-packages + console scripts). No pip ever runs in this image.
 COPY --from=ux-builder /install /usr/local
+# Evidence export is fully self-contained: no Docker socket and no runtime download.
+COPY --from=evidence /usr/local/bin/breachsafe-evidence /usr/local/bin/breachsafe-evidence
+COPY --from=evidence /usr/local/bin/breachsafe-pdf /usr/local/bin/breachsafe-pdf
+COPY --from=evidence /usr/share/breachsafe/breachsafe-pdf.sha256 /usr/share/breachsafe/breachsafe-pdf.sha256
 # Fail closed if the host didn't actually land (an earlier `|| true` once shipped an app-less image).
 RUN set -eux; \
     python3 -c "import breachsafe_ux"; \
@@ -58,9 +67,11 @@ COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
     BREACHSAFE_UX_MINT_OSCAL=false \
+    BREACHSAFE_EVIDENCE_BIN=/usr/local/bin/breachsafe-evidence \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \
-    GRADIO_ANALYTICS_ENABLED=False
+    GRADIO_ANALYTICS_ENABLED=False \
+    BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf
 
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
