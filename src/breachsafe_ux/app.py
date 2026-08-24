@@ -52,8 +52,8 @@ try:
     _HOST_VERSION = _pkg_version("breachsafe-ux")  # the EnXemble UX host's own version (#95)
 except PackageNotFoundError:  # running from a source tree without an installed dist
     _HOST_VERSION = "0.0.0"
-# Temporary pressure-test label; remove when this candidate is merged/released.
-_HOST_VERSION = os.environ.get("BREACHSAFE_UX_BUILD_VERSION", f"{_HOST_VERSION}.codex")
+# Deployment may override the display label, but defaults to the package metadata version.
+_HOST_VERSION = os.environ.get("BREACHSAFE_UX_BUILD_VERSION", _HOST_VERSION)
 
 # Descriptors are loaded LAZILY inside build() (W-1/W-2), never at import, so a host package
 # that sets BREACHSAFE_UX_TOOLS_DIR before calling main() gets its own tools rendered.
@@ -282,7 +282,7 @@ def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list
         if spec.get("name") == "host" and index + 1 < len(basic_specs):
             port = basic_specs[index + 1]
             if port.get("name") == "port":
-                with gr.Row():
+                with gr.Row(elem_classes=["bs-endpoint-row"]):
                     widgets.extend((_widget(spec), _widget(port)))
                 index += 2
                 continue

@@ -66,7 +66,7 @@ COPY tools/qureddy      /opt/enxemble/tools/qureddy
 COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
-    BREACHSAFE_UX_BUILD_VERSION=0.10.0.codex \
+    BREACHSAFE_UX_BUILD_VERSION=0.11.0 \
     BREACHSAFE_UX_MINT_OSCAL=false \
     BREACHSAFE_EVIDENCE_BIN=/usr/local/bin/breachsafe-evidence \
     BREACHSAFE_UX_HOST=0.0.0.0 \
