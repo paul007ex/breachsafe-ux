@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.5.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.2-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.2] - 2026-08-24
+
+### Changed
+- The four output boxes (Evaluation, Raw log, and one per artifact) are built by a single
+  `_code_box()` helper instead of four separate `gr.Code(...)` calls that repeated
+  `show_label=False, wrap_lines=True`. Two of the four were byte-identical. jscpd did not flag
+  them because `minTokens` is 50 and the lines are roughly 15 tokens, so this was duplication
+  below the detector's floor.
+
+### Fixed
+- The README version badge is back in sync with `pyproject.toml`. It was left at `0.4.1` through
+  both `v0.5.0` and `v0.5.1`, so the repo's own `bump_version.py --check` gate has been failing
+  on `main` since `v0.5.0`. Those releases were cut without running the gate suite.
 
 ## [0.5.1] - 2026-08-24
 
