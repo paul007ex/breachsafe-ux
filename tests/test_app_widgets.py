@@ -106,7 +106,10 @@ def test_result_surfaces_log_on_success():
     }
     # #199: _result is (badge_md, evaluation_text, raw_log_md, artifact_texts, primary, primary_path)
     _badge_md, _eval, raw, _texts, _primary, _path = app._result(desc, res)
-    assert raw.startswith("```") and "scan.start" in raw and "probe.done" in raw
+    # Plain text now, no markdown fence: the Raw log is a gr.Code box so it carries a
+    # download button. A fence would render literally inside a Code widget.
+    assert not raw.startswith("```")
+    assert "scan.start" in raw and "probe.done" in raw
     assert "\x1b[" not in raw  # ANSI stripped (reuses #4's _strip_ansi)
     assert app._result(desc, dict(res, log=""))[2] == ""  # empty log -> empty Raw log slot (idx 2)
 

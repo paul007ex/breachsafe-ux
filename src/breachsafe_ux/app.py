@@ -308,7 +308,11 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
                 )
             )
     with gr.Accordion("Raw log", open=False):
-        raw_log = gr.Markdown("")
+        # gr.Code, not gr.Markdown: Code ships download + copy buttons, so the scan log can be
+        # saved as evidence instead of only selected and copied. Same affordance as the
+        # Evaluation and CBOM/JSON boxes. language=None keeps it plain, since a tool log is not
+        # any one syntax.
+        raw_log = gr.Code(language=None, show_label=False, wrap_lines=True)
     artifacts = desc["run"].get("artifacts", [])
     outs: list[Any] = []
     if artifacts:
@@ -359,7 +363,7 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
     cbadge = gr.Markdown()
     cdl = gr.DownloadButton("Download output", visible=False)
     with gr.Accordion(f"{chain['to']} raw log", open=False):
-        craw = gr.Markdown("")
+        craw = gr.Code(language=None, show_label=False, wrap_lines=True)
     cout = gr.JSON(label=f"{chain['to']} output")
     cstate = gr.State(None)
     (

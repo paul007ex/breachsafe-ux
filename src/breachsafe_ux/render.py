@@ -234,12 +234,19 @@ def _env_panel_md(rows: list[dict[str, Any]]) -> str:
     return header + body
 
 
-def _raw_log_md(res: dict[str, Any], body: str) -> str:
-    """Fenced Raw log: the invocation + run dir header (#199), then the ANSI-stripped tool text."""
+def _raw_log_text(res: dict[str, Any], body: str) -> str:
+    """Raw log as PLAIN text: invocation + run dir header (#199), then ANSI-stripped tool text.
+
+    Unfenced on purpose. This feeds a `gr.Code` box, which supplies its own download and copy
+    buttons, the same affordance the Evaluation and CBOM/JSON boxes already have. It previously
+    returned a markdown fence for a `gr.Markdown` widget, which gave the operator a copy button
+    and no way to save the log. A scan log is evidence; it should be savable without selecting
+    text in a browser.
+    """
     cmd, workdir = res.get("command"), res.get("workdir")
     header = f"$ {cmd}\n# ran in: {workdir}\n\n" if cmd else ""
     text = _strip_ansi(body.strip())
-    return f"```\n{header}{text}\n```" if (text or header) else ""
+    return f"{header}{text}" if (text or header) else ""
 
 
 def _result(
@@ -258,7 +265,7 @@ def _result(
         return (
             _badge(state, detail, head_text=head_text),
             "",
-            _raw_log_md(res, res["error"]),
+            _raw_log_text(res, res["error"]),
             {},
             None,
             None,
@@ -267,7 +274,7 @@ def _result(
     # #199: the tool's own per-axis evaluation, config-driven + agnostic, shown in its own box.
     evaluation = _evaluation_text(_evaluation(desc, res.get("artifact")))
     # #190/#199: the Raw log carries the tool's stderr on success too, prefixed with the command.
-    raw = _raw_log_md(res, res.get("log") or "")
+    raw = _raw_log_text(res, res.get("log") or "")
     art_texts = {name: a.get("text", "") for name, a in res.get("artifacts", {}).items()}
     return (
         banner + _badge(state, detail, res.get("highlights", []), head_text=head_text),

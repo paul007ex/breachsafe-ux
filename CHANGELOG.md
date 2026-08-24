@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.5.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.1-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,23 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.1] - 2026-08-24
+
+### Added
+- **The Raw log is downloadable.** It is now a `gr.Code` box, which supplies download and copy
+  buttons, matching the Evaluation and CBOM/JSON boxes. It was a `gr.Markdown` fence, so an
+  operator could copy the text but had no way to save it. A scan log is evidence and should be
+  savable without selecting text in a browser. Applies to the main tab and the chained-tool tab.
+
+### Fixed
+- Two posture drift-catcher tests still asserted the banner reads `qureddy:scan.readiness`, which
+  0.5.0 changed to `qureddy:scan.hndl_exposure`. They failed on `main` from 0.5.0 until now. The
+  CBOM fixture gained the 0.2.56 axes so the drift catcher exercises the surface the descriptor
+  actually reads, and `test_qureddy_maps_the_full_readiness_enum` became
+  `test_qureddy_maps_the_full_hndl_exposure_enum`, asserting every `HndlExposure` value maps to a
+  case so the banner cannot silently fall through to "could not be determined" on a scan that
+  succeeded.
 
 ## [0.5.0] - 2026-08-24
 
