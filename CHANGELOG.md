@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,26 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-08-24
+
+### Added
+- **The two new qureddy 0.2.59 artifacts each get their own box** with download and copy.
+  `d630811 "emit complete scan artifact bundle with JSONL"` made a scan write four files while
+  the descriptor declared two, so `scan.jsonl` and `scan.rich.txt` were written inside the
+  container and unreachable.
+  - `scan.jsonl` — Nuclei/ProjectDiscovery-shaped findings stream (`template-id`, `type`,
+    `host`, `matched-at`, `url`, `port`). This is the ingestable form; DefectDojo and the rest
+    of the posture fleet read that shape directly.
+  - `scan.rich.txt` — the rendered CISO report, ANSI already stripped by the tool. Shareable
+    as-is, which the JSON forms are not.
+- Artifact boxes take a per-declaration `language`, defaulting to `json`. Highlighting a
+  rendered text report or a newline-delimited stream as one JSON document mis-colours it,
+  since neither is a single JSON value.
+
+### Requires
+- **qureddy >= 0.2.59** for `scan.jsonl` and `scan.rich.txt`.
+  `ghcr.io/breachsafe/qureddy:latest` is 0.2.59.
 
 ## [0.6.0] - 2026-08-24
 

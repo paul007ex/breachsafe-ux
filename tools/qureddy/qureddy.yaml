@@ -100,6 +100,16 @@ run:
   artifacts:
     - { name: cbom, file: scan.cdx.json, label: "CBOM (CycloneDX 1.7)", primary: true }
     - { name: json, file: scan.json,     label: "JSON (raw scan)" }
+    # qureddy 0.2.59 (d630811 "emit complete scan artifact bundle with JSONL") writes four
+    # files, not two. Declaring the other two gives each its own box with download and copy,
+    # instead of leaving them on disk inside the container where nobody can reach them.
+    #   scan.jsonl    Nuclei/ProjectDiscovery-shaped findings stream (template-id, type, host,
+    #                 matched-at, url, port). This is the ingestable form: DefectDojo and the
+    #                 rest of the posture fleet read that shape directly.
+    #   scan.rich.txt the rendered CISO report, ANSI already stripped by the tool. Shareable
+    #                 as-is, which the JSON forms are not.
+    - { name: jsonl, file: scan.jsonl,    label: "Findings (JSONL, Nuclei-shaped)", language: null }
+    - { name: rich,  file: scan.rich.txt, label: "Report (rendered text)", language: null }
   timeout_s: 180
 validate:
   # Always validate the CBOM (the primary artifact): CycloneDX 1.7 schema-conformance. Run under
