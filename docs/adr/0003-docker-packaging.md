@@ -2,17 +2,17 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR-0003 — Docker packaging: a base host image, tool images build FROM it
 
-- **Status:** Accepted, **Updated 2026-08-22** (see "Update" below — the base+socket two-layer
+- **Status:** Accepted, **Updated 2026-08-24** (see "Update" below — the base+socket two-layer
   model was superseded by a self-contained multi-arch image before first release).
 - **Date:** 2026-08-22
 - **Deciders:** BreachSAFE (paul)
 - **Related:** ADR-0001 (facade), ADR-0002 (host↔descriptor boundary + trust posture), #35, #67, #120.
 
-## Update — 2026-08-22: self-contained, multi-arch `qureddy-ux` image
+## Update — 2026-08-24: self-contained image includes OSS evidence export
 
 The original Decision below (a host-only BASE image, with each tool's product image building
 `FROM` it, and the tool reached via a mounted docker socket or a pip install) never shipped. The
-released packaging (v0.3.1) is a **single self-contained, multi-arch `qureddy-ux` image**:
+released packaging (v0.9.2) is a **single self-contained, multi-arch `qureddy-ux` image**:
 
 ```
   official tool image (multi-arch)              breachsafe-ux repo (this repo)
@@ -34,6 +34,14 @@ released packaging (v0.3.1) is a **single self-contained, multi-arch `qureddy-ux
   smoke test asserts exactly this ("one command, no socket, serves + resolves tools").
 - **Multi-arch** (`linux/amd64,linux/arm64`) via buildx + QEMU, so one image runs on Intel and
   Apple Silicon. Published as `:edge` on `main` and `:latest` + version tag on release.
+- **OSS evidence export is included.** The image copies `breachsafe-evidence` and
+  `breachsafe-pdf` from `ghcr.io/paul007ex/breachsafe-evidence-go:latest`. After a successful scan,
+  the UX invokes the Go composer through descriptor-declared argv. Go owns request hashing, PDF
+  rendering delegation, renderer receipt generation, and ZIP packaging; Python only adapts the
+  result to the UI. Generated outputs use `<hostname>.breachsafe.<UTC timestamp>` names.
+- **ePack is not a runtime UX dependency.** The OSS image produces a portable ZIP download without
+  requiring customers to install ePack. Enterprise workflows may use the standalone evidence image
+  and ePack-compatible commands separately.
 - **One command, any arch, no socket, tool stays in its maintained image.** Building `FROM` the
   official qureddy image means qureddy is upgraded by rebuilding on a new base, not vendored or
   re-packaged here.

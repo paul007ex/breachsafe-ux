@@ -1,7 +1,7 @@
 # BreachSAFE EnXemble
 
-[![Version](https://img.shields.io/badge/version-0.9.1-blue?style=flat-square)](CHANGELOG.md)
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.9.2-blue?style=flat-square)](CHANGELOG.md)
+[![Python](https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
@@ -56,6 +56,10 @@ flowchart TD
     controller --> view["View — render.py"]
     controller --> model["Model — resolve.py / _render.py"]
     controller --> theme["Theme — brand.py (imports gradio)"]
+    controller --> evidence_ui["Evidence UI — evidence_ui.py"]
+    evidence_ui --> evidence["Go evidence composer"]
+    evidence --> pdf["breachsafe-pdf"]
+    evidence --> bundle["timestamped PDF + ZIP"]
     engine --> model
     classDef valid       fill:#d4edda,stroke:#28a745,color:#155724;
     classDef invalid     fill:#f8d7da,stroke:#dc3545,color:#721c24;
@@ -91,16 +95,17 @@ bundles the host and its tools, so a single `docker run` serves the UI with the 
 resolvable. Using the shipped reference example image:
 
 ```bash
-docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
-docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
+docker rm -f enxemble 2>/dev/null || true
+docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:v0.9.2
 sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
 The first line clears any container already on port 7860; `--pull=always` fetches the newest
 image; the third opens your browser once the host is up (macOS `open`; Linux `xdg-open`; Windows
 `start`). No login, no Docker socket, multi-arch (Intel and Apple Silicon). Stop it with
-`docker stop enxemble`. See [run with Docker](docs/how-to/run-with-docker.md) for tags, digest
-pinning, and configuration.
+`docker stop enxemble`. Use `:latest` for the moving release stream or `:v0.9.2` for this
+immutable release. See [run with Docker](docs/how-to/run-with-docker.md) for digest pinning and
+configuration.
 
 ## 2. Run from source
 
@@ -110,7 +115,7 @@ from source with [`uv`](https://github.com/astral-sh/uv):
 
 ```bash
 git clone https://github.com/paul007ex/breachsafe-ux && cd breachsafe-ux
-uv sync                          # runtime only (enough to launch)
+uv sync                          # runtime only (enough to launch; Python 3.14)
 uv run breachsafe-ux             # serves http://127.0.0.1:7860
 uv run breachsafe-ux --check     # resolve every tab's tool + validator (exit != 0 if any is missing)
 ```
@@ -126,6 +131,12 @@ example, so you can run immediately: edit the fields, click the tab's run button
 badge. The [first-run tutorial](docs/tutorials/your-first-scan.md) walks through it end to end.
 The shipped example tabs wrap a post-quantum readiness scanner; for what those scans mean, see
 the [`breachsafe/qureddy` documentation](https://github.com/breachsafe/qureddy).
+
+After a successful TLS or SSH scan, the UI automatically calls the bundled Go evidence composer.
+That composer invokes `breachsafe-pdf`, writes a timestamped PDF, creates a matching ZIP containing
+the request, CBOM, scan JSON, PDF, renderer result, and raw log, and exposes one **Download**
+button. The PDF preview is collapsed by default; expand it to inspect rendered pages in the browser.
+The UX does not implement ZIP packaging itself and does not require ePack on the customer host.
 
 ## 4. Add your own tool
 
@@ -203,9 +214,11 @@ Full details, including feature flags, are in the
 
 ## 8. Requirements
 
-- Python 3.12 or newer, with `uv`, to run from source.
+- Python 3.14 or newer, with `uv`, to run from source.
 - Docker, to run a tool-UX image or when a descriptor uses the image backend or a Docker-based
   validator.
+- The shipped image includes `breachsafe-evidence` and `breachsafe-pdf`; the standalone evidence
+  image is `ghcr.io/paul007ex/breachsafe-evidence-go:v0.1.0` (or `:latest`).
 - Each wrapped tool has its own requirements and carries its own licence.
 
 ## 9. Documentation and support

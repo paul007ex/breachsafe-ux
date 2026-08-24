@@ -2,8 +2,9 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Architecture
 
-EnXemble is a small MVC around a rendering engine and a theme layer. This page explains the
-module map and why the pieces are split the way they are. For the settled decisions, see
+EnXemble is a small MVC around a rendering engine and a theme layer, with a thin evidence-export
+adapter at the product edge. This page explains the module map, external image dependencies, and
+why the pieces are split the way they are. For the settled decisions, see
 [ADR-0001](../adr/0001-breachsafe-wizard.md) and
 [ADR-0002](../adr/0002-host-descriptor-boundary.md).
 
@@ -48,10 +49,14 @@ a green the validator did not give.
 | `app.py` | **Controller**: wire model → view into the running app; the Gradio shell | yes |
 | `facade.py` | **Engine**: load descriptors, build argv, run, validate, derive the badge | no |
 | `brand.py` | **Theme**: branding and white-label tokens | yes |
+| `evidence.py` | **Evidence boundary**: safe paths, request hashes, subprocess invocation, output naming | no |
+| `evidence_ui.py` | **Presentation adapter**: Gradio preview/open/download surfaces | yes |
+| `tools/*/yaml` | **Descriptor data**: scan and evidence-export argv, inputs, outputs | no |
+| `breachsafe-evidence` | **Go composer**: renders through `breachsafe-pdf` and owns ZIP packaging | external binary |
 
-**Only `app.py` and `brand.py` import Gradio.** The framework dependency is kept at the
-controller and theme edge; the model, view, and engine stay framework-free so they are testable
-in isolation without a browser. That edge is explained in detail in
+`app.py`, `brand.py`, and the presentation-only `evidence_ui.py` import Gradio. The framework
+dependency remains at the controller/presentation edge; the model, view, engine, and evidence
+orchestrator stay framework-free so they are testable in isolation without a browser. That edge is explained in detail in
 [the Gradio shell](the-gradio-shell.md).
 
 ## Component coupling
@@ -66,12 +71,18 @@ flowchart TD
     desc["descriptor.yaml"]
     resolve["resolve.py — Model (resolve + probe binaries)"]
     facade["facade.py — Engine (run, artifact, validate, badge)"]
+    evidence["evidence.py — safe Go composer boundary"]
+    evidenceui["evidence_ui.py — preview/download adapter"]
+    composer["breachsafe-evidence (Go)"]
+    pdf["breachsafe-pdf"]
+    bundle["timestamped PDF + ZIP"]
     rendermodel["_render.py — Model (highlights + posture)"]
     view["render.py — View (HTML / markdown)"]
     validators["external validators (subprocess)"]
 
     subgraph gradio["Gradio boundary"]
         app["app.py — Controller"]
+        evidenceui
         brand["brand.py — Theme"]
     end
 
@@ -85,6 +96,11 @@ flowchart TD
     app --> view
     app --> rendermodel
     app --> brand
+    app --> evidenceui
+    evidenceui --> evidence
+    evidence --> composer
+    composer --> pdf
+    composer --> bundle
     view --> rendermodel
     style gradio stroke-dasharray: 5 5
     classDef valid       fill:#d4edda,stroke:#28a745,color:#155724;
@@ -93,8 +109,8 @@ flowchart TD
     classDef process     fill:#cce5ff,stroke:#0d6efd,color:#0a3678;
     classDef artifact    fill:#e2e3e5,stroke:#6c757d,color:#2f3336;
     classDef external    fill:#e7d6ff,stroke:#6f42c1,color:#3d1a78;
-    class app,brand process;
-    class tools,desc,resolve,facade,rendermodel,view artifact;
+    class app,brand,evidenceui process;
+    class tools,desc,resolve,facade,rendermodel,view,evidence,composer,pdf,bundle artifact;
     class validators external;
 ```
 
@@ -108,6 +124,33 @@ Reading the graph:
   build the surface, and it imports the theme from `brand.py`.
 - **`resolve.py`, `_render.py`, `render.py`** have no dependency on the controller or on Gradio, so
   they are unit-testable on their own.
+- **`evidence.py`** is the thin OSS boundary for report export. It validates that scan artifacts
+  remain inside the run directory, writes the evidence request and SHA-256 expectations, expands
+  the descriptor argv, invokes the Go composer without a shell, and verifies every declared output.
+- **`evidence_ui.py`** is presentation only. It renders an optional page-image preview and a normal
+  browser-open link; it never creates PDFs or ZIPs.
+- **`breachsafe-evidence`** owns the artifact contract. It calls `breachsafe-pdf` for PDF rendering
+  and uses Go's `archive/zip` for the portable download. ePack is not required on the OSS UX host;
+  enterprise evidence workflows can consume the standalone evidence image separately.
+
+## Runtime image dependency graph
+
+The published UX image is self-contained and multi-architecture:
+
+```text
+ghcr.io/breachsafe/qureddy:latest
+  └─ qureddy + Python 3.14 + OpenSSL
+       └─ ghcr.io/paul007ex/qureddy-ux:v0.9.2
+            ├─ breachsafe-ux wheel + YAML descriptors
+            ├─ breachsafe-evidence (Go)
+            └─ breachsafe-pdf
+```
+
+The Dockerfile copies the two evidence binaries from
+`ghcr.io/paul007ex/breachsafe-evidence-go:latest` at build time. Runtime scanning and export use
+local binaries; there is no Docker socket, runtime package download, or customer-side ePack
+installation. `:latest` is rebuilt for freshness, while version tags are immutable release
+references.
 
 ## The engine
 
