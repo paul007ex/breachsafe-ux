@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.4.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-08-24
+
+### Changed
+- **The posture banner now answers the harvest-now-decrypt-later question only.** It reads
+  `qureddy:scan.hndl_exposure` (qureddy 0.2.56) instead of the rolled-up
+  `qureddy:scan.readiness`. `scan.readiness` collapses five independent axes into one ordinal
+  and its precedence ranks `classically_weak` above everything, so `cloudflare.com`, which
+  negotiates `X25519MLKEM768`, was banner'd **"Classically weak: broken or legacy primitives
+  in use"** in red off two `medium` findings, contradicting the Evaluation box directly
+  beneath it. It now reads **"Harvest-now-decrypt-later: protected today, a classical
+  downgrade path remains"** in amber. The artifact is unchanged; this is what the host
+  renders. (BreachSAFE/qureddy#453, #214)
+- The Evaluation box **names the endpoint** it describes. It previously had no subject and
+  read as a summary of nothing. (#214)
+- The Evaluation headline is `scan.display.overall_status`, qureddy 0.2.56's CISO-facing
+  copy, instead of the raw `scan.headline`. Present-day risk and future quantum risk appear
+  as separate labelled rows above the per-axis detail. (#214)
+
+### Added
+- Evaluation shows `highest_severity` and `finding_count`, so amber over red is justified by
+  visible evidence rather than asserted. (#214)
 
 ## [0.4.1] - 2026-08-24
 
