@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.3.12-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,18 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-08-23
+
+### Changed
+- Version bumped to 0.4.0. The prior `0.3.12` string was routinely misread as "Python 3.12";
+  the runtime has run on Python 3.14 since 0.3.12. This is a clean version boundary away from
+  the confusing number, with no 0.3.x removal.
+
+### Fixed
+- SSH tab: the rebuilt image ships qureddy 0.2.53, which adds `scan ssh --output-dir`. The SSH
+  descriptor's one-view (correlated CBOM + JSON from a single scan) now works; previously the
+  SSH scan failed with `No such option: --output-dir`.
 
 ## [0.3.12] - 2026-08-23
 
