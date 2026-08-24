@@ -27,7 +27,7 @@ from breachsafe_ux._argv import (  # argv construction lives in _argv.py (#186);
     _render,
 )
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
-from breachsafe_ux.evidence import run_evidence_report  # noqa: F401 — public facade export
+from breachsafe_ux.evidence import run_evidence_report
 from breachsafe_ux.resolve import (
     _resolve,
     _run,
