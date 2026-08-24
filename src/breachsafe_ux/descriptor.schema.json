@@ -111,7 +111,8 @@
               "name": { "type": "string" },
               "file": { "type": "string" },
               "label": { "type": "string" },
-              "primary": { "type": "boolean" }
+              "primary": { "type": "boolean" },
+              "language": { "type": ["string", "null"], "description": "Syntax-highlighting language for this artifact's box. Defaults to json. Use null for plain text: a rendered report or a newline-delimited stream is not a single JSON value, so highlighting it as one mis-colours it." }
             }
           }
         },

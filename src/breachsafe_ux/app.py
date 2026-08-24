@@ -325,7 +325,11 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     if artifacts:
         for art in artifacts:
             with gr.Accordion(art.get("label", art["name"]), open=False):
-                outs.append(_code_box("json"))
+                # Per-artifact language, defaulting to json for the existing CBOM/JSON boxes.
+                # qureddy 0.2.59 also writes scan.jsonl and scan.rich.txt; highlighting a
+                # rendered text report or a newline-delimited stream as one JSON document
+                # mis-colours it, since neither is a single JSON value.
+                outs.append(_code_box(art.get("language", "json")))
     else:  # legacy single-artifact tool: keep one JSON view
         outs.append(gr.JSON(label="artifact"))
     artifact_state = gr.State(None)
