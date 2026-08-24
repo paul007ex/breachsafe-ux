@@ -12,20 +12,27 @@ UX contract (NN/g, GOV.UK, WCAG 2.2, Gradio docs):
 
 from __future__ import annotations
 
+import html
 import os
+import shutil
+import subprocess
 import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 import gradio as gr
 
 from breachsafe_ux.brand import BRAND, CSS, THEME
 from breachsafe_ux.facade import (
+    RUN_ROOT,
     feature_enabled,
     load_descriptors,
     run_action,
     run_descriptor,
+    run_evidence_report,
     verify_path,
 )
 from breachsafe_ux.render import (
@@ -191,6 +198,86 @@ def _chain_handler(chain: dict[str, Any], descs: dict[str, Any]) -> Callable[...
     return run
 
 
+def _evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
+    """Adapter for the YAML-declared Export to PDF action (no tool-specific UI code)."""
+
+    def run(artifact_path: str | None, progress: Any = gr.Progress()) -> tuple[Any, ...]:
+        progress(0, desc="building evidence PDF and export bundle…")
+        ok, output = run_evidence_report(chain, artifact_path)
+        progress(1)
+        if not ok:
+            return (
+                f"### Export failed\n{output.get('error', 'unknown error')}",
+                output,
+                output.get("log", ""),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+            )
+        return (
+            "### Report ready",
+            output,
+            output.get("log", ""),
+            gr.update(value=output.get("archive"), visible=bool(output.get("archive"))),
+            gr.update(value=_pdf_preview_html(output.get("pdf")), visible=bool(output.get("pdf"))),
+            gr.update(value=_pdf_open_link(output.get("pdf")), visible=bool(output.get("pdf"))),
+        )
+
+    return run
+
+
+def _pdf_preview_html(path: str | None) -> str:
+    """Render PDF pages as in-app images, avoiding the browser PDF viewer chrome."""
+    if not path:
+        return ""
+    pdf = Path(path).resolve()
+    root = RUN_ROOT.resolve()
+    if not pdf.is_file() or not pdf.is_relative_to(root):
+        return ""
+    preview_dir = pdf.parent / "pdf-preview"
+    try:
+        pdftoppm = shutil.which("pdftoppm")
+        if not pdftoppm:
+            return ""
+        preview_dir.mkdir(exist_ok=True)
+        for old in preview_dir.glob("page-*.png"):
+            old.unlink()
+        subprocess.run(
+            [pdftoppm, "-png", "-r", "120", str(pdf), str(preview_dir / "page")],
+            check=True,
+            capture_output=True,
+            timeout=60,
+        )
+        pages = sorted(preview_dir.glob("page-*.png"))
+    except OSError, subprocess.SubprocessError:
+        return ""
+    images = "".join(
+        f'<img alt="PDF page {i}" src="/gradio_api/file={quote(str(page), safe="")}" '
+        'style="display:block;width:min(100%,900px);height:auto;margin:0 auto 18px;" />'
+        for i, page in enumerate(pages, 1)
+    )
+    return (
+        '<div aria-label="Rendered PDF preview" '
+        'style="max-height:780px;overflow-y:auto;padding:18px;background:#1b1b1b;" '
+        f'data-pages="{len(pages)}">{images}</div>'
+        if pages
+        else ""
+    )
+
+
+def _pdf_open_link(path: str | None) -> str:
+    """Expose the generated PDF as a normal browser-openable link."""
+    if not path:
+        return ""
+    return (
+        '<a class="pdf-open-button" target="_blank" rel="noopener" '
+        'style="display:block;text-align:center;padding:12px;margin-top:12px;'
+        'border:1px solid #94a3b8;border-radius:8px;color:inherit;text-decoration:none;" '
+        f'href="/gradio_api/file={quote(path, safe="")}">'
+        f"{html.escape('PDF')}<span> ↗</span></a>"
+    )
+
+
 def _run_label(desc: dict[str, Any]) -> str:
     # Descriptor-set run-button label (e.g. "HNDL Audit (TLS)"), else "Run <id>". Lets two
     # tabs backed by the same tool (qureddy TLS + SSH) read distinctly, not "Run qureddy" twice.
@@ -292,13 +379,21 @@ def _wire_actions(desc: dict[str, Any], ordered: list[Any]) -> None:
     Each runs its own argv against the current inputs and shows the tool's actual output.
     Replaces the old hardcoded 'Test connection' preflight.
     """
-    for action in desc.get("actions", []):
-        ab = gr.Button(action["label"], size="sm", variant="secondary")
-        ar = gr.Markdown()
-        ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
+    actions = desc.get("actions", [])
+    if not actions:
+        return
+    # Connection probes are diagnostic affordances, not part of the primary scan path. Keep the
+    # main surface to Run -> Export while retaining the tool's real preflight for troubleshooting.
+    with gr.Accordion("Diagnostics", open=False):
+        for action in actions:
+            ab = gr.Button(action["label"], size="sm", variant="secondary")
+            ar = gr.Markdown()
+            ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
 
 
-def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
+def _wire_run(
+    desc: dict[str, Any], did: str, ordered: list[Any], auto_chain: dict[str, Any] | None = None
+) -> Any:
     """Wire the primary Run button + result surfaces (badge/JSON/raw-log/download).
 
     The button reset is an atomic handler OUTPUT (no trailing .then that could leave it stuck on
@@ -306,7 +401,6 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     """
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
     badge = gr.Markdown(_empty(desc))
-    dl = gr.DownloadButton("Download output", visible=False)
     # Consistent output surfaces (#199): every box is a collapsed, copyable gr.Code accordion.
     # The Evaluation box (the tool's own interpretation, config-driven) sits alongside the CBOM/
     # JSON boxes with the same structure. Order: Evaluation, Raw log, then one box per artifact.
@@ -337,18 +431,36 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
         outs.append(gr.JSON(label="artifact"))
     artifact_state = gr.State(None)
     heavy = desc["run"].get("timeout_s", 0) >= _HEAVY_TIMEOUT_S
-    (
-        run_btn.click(lambda d=did: _busy(d), None, run_btn)
-        .then(
-            _handler(desc),
-            ordered,
-            [badge, *eval_outs, raw_log, *outs, artifact_state, run_btn],
-            show_progress="full",
-            concurrency_limit=1 if heavy else None,
-        )
-        .then(lambda p: gr.update(value=p, visible=bool(p)), artifact_state, dl)
+    run_event = run_btn.click(lambda d=did: _busy(d), None, run_btn).then(
+        _handler(desc),
+        ordered,
+        [badge, *eval_outs, raw_log, *outs, artifact_state, run_btn],
+        show_progress="full",
+        concurrency_limit=1 if heavy else None,
     )
+    if auto_chain:
+        _wire_auto_evidence(auto_chain, run_event, artifact_state)
     return artifact_state
+
+
+def _wire_auto_evidence(chain: dict[str, Any], run_event: Any, artifact_state: Any) -> None:
+    """Attach PDF/export generation to a successful scan; expose only finished outputs."""
+    cbadge = gr.Markdown()
+    with gr.Accordion("export metadata", open=False):
+        cout = gr.JSON()
+    with gr.Accordion("evidence export raw log", open=False):
+        craw = _code_box()
+    with gr.Accordion("Preview report", open=False):
+        preview = gr.HTML(visible=False)
+    pdf_link = gr.HTML(visible=False)
+    cdl = gr.DownloadButton("Download", visible=False)
+    run_event.then(
+        _evidence_chain_handler(chain),
+        [artifact_state],
+        [cbadge, cout, craw, cdl, preview, pdf_link],
+        show_progress="full",
+        concurrency_limit=1,
+    )
 
 
 def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: Any) -> None:
@@ -359,6 +471,8 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
     """
     if chain.get("feature_flag") and not feature_enabled(chain["feature_flag"]):
         return  # #67: gated off -> hide the button entirely (OSS base edition)
+    if chain.get("kind") in ("evidence_report", "pdf_export"):
+        return
     target = descs.get(chain["to"])
     clabel = chain.get("label", chain["to"])
     if target is None or not tool_available(target):
@@ -409,9 +523,14 @@ def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
         env_rows = environment(desc)
         ordered = _render_inputs(desc, env_rows)
         _wire_actions(desc, ordered)
-        artifact_state = _wire_run(desc, did, ordered)
+        auto_chain = next(
+            (chain for chain in desc.get("chains", []) if chain.get("kind") == "pdf_export"),
+            None,
+        )
+        artifact_state = _wire_run(desc, did, ordered, auto_chain)
         for chain in desc.get("chains", []):
-            _wire_chain(chain, descs, artifact_state)
+            if chain is not auto_chain:
+                _wire_chain(chain, descs, artifact_state)
 
 
 def build() -> gr.Blocks:
@@ -456,7 +575,9 @@ def main() -> None:
     demo.launch(
         theme=THEME,
         css=CSS,
-        allowed_paths=[str(_ICON_DIR)],
+        # Generated artifacts live under RUN_ROOT; Gradio must be allowed to copy them to the
+        # DownloadButton cache after the evidence job completes.
+        allowed_paths=[str(_ICON_DIR), str(RUN_ROOT)],
         server_name=os.environ.get("BREACHSAFE_UX_HOST", "127.0.0.1"),
         server_port=int(os.environ.get("BREACHSAFE_UX_PORT", "7860")),
     )
