@@ -36,10 +36,10 @@ def _run(name: str, command: list[str]) -> None:
 
 
 def _gates(uv: Path) -> None:
-    run = [str(uv), "run", "--locked", "--python", "3.12"]
+    run = [str(uv), "run", "--locked", "--python", "3.14"]
     # --extra dev installs the gate toolchain (ruff/mypy/bandit/deptry/pip-audit); without it the
     # `uv run` gate steps fail to spawn those tools (they live in the dev optional-dependency group).
-    _run("sync", [str(uv), "sync", "--locked", "--python", "3.12", "--extra", "dev"])
+    _run("sync", [str(uv), "sync", "--locked", "--python", "3.14", "--extra", "dev"])
     _run("ruff", [*run, "ruff", "check", "src", "tests"])
     _run("ruff-format", [*run, "ruff", "format", "--check", "."])
     _run("mypy", [*run, "mypy", "src"])
@@ -71,8 +71,8 @@ def _gates(uv: Path) -> None:
 
 def main() -> int:
     """Run every blocking local release check, fail-closed on the first breach."""
-    if sys.version_info[:2] != (3, 12):
-        print("release gate requires Python 3.12", file=sys.stderr)
+    if sys.version_info[:2] != (3, 14):
+        print("release gate requires Python 3.14", file=sys.stderr)
         return 2
     cache = ROOT / ".cache" / "release-tools"
     cache.mkdir(parents=True, exist_ok=True)
