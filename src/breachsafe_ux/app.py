@@ -299,7 +299,14 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     eval_outs: list[Any] = []
     if eval_cfg:
         with gr.Accordion(eval_cfg.get("title", "Evaluation"), open=False):
-            eval_outs.append(gr.Code(show_label=False, wrap_lines=True))
+            # Syntax-highlight the `label: value` lines like the CBOM/JSON boxes (default yaml,
+            # config-overridable). The tool's evaluation is aligned key:value text, which the yaml
+            # lexer colours (keys vs values) the same way the artifact boxes colour JSON.
+            eval_outs.append(
+                gr.Code(
+                    language=eval_cfg.get("language", "yaml"), show_label=False, wrap_lines=True
+                )
+            )
     with gr.Accordion("Raw log", open=False):
         raw_log = gr.Markdown("")
     artifacts = desc["run"].get("artifacts", [])

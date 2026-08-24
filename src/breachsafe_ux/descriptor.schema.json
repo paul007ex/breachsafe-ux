@@ -229,6 +229,7 @@
       "description": "The tool's own per-axis evaluation, read from the artifact by property name and shown in a labelled box (#199). The host renders it verbatim; it computes no verdict.",
       "properties": {
         "title": { "type": "string" },
+        "language": { "type": "string", "description": "Syntax-highlight language for the evaluation box (default 'yaml'), matching the CBOM/JSON boxes' colouring." },
         "headline_prop": { "type": "string", "description": "Artifact property holding a one-line summary shown under the axes." },
         "axes": {
           "type": "array",
