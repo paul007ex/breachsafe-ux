@@ -93,7 +93,9 @@ def test_report_argv_and_success(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         evidence.subprocess,
         "run",
-        lambda *_args, **_kwargs: type("Result", (), {"returncode": 1, "stdout": "", "stderr": "bad"})(),
+        lambda *_args, **_kwargs: type(
+            "Result", (), {"returncode": 1, "stdout": "", "stderr": "bad"}
+        )(),
     )
     ok, output = evidence.run_evidence_report(chain, str(tmp_path / "scan.json"))
     assert not ok and "bad" in output["error"]
@@ -106,7 +108,9 @@ def test_report_rejects_missing_cli_outputs(monkeypatch, tmp_path: Path) -> None
     monkeypatch.setattr(
         evidence.subprocess,
         "run",
-        lambda *_args, **_kwargs: type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+        lambda *_args, **_kwargs: type(
+            "Result", (), {"returncode": 0, "stdout": "", "stderr": ""}
+        )(),
     )
     ok, output = evidence.run_evidence_report(chain, str(tmp_path / "scan.json"))
     assert not ok and "did not create" in output["error"]
@@ -128,9 +132,11 @@ def test_presentation_helpers_and_handler(monkeypatch, tmp_path: Path) -> None:
     outside = tmp_path / "report.pdf"
     outside.write_bytes(b"not a pdf")
     assert evidence_ui.pdf_preview_html(str(outside)) == ""
-    assert "target=\"_blank\"" in evidence_ui.pdf_open_link(str(outside))
+    assert 'target="_blank"' in evidence_ui.pdf_open_link(str(outside))
 
-    monkeypatch.setattr(evidence_ui, "run_evidence_report", lambda _chain, _path: (False, {"error": "no"}))
+    monkeypatch.setattr(
+        evidence_ui, "run_evidence_report", lambda _chain, _path: (False, {"error": "no"})
+    )
     failed = evidence_ui.evidence_chain_handler(_chain())(None, lambda *_args, **_kwargs: None)
     assert failed[0] == "### Export failed\nno"
     monkeypatch.setattr(
@@ -160,7 +166,11 @@ def test_presentation_pdf_render(monkeypatch, tmp_path: Path) -> None:
     rendered = evidence_ui.pdf_preview_html(str(pdf))
     assert "Rendered PDF preview" in rendered
     assert "PDF page 1" in rendered
-    monkeypatch.setattr(evidence_ui.subprocess, "run", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("no")))
+    monkeypatch.setattr(
+        evidence_ui.subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("no")),
+    )
     assert evidence_ui.pdf_preview_html(str(pdf)) == ""
 
 
