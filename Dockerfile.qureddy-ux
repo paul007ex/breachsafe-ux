@@ -11,7 +11,7 @@
 # Track the qureddy release stream, deliberately UNPINNED. README §6 says to pin by digest
 # "when reproducibility matters more than freshness" — here freshness wins: this image exists
 # to put the current scanner in front of a user, and a stale pin silently shipped qureddy
-# 0.2.34 (Python 3.12) for six releases while upstream reached 0.2.40 (Python 3.14) (#138).
+# 0.2.34 for six releases while upstream reached 0.2.40 (#138).
 # The scheduled rebuild in qureddy-ux-image.yml is what makes ":latest" mean latest — without
 # it this file only rebuilds when ux itself changes, so a qureddy release would never land.
 # Reproducibility is preserved by the per-release qureddy-ux tags, which are immutable.

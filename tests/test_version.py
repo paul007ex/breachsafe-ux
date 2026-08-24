@@ -11,7 +11,7 @@ from breachsafe_ux.resolve import ROOT, _tool_version
 
 
 def test_tool_version_parses_a_version_token():
-    v = _tool_version([sys.executable, "--version"])  # "Python 3.12.x"
+    v = _tool_version([sys.executable, "--version"])  # "Python 3.14.x"
     assert v and v[0].isdigit()
 
 

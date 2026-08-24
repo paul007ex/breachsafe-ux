@@ -54,7 +54,7 @@ uv sync --extra dev
 uv run breachsafe-ux --check
 ```
 
-The project targets **Python 3.12+**. `uv sync --extra dev` provisions the
+The project targets **Python 3.14+**. `uv sync --extra dev` provisions the
 interpreter and the dev tooling for you. (Plain `uv sync` installs only the
 runtime, which is enough to launch the app but not to run the tests or gates.)
 `--check` prints each tab's tool/version/path and exits non-zero if any is missing.
@@ -109,7 +109,7 @@ failure. Run them locally with a plain `uv run --locked --extra dev pytest`.
 
 ## 5. Coding style
 
-- Python 3.12, fully typed (`mypy --strict src`), formatted (`ruff format`), linted (`ruff check`)
+- Python 3.14, fully typed (`mypy --strict src`), formatted (`ruff format`), linted (`ruff check`)
 - Ruff is configured in `pyproject.toml`; do not add per-file `# noqa` without a reason
 - Specific exceptions, not bare `except`, except where the host deliberately
   fails CLOSED (a validator or artifact that cannot run is never reported as a pass)

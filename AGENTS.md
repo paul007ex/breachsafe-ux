@@ -18,7 +18,7 @@ should be corrected.
   OSS QuReddy `[ux]`). Every new first-party file carries an `Apache-2.0` SPDX header. Never
   emit PolyForm or MIT headers here. Third-party or vendored material keeps its original license
   (e.g. bundled Lucide icons stay ISC).
-- **Python 3.12** today (3.14 migration is tracked in #100). Use the project venv via
+- **Python 3.14.** Use the project venv via
   `uv run --locked`; do not fall back to system Python.
 - **Issue-driven, branch + PR only.** Open an issue for non-trivial work, branch from `main`,
   one thing per PR; never commit directly to `main`.

@@ -12,7 +12,7 @@ EnXemble is **not** published to PyPI or TestPyPI. Install it from a source chec
 
 ## Requirements
 
-- Python 3.12 or newer.
+- Python 3.14 or newer.
 - `uv`.
 - Docker, only if a descriptor uses the image execution backend or a Docker-based validator.
 

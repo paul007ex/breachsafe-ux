@@ -1,7 +1,7 @@
 # BreachSAFE EnXemble
 
 [![Version](https://img.shields.io/badge/version-0.9.1-blue?style=flat-square)](CHANGELOG.md)
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
@@ -203,7 +203,7 @@ Full details, including feature flags, are in the
 
 ## 8. Requirements
 
-- Python 3.12 or newer, with `uv`, to run from source.
+- Python 3.14 or newer, with `uv`, to run from source.
 - Docker, to run a tool-UX image or when a descriptor uses the image backend or a Docker-based
   validator.
 - Each wrapped tool has its own requirements and carries its own licence.

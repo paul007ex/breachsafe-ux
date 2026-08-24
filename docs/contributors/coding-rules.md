@@ -120,7 +120,7 @@ The three-state verdict is load-bearing (see
 
 ## 5. Typing
 
-- Python 3.12, fully typed. `mypy --strict src` must pass with no relaxations; `strict = true`
+- Python 3.14, fully typed. `mypy --strict src` must pass with no relaxations; `strict = true`
   is set in [`pyproject.toml`](../../pyproject.toml) and every check it enables stays on.
 - `from __future__ import annotations` at the top of every module.
 - The one intentional typing boundary is `gradio.*`, set to `follow_imports = "skip"` because

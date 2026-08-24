@@ -16,7 +16,7 @@ tools (e.g. QuReddy) behind a branded, config-driven surface.
 - Archetype: `python-cli`
 - Distribution / repo name: `breachsafe-ux`
 - Python import name: `breachsafe_ux`
-- Python baseline: `3.12` today (see migration note below)
+- Python baseline: `3.14`
 
 ## Standing invariants (inherited — do not relitigate)
 
@@ -28,10 +28,9 @@ tools (e.g. QuReddy) behind a branded, config-driven surface.
   the Apache grant is a logged decision, never reverse it silently. Third-party/vendored
   material keeps its original license — never relabel it (e.g. the bundled Lucide icons stay
   ISC; the installed canonical skills stay PolyForm-Noncommercial-1.0.0).
-- **Python 3.12 today; 3.14 migration tracked in #100.** Use the project venv for every
+- **Python 3.14.** Use the project venv for every
   command, hook, script, and test; do not fall back to system Python. `requires-python =
-  ">=3.12"`. The platform standard is moving to 3.14 (no 3.12 fallback once flipped) — that
-  migration is #100, not a thing to do ad hoc.
+  ">=3.14"`. This is the platform standard and there is no 3.12 fallback. Migration #100 is done.
 - **Issue-driven, branch + PR only.** Open an issue first for non-trivial work; branch from
   `main`; never commit directly to `main`. One thing per PR.
 - **Quality gates are not theater.** Never lower the coverage floor, skip a test, add a blanket
