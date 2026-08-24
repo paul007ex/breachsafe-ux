@@ -139,6 +139,7 @@ markers = [
     # are DESELECTED (not skipped) — a deselected test never appears as a skip, which keeps the
     # no-skipped-tests gate honest (#90). Locally they still run when their dependencies resolve.
     "live: requires a live tool, network, or docker; deselected in CI via -m 'not live'",
+    "e2e: runs the real Docker scan-to-PDF-to-ZIP workflow; opt in explicitly",
 ]
 addopts = [
     "-ra",

@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING, Any
 import gradio as gr
 
 from breachsafe_ux.brand import BRAND, CSS, THEME
+from breachsafe_ux.evidence_ui import wire_auto_evidence
 from breachsafe_ux.facade import (
+    RUN_ROOT,
     feature_enabled,
     load_descriptors,
     run_action,
@@ -292,13 +294,21 @@ def _wire_actions(desc: dict[str, Any], ordered: list[Any]) -> None:
     Each runs its own argv against the current inputs and shows the tool's actual output.
     Replaces the old hardcoded 'Test connection' preflight.
     """
-    for action in desc.get("actions", []):
-        ab = gr.Button(action["label"], size="sm", variant="secondary")
-        ar = gr.Markdown()
-        ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
+    actions = desc.get("actions", [])
+    if not actions:
+        return
+    # Connection probes are diagnostic affordances, not part of the primary scan path. Keep the
+    # main surface to Run -> Export while retaining the tool's real preflight for troubleshooting.
+    with gr.Accordion("Diagnostics", open=False):
+        for action in actions:
+            ab = gr.Button(action["label"], size="sm", variant="secondary")
+            ar = gr.Markdown()
+            ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
 
 
-def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
+def _wire_run(
+    desc: dict[str, Any], did: str, ordered: list[Any], auto_chain: dict[str, Any] | None = None
+) -> Any:
     """Wire the primary Run button + result surfaces (badge/JSON/raw-log/download).
 
     The button reset is an atomic handler OUTPUT (no trailing .then that could leave it stuck on
@@ -306,7 +316,6 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
     """
     run_btn = gr.Button(_run_label(desc), variant="primary", icon=_ICON["run"])
     badge = gr.Markdown(_empty(desc))
-    dl = gr.DownloadButton("Download output", visible=False)
     # Consistent output surfaces (#199): every box is a collapsed, copyable gr.Code accordion.
     # The Evaluation box (the tool's own interpretation, config-driven) sits alongside the CBOM/
     # JSON boxes with the same structure. Order: Evaluation, Raw log, then one box per artifact.
@@ -337,17 +346,15 @@ def _wire_run(desc: dict[str, Any], did: str, ordered: list[Any]) -> Any:
         outs.append(gr.JSON(label="artifact"))
     artifact_state = gr.State(None)
     heavy = desc["run"].get("timeout_s", 0) >= _HEAVY_TIMEOUT_S
-    (
-        run_btn.click(lambda d=did: _busy(d), None, run_btn)
-        .then(
-            _handler(desc),
-            ordered,
-            [badge, *eval_outs, raw_log, *outs, artifact_state, run_btn],
-            show_progress="full",
-            concurrency_limit=1 if heavy else None,
-        )
-        .then(lambda p: gr.update(value=p, visible=bool(p)), artifact_state, dl)
+    run_event = run_btn.click(lambda d=did: _busy(d), None, run_btn).then(
+        _handler(desc),
+        ordered,
+        [badge, *eval_outs, raw_log, *outs, artifact_state, run_btn],
+        show_progress="full",
+        concurrency_limit=1 if heavy else None,
     )
+    if auto_chain:
+        wire_auto_evidence(auto_chain, run_event, artifact_state)
     return artifact_state
 
 
@@ -359,6 +366,8 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
     """
     if chain.get("feature_flag") and not feature_enabled(chain["feature_flag"]):
         return  # #67: gated off -> hide the button entirely (OSS base edition)
+    if chain.get("kind") in ("evidence_report", "pdf_export"):
+        return
     target = descs.get(chain["to"])
     clabel = chain.get("label", chain["to"])
     if target is None or not tool_available(target):
@@ -399,19 +408,20 @@ def _wire_chain(chain: dict[str, Any], descs: dict[str, Any], artifact_state: An
 
 
 def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
-    """Render one descriptor as its own tab.
-
-    Renders the description, inputs, actions, the Run surface, and any Convert-to-next-tool chain
-    buttons.
-    """
+    """Render one descriptor tab and its declared actions/chains."""
     with gr.Tab(desc.get("title", did)):
         gr.Markdown(desc.get("description", ""))
         env_rows = environment(desc)
         ordered = _render_inputs(desc, env_rows)
         _wire_actions(desc, ordered)
-        artifact_state = _wire_run(desc, did, ordered)
+        auto_chain = next(
+            (chain for chain in desc.get("chains", []) if chain.get("kind") == "pdf_export"),
+            None,
+        )
+        artifact_state = _wire_run(desc, did, ordered, auto_chain)
         for chain in desc.get("chains", []):
-            _wire_chain(chain, descs, artifact_state)
+            if chain is not auto_chain:
+                _wire_chain(chain, descs, artifact_state)
 
 
 def build() -> gr.Blocks:
@@ -430,12 +440,7 @@ def build() -> gr.Blocks:
 
 
 def _check() -> int:
-    """Resolve every descriptor's environment, print it, and exit nonzero if any is missing.
-
-    `breachsafe-ux --check`. A curl on `/` is false-healthy — the Gradio shell serves even when
-    the underlying tool is absent — so this is the real Docker HEALTHCHECK signal: it verifies
-    the binaries the descriptors declare actually resolve on this system (#75).
-    """
+    """Resolve every descriptor environment for the Docker healthcheck."""
     ok = True
     for did, desc in load_descriptors().items():
         rows = environment(desc)
@@ -456,7 +461,9 @@ def main() -> None:
     demo.launch(
         theme=THEME,
         css=CSS,
-        allowed_paths=[str(_ICON_DIR)],
+        # Generated artifacts live under RUN_ROOT; Gradio must be allowed to copy them to the
+        # DownloadButton cache after the evidence job completes.
+        allowed_paths=[str(_ICON_DIR), str(RUN_ROOT)],
         server_name=os.environ.get("BREACHSAFE_UX_HOST", "127.0.0.1"),
         server_port=int(os.environ.get("BREACHSAFE_UX_PORT", "7860")),
     )

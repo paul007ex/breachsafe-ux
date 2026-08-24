@@ -27,6 +27,7 @@ from breachsafe_ux._argv import (  # argv construction lives in _argv.py (#186);
     _render,
 )
 from breachsafe_ux._render import _highlights  # used by run_descriptor; _posture lives in _render
+from breachsafe_ux.evidence import run_evidence_report
 from breachsafe_ux.resolve import (
     _resolve,
     _run,
@@ -41,6 +42,8 @@ RUN_ROOT = Path(
     os.environ.get("BREACHSAFE_UX_RUN_ROOT", str(Path.home() / "mint-proof" / "wizard-runs"))
 )
 _RUN_KEEP = 20  # #121: cap RUN_ROOT at the most-recent N per-run workdirs
+
+__all__ = ["run_evidence_report"]
 
 
 def _prune_run_root(keep: int = _RUN_KEEP) -> None:
@@ -280,26 +283,11 @@ def _postprocess(
 ) -> dict[str, Any]:
     """Persist stdout, enforce the false-green guards (#10/#15), then badge via the validator."""
     run = desc["run"]
-    # #50/#44: always capture stdout to the workdir so a validator can inspect it (artifact:optional).
-    (workdir / "stdout.txt").write_text(proc.stdout or "")
-    if run.get("artifact_from") == "stdout":
-        artifact.write_text(proc.stdout)
-    # wizard #10 (false-green): a nonzero exit is never VALID even if a schema-shaped artifact was
-    # written (the validator checks SHAPE, not success); a tool opts in via trust_artifact_on_nonzero.
-    if proc.returncode != 0 and not run.get("trust_artifact_on_nonzero"):
-        return _nonzero_exit_result(proc)
-    # wizard #15 (false-green): exit 0 with an empty/missing artifact must not badge VALID.
-    if not artifact.exists() or artifact.stat().st_size == 0:
-        return {
-            "error": "tool produced no output",
-            "badge": ("unavailable", "scan produced no output"),
-        }
-    try:
-        art_json = json.loads(artifact.read_text())
-    except json.JSONDecodeError, OSError, ValueError:
-        # wizard #11: a non-JSON/unreadable artifact is "no structured highlights"; badge still
-        # comes from the external validator below, not this parse.
-        art_json = None
+    _persist_process_outputs(run, workdir, artifact, proc)
+    guard = _postprocess_guard(run, artifact, proc)
+    if guard is not None:
+        return guard
+    art_json = _read_artifact_json(artifact)
     result: dict[str, Any] = {
         "artifact": art_json,
         "artifact_path": str(artifact),
@@ -313,6 +301,38 @@ def _postprocess(
     if run.get("artifacts"):  # #199: correlated CBOM + JSON from one --output-dir scan
         result["artifacts"] = _read_artifacts(run, workdir)
     return result
+
+
+def _persist_process_outputs(
+    run: dict[str, Any], workdir: Path, artifact: Path, proc: subprocess.CompletedProcess[str]
+) -> None:
+    """Persist the tool streams and materialize stdout-backed artifacts."""
+    (workdir / "stdout.txt").write_text(proc.stdout or "")
+    (workdir / "raw.log").write_text(proc.stderr or "", encoding="utf-8")
+    if run.get("artifact_from") == "stdout":
+        artifact.write_text(proc.stdout)
+
+
+def _postprocess_guard(
+    run: dict[str, Any], artifact: Path, proc: subprocess.CompletedProcess[str]
+) -> dict[str, Any] | None:
+    """Return a false-green failure result, or None when validation may continue."""
+    if proc.returncode != 0 and not run.get("trust_artifact_on_nonzero"):
+        return _nonzero_exit_result(proc)
+    if not artifact.exists() or artifact.stat().st_size == 0:
+        return {
+            "error": "tool produced no output",
+            "badge": ("unavailable", "scan produced no output"),
+        }
+    return None
+
+
+def _read_artifact_json(artifact: Path) -> Any:
+    """Decode structured output when possible; validation still owns the badge."""
+    try:
+        return json.loads(artifact.read_text())
+    except json.JSONDecodeError, OSError, ValueError:
+        return None
 
 
 def run_descriptor(desc: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:

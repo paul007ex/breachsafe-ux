@@ -688,9 +688,7 @@
     "chain": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "to"
-      ],
+      "required": ["to"],
       "description": "Hand this tool's artifact to another descriptor via a button.",
       "properties": {
         "to": {
@@ -708,6 +706,40 @@
         "feature_flag": {
           "type": "string",
           "description": "Gate this chain button behind env BREACHSAFE_UX_<FLAG> (default ON). Off => the button is hidden (#67)."
+        },
+        "kind": {
+          "enum": ["evidence_report", "pdf_export"],
+          "description": "Built-in multi-artifact evidence export. The host supplies the prior run directory; all tool names and filenames remain descriptor data."
+        },
+        "argv": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        "profile": {"type": "string"},
+        "stream": {"type": "string"},
+        "request_file": {"type": "string"},
+        "artifact_files": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "required": ["inventory", "scan"]
+        },
+        "output_files": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "required": ["pdf", "result"]
+        },
+        "request_artifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["request_key"],
+            "properties": {"request_key": {"type": "string"}}
+          }
+        },
+        "request_template": {
+          "type": "object"
         }
       }
     }
