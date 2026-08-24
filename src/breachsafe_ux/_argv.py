@@ -95,17 +95,25 @@ def _input_argv(spec: dict[str, Any], params: dict[str, Any]) -> tuple[list[str]
 
 
 def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str, Any]) -> list[str]:
-    """Static `run.argv`, or build from `run.base` + each input's argv mapping."""
+    """Static `run.argv`, or build from `run.base` + each input's argv mapping.
+
+    Only descriptor-authored templates (`run.argv`, `run.base`, `positional_from`) carry
+    `{tokens}` and are rendered against the mapping. User input VALUES are inserted literally and
+    are NEVER passed back through `_render`: a value that happens to contain a `{word}` (a regex
+    like `{2,3}`, a JSON snippet, a Jinja fragment) must reach the tool as typed, not be
+    substituted from — or fail the whole run closed against — the engine's token namespace
+    (workdir/artifact/python/input names).
+    """
     run = desc["run"]
     if "argv" in run:
         return _render(run["argv"], mapping)
-    base = list(run.get("base", []))
+    base = _render(list(run.get("base", [])), mapping)  # descriptor template
     options: list[str] = []
     positionals: list[str] = []
-    if run.get("positional_from"):  # compose one positional, e.g. "{host}:{port}"
-        positionals.append(run["positional_from"])  # template; resolved by _render below
+    if run.get("positional_from"):  # a template composed from inputs, e.g. "{host}:{port}"
+        positionals.append(_render([run["positional_from"]], mapping)[0])  # rendered once, here
     for spec in desc.get("inputs", []):
-        opts, poss = _input_argv(spec, params)
+        opts, poss = _input_argv(spec, params)  # literal user values; not re-rendered
         options += opts
         positionals += poss
     argv = base + options
@@ -118,5 +126,4 @@ def _build_argv(desc: dict[str, Any], params: dict[str, Any], mapping: dict[str,
     # run.no_end_of_options (documented weaker posture).
     if positionals and not run.get("no_end_of_options"):
         argv.append("--")
-    argv += positionals
-    return _render(argv, mapping)
+    return argv + positionals
