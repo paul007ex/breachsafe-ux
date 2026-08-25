@@ -64,6 +64,12 @@ def test_qureddy_declares_test_connection_action():
     assert "Test connection" in labels
 
 
+def test_ssh_test_connection_ends_options_before_host():
+    q = yaml.safe_load((ROOT / "tools" / "qureddy-ssh" / "qureddy-ssh.yaml").read_text())
+    action = next(a for a in q["actions"] if a["label"] == "Test connection")
+    assert action["argv"][-2] == "--"
+
+
 def test_app_build_smoke():
     """The Gradio shell renders every shipped descriptor (incl. actions) without error."""
     from breachsafe_ux.app import build

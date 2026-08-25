@@ -134,7 +134,7 @@ render:
 actions:
   # SSH connection test: read the server's host keys with ssh-keyscan (shows the actual offer).
   - label: "Test connection"
-    argv: ["ssh-keyscan", "-T", "5", "-p", "{port}", "{host}"]
+    argv: ["ssh-keyscan", "-T", "5", "-p", "{port}", "--", "{host}"]
     ok_if: { exit: 0 }
     timeout_s: 8
 chains:
