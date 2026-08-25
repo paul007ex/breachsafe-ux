@@ -21,7 +21,12 @@ from typing import TYPE_CHECKING, Any
 import gradio as gr
 
 from breachsafe_ux.brand import BRAND, CSS, THEME
-from breachsafe_ux.evidence_ui import build_evidence_tabs, wire_actions, wire_auto_evidence
+from breachsafe_ux.evidence_ui import (
+    build_evidence_tabs,
+    order_widgets,
+    wire_actions,
+    wire_auto_evidence,
+)
 from breachsafe_ux.facade import (
     RUN_ROOT,
     feature_enabled,
@@ -254,26 +259,20 @@ def _footer() -> None:
     )
 
 
-def _order_widgets(
-    desc: dict[str, Any], widgets: list[Any], advanced_widgets: list[Any]
-) -> list[Any]:
-    """Interleave basic + advanced widgets back into desc['inputs'] order for _collect's zip."""
-    ordered = []
-    adv_iter = iter(advanced_widgets)
-    basic_iter = iter(widgets)
-    for spec in desc.get("inputs", []):
-        ordered.append(next(adv_iter) if spec.get("group") == "advanced" else next(basic_iter))
-    return ordered
-
-
 def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list[Any]:
     """Render a tab's editable widgets and return them in descriptor order.
 
     Basic widgets render inline, advanced behind an Accordion with the binary provenance panel.
     Returns the desc-ordered widget list for the handler wiring.
     """
+    widgets = _render_basic_inputs(desc)
+    advanced_widgets = _render_advanced_inputs(desc, env_rows)
+    return order_widgets(desc, widgets, advanced_widgets)
+
+
+def _render_basic_inputs(desc: dict[str, Any]) -> list[Any]:
+    """Render non-advanced inputs, pairing endpoint host and port when present."""
     widgets: list[Any] = []
-    advanced_widgets: list[Any] = []
     basic_specs = [s for s in desc.get("inputs", []) if s.get("group") != "advanced"]
     index = 0
     while index < len(basic_specs):
@@ -288,22 +287,24 @@ def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list
                 continue
         widgets.append(_widget(spec))
         index += 1
-    # Progressive disclosure: advanced params collapsed by default (NN/g). The binary provenance
-    # (#75) lives here too — greyed, read-only, below the editable params.
+    return widgets
+
+
+def _render_advanced_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list[Any]:
+    """Render advanced inputs and the read-only environment panel."""
+    advanced_widgets: list[Any] = []
     adv_specs = [s for s in desc.get("inputs", []) if s.get("group") == "advanced"]
     if adv_specs or env_rows:
         with gr.Accordion("Advanced options", open=False):
             for spec in adv_specs:
-                # Directly editable (pre-populated); `verify_argv` adds a short Verify button
-                # next to it that runs the tool's own check.
                 w = _widget(spec)
                 advanced_widgets.append(w)
                 if spec.get("verify_argv"):
                     vb = gr.Button("Verify", size="sm", variant="secondary")
                     vr = gr.Markdown()
                     vb.click(lambda v, t=spec["verify_argv"]: _verify_md(v, t), w, vr)
-            gr.HTML(_env_advanced_md(env_rows))  # greyed read-only lines; "" when no rows
-    return _order_widgets(desc, widgets, advanced_widgets)
+            gr.HTML(_env_advanced_md(env_rows))
+    return advanced_widgets
 
 
 def _wire_run(
