@@ -1,5 +1,17 @@
 # BreachSAFE EnXemble
 
+<div align="center">
+
+<a href="https://github.com/BreachSAFE/enxemble">
+<img src="src/breachsafe_ux/assets/logo.png" alt="BreachSAFE helmet" width="150">
+</a>
+
+### See the cryptography your endpoints actually negotiate.
+
+The curious-CISO front door for harvest-now-decrypt-later (HNDL) readiness evidence.
+
+</div>
+
 [![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat-square)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Gradio](https://img.shields.io/badge/UI-Gradio-orange?style=flat-square)](https://www.gradio.app/)
@@ -19,6 +31,12 @@ BreachSAFE EnXemble is the operator-facing audit and evidence surface for Breach
 tools. It gives security and infrastructure teams a repeatable way to test an endpoint, preserve
 the scanner's source artifacts, validate structured output where a validator is available, and
 review the observed protocol behavior needed to prioritize remediation.
+
+> **The CISO question:** when this endpoint negotiated TLS or SSH, what key exchange, signature,
+> fallback, and legacy behavior did it actually expose?
+
+EnXemble helps answer that question without turning a probe into a security certification, a
+compliance score, or a claim about controls that were never tested.
 
 For harvest-now-decrypt-later (HNDL) assessments, the shipped QuReddy descriptors surface the
 negotiated key exchange, hybrid post-quantum support, classical fallback, certificate-signature
@@ -90,13 +108,12 @@ See [architecture](docs/explanation/architecture.md) and
 2. [Run from source](#2-run-from-source)
 3. [Open the UI and run](#3-open-the-ui-and-run)
 4. [Add your own tool](#4-add-your-own-tool)
-5. [Interpret the verdict](#5-interpret-the-verdict)
-6. [Execution backends](#6-execution-backends)
-7. [Configuration](#7-configuration)
-8. [Requirements](#8-requirements)
-9. [Documentation and support](#9-documentation-and-support)
-10. [Contributing](#10-contributing)
-11. [License](#11-license)
+5. [Execution backends](#5-execution-backends)
+6. [Configuration](#6-configuration)
+7. [Requirements](#7-requirements)
+8. [Documentation and support](#8-documentation-and-support)
+9. [Contributing](#9-contributing)
+10. [License](#10-license)
 
 ## 1. Quickstart with Docker
 
@@ -148,22 +165,6 @@ Wrap any command-line tool from **one YAML descriptor** at `tools/<id>/<id>.yaml
 maps to argv by exactly one of `positional`, `arg`, or `flag`; the descriptor also declares how
 the tool runs, its external validator, and the badge rule. Adding a tool changes no host code.
 
-```yaml
-id: mytool
-title: "My Tool"
-standalone: true
-inputs:
-  - { name: source, type: text, label: "source", required: true, arg: "--source" }
-  - { name: fast, type: bool, label: "fast mode", default: false, flag: "--fast", group: advanced }
-run:
-  base: [mytool, scan]
-  artifact_from: stdout
-  artifact_name: out.json
-validate:
-  argv: ["{python}", "-c", "import json,sys; json.load(open('{artifact}')); sys.exit(0)"]
-  badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
-```
-
 The shipped TLS example is the real [`tools/qureddy/qureddy.yaml`](tools/qureddy/qureddy.yaml)
 descriptor. Its core contract is shown below; the file is authoritative and includes the complete
 HNDL evaluation, evidence export, SSH-safe defaults, and provenance comments:
@@ -201,23 +202,7 @@ The full recipe for adding another tool is [add a tool](docs/how-to/add-a-tool.m
 is in the [descriptor schema](docs/reference/descriptor-schema.md) and the argv tokens are in
 [descriptor tokens](docs/reference/descriptor-tokens.md).
 
-## 5. Interpret the verdict
-
-The badge reports whether the structured artifact was accepted, rejected, or could not be
-validated. Treat this as an artifact-quality result, not a security certification:
-
-| State | Meaning |
-|---|---|
-| VALID | the validator ran and accepted the artifact |
-| INVALID | the validator ran and rejected the artifact |
-| VALIDATOR-UNAVAILABLE | the tool or validator could not run (missing dependency, Docker down, timeout, empty output) |
-
-A crashed tool, a missing validator, or an empty run all resolve to VALIDATOR-UNAVAILABLE. Colour
-is a redundant cue only; the word carries the state. See
-[the three-state verdict](docs/explanation/three-state-verdict.md) and the
-[badge reference](docs/reference/badge.md).
-
-## 6. Execution backends
+## 5. Execution backends
 
 A descriptor chooses how its tool runs; the "could not run" path is shared, so a backend that
 cannot run yields VALIDATOR-UNAVAILABLE rather than a false verdict.
@@ -233,7 +218,7 @@ resolves on PATH and falls back to the image otherwise. See
 [execution backends](docs/reference/execution-backends.md). Multi-tool orchestration is out of
 scope by design.
 
-## 7. Configuration
+## 6. Configuration
 
 The host is configured by environment variables.
 
@@ -249,14 +234,14 @@ Full details, including feature flags, are in the
 [environment variables reference](docs/reference/environment-variables.md) and
 [enable optional tabs](docs/how-to/enable-optional-tabs.md).
 
-## 8. Requirements
+## 7. Requirements
 
 - Python 3.14 or newer, with `uv`, to run from source.
 - Docker, to run a tool-UX image or when a descriptor uses the image backend or a Docker-based
   validator.
 - Each wrapped tool has its own requirements and carries its own licence.
 
-## 9. Documentation and support
+## 8. Documentation and support
 
 - [Documentation index](docs/README.md)
 - [Your first run](docs/tutorials/your-first-scan.md)
@@ -269,7 +254,7 @@ Full details, including feature flags, are in the
 Do not file security vulnerabilities in the public issue tracker. Follow
 [`SECURITY.md`](SECURITY.md) for private reporting.
 
-## 10. Contributing
+## 9. Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the
 [contributor documentation](docs/contributors/). The repository enforces formatting, lint, strict
@@ -277,7 +262,7 @@ type checking, tests, security scans, dependency audits, architecture layering, 
 file size policy, and release-artifact checks. Reproduce every blocking check locally with
 `uv run --locked --extra dev python scripts/release_gate.py`.
 
-## 11. License
+## 10. License
 
 Apache License 2.0 (OSI-approved open source). You may use, modify, distribute, and use it
 commercially under the terms of the licence. See [`LICENSE`](LICENSE), [`LICENSES/`](LICENSES/),

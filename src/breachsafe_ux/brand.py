@@ -5,6 +5,8 @@ dark background #000000 / white text, and the brand cyan #3ae7f4 primary button 
 in both modes. Single source of truth; these mirror globals.css (do not re-invent per app).
 """
 
+from typing import Any
+
 import gradio as gr
 
 BRAND = {
@@ -29,7 +31,7 @@ def provenance_html(items: list[tuple[str, str]]) -> str:
     return f'<div class="bs-provenance">Built with {links}</div>' if links else ""
 
 
-def descriptor_provenance(descs: dict[str, dict]) -> list[tuple[str, str]]:
+def descriptor_provenance(descs: dict[str, dict[str, Any]]) -> list[tuple[str, str]]:
     """Collect display-only dependency links without making the controller tool-aware."""
     return [
         (str(item.get("label", "")), str(item.get("url", "")))
