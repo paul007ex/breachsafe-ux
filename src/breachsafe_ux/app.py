@@ -112,8 +112,17 @@ def _number_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Compo
             label=lab,
             info=info,
         )
+    # Apply declared bounds to the Number too, not only the slider: gr.Number.preprocess calls
+    # raise_if_out_of_bounds(minimum, maximum), so passing them enforces the range server-side.
+    # Without it a descriptor's min/max (e.g. port 1-65535) was dropped and an out-of-range
+    # value from a direct API call reached the tool. min/max absent -> None -> unconstrained.
     return gr.Number(
-        value=spec.get("default"), label=lab, precision=0 if t == "int" else None, info=info
+        value=spec.get("default"),
+        label=lab,
+        precision=0 if t == "int" else None,
+        minimum=spec.get("min"),
+        maximum=spec.get("max"),
+        info=info,
     )
 
 
