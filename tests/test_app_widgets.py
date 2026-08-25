@@ -35,6 +35,19 @@ def test_widget_type_map():
         assert isinstance(app._widget({"name": "t", "type": "text", "required": True}), gr.Textbox)
 
 
+def test_number_widget_carries_declared_bounds():
+    """A non-slider number input must apply the descriptor's min/max to the gr.Number so the
+    bounds are enforced server-side (gr.Number.preprocess -> raise_if_out_of_bounds), not just
+    hinted in the UI. Without this, an out-of-range value (e.g. port 99999) reaches the tool."""
+    with gr.Blocks():
+        n = app._widget({"name": "port", "type": "int", "min": 1, "max": 65535})
+    assert isinstance(n, gr.Number)
+    assert n.minimum == 1 and n.maximum == 65535
+    with gr.Blocks():
+        free = app._widget({"name": "n", "type": "int"})  # no bounds declared -> unconstrained
+    assert free.minimum is None and free.maximum is None
+
+
 def test_render_inputs_orders_basic_and_advanced():
     desc = {
         "inputs": [
