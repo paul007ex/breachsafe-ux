@@ -27,6 +27,9 @@ def test_widget_type_map():
             app._widget({"name": "e", "type": "enum", "choices": ["a", "b", "c", "d"]}), gr.Dropdown
         )
         assert isinstance(app._widget({"name": "n", "type": "int"}), gr.Number)
+        bounded = app._widget({"name": "port", "type": "int", "min": 1, "max": 65535})
+        assert bounded.minimum == 1
+        assert bounded.maximum == 65535
         assert isinstance(app._widget({"name": "n", "type": "int", "widget": "slider"}), gr.Slider)
         assert isinstance(
             app._widget({"name": "n", "type": "float", "widget": "slider"}), gr.Slider

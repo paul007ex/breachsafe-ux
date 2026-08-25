@@ -113,7 +113,12 @@ def _number_widget(spec: dict[str, Any], lab: str, info: str | None) -> gr.Compo
             info=info,
         )
     return gr.Number(
-        value=spec.get("default"), label=lab, precision=0 if t == "int" else None, info=info
+        value=spec.get("default"),
+        minimum=spec.get("min"),
+        maximum=spec.get("max"),
+        label=lab,
+        precision=0 if t == "int" else None,
+        info=info,
     )
 
 
