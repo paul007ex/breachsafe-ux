@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/paul007ex/breachsafe-ux/badge)](https://securityscorecards.dev/viewer/?uri=github.com/paul007ex/breachsafe-ux)
+[![OpenSSF Scorecard](https://github.com/paul007ex/breachsafe-ux/actions/workflows/scorecard.yml/badge.svg)](https://github.com/paul007ex/breachsafe-ux/actions/workflows/scorecard.yml)
 
 BreachSAFE EnXemble is the operator-facing audit and evidence surface for BreachSAFE assessment
 tools. It gives security and infrastructure teams a repeatable way to test an endpoint, preserve
