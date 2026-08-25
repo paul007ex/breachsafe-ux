@@ -24,14 +24,20 @@ def build_evidence_tabs(
     desc: dict[str, Any],
     auto_chain: dict[str, Any] | None,
     code_box: Callable[[str | None], Any],
-) -> tuple[list[Any], Any, list[Any], tuple[Any, Any, Any, Any, Any, Any] | None]:
+) -> tuple[
+    list[Any],
+    Any,
+    list[Any],
+    tuple[Any, Any, Any, Any, Any, Any] | None,
+    Any,
+]:
     """Build the shared evidence tab layout and return its output components."""
     eval_cfg = desc.get("render", {}).get("evaluation")
     eval_outs: list[Any] = []
     outs: list[Any] = []
     artifacts = desc["run"].get("artifacts", [])
     export_outputs: tuple[Any, Any, Any, Any, Any, Any] | None = None
-    with gr.Tabs():
+    with gr.Tabs() as evidence_tabs:
         if auto_chain:
             with gr.Tab("Executive Summary"):
                 export_outputs = (
@@ -61,7 +67,7 @@ def build_evidence_tabs(
                 outs.append(gr.JSON(label="artifact"))
         with gr.Tab("Raw Log"):
             raw_log = code_box("yaml")
-    return eval_outs, raw_log, outs, export_outputs
+    return eval_outs, raw_log, outs, export_outputs, evidence_tabs
 
 
 def order_widgets(
@@ -83,11 +89,15 @@ def wire_actions(
     panel: Any,
     buttons: list[Any],
     action_md: Callable[..., str],
+    tabs: Any,
 ) -> None:
     """Wire descriptor-declared action buttons to the shared output surface."""
     for index, action in enumerate(desc.get("actions", [])):
         button = buttons[index]
         event = button.click(lambda *vals, a=action: action_md(desc, a, vals), ordered, output)
+        # Action output is written into the shared Raw Log tab. Select it so a successful
+        # connection test is immediately visible instead of silently updating a hidden tab.
+        event.then(lambda: gr.Tabs(selected="Raw Log"), None, tabs)
         event.then(lambda: gr.update(visible=True), None, panel)
 
 

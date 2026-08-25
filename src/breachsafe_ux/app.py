@@ -335,7 +335,9 @@ def _wire_run(
     # artifact retains the gr.Code copy/download toolbar and syntax highlighting.
     download_button: Any | None = None
     with gr.Accordion("Evidence", open=True, visible=False) as evidence_panel:
-        eval_outs, raw_log, outs, export_outputs = build_evidence_tabs(desc, auto_chain, _code_box)
+        eval_outs, raw_log, outs, export_outputs, evidence_tabs = build_evidence_tabs(
+            desc, auto_chain, _code_box
+        )
     if auto_chain and export_outputs:
         download_button = gr.DownloadButton("Download", visible=True, interactive=False)
         export_outputs = (*export_outputs[:3], download_button, *export_outputs[4:])
@@ -354,7 +356,9 @@ def _wire_run(
         evidence_panel,
     )
     if action_buttons:
-        wire_actions(desc, ordered, raw_log, evidence_panel, action_buttons, _action_md)
+        wire_actions(
+            desc, ordered, raw_log, evidence_panel, action_buttons, _action_md, evidence_tabs
+        )
     if auto_chain and export_outputs:
         wire_auto_evidence(auto_chain, run_event, artifact_state, export_outputs)
     return artifact_state
