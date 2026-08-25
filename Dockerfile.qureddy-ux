@@ -76,7 +76,17 @@ ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \
     GRADIO_ANALYTICS_ENABLED=False \
-    BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf
+    BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf \
+    HOME=/home/breachsafe
+
+# The web host launches scanner subprocesses and serves generated artifacts. Keep that
+# runtime boundary non-root even though the image assembly above needs root for apt/copies.
+RUN groupadd --system --gid 10001 breachsafe \
+    && useradd --system --uid 10001 --gid breachsafe --create-home --home-dir /home/breachsafe \
+       --shell /usr/sbin/nologin breachsafe \
+    && install -d -o breachsafe -g breachsafe /home/breachsafe/mint-proof/wizard-runs \
+    && chown -R breachsafe:breachsafe /opt/enxemble
+USER breachsafe
 
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
