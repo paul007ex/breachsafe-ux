@@ -49,6 +49,14 @@ def _write_report_request(
     return generated_at
 
 
+def _workspace_output_root(paths: dict[str, Path], output_paths: dict[str, Path]) -> Path:
+    """Return the output directory after enforcing scan-workspace containment."""
+    root = output_paths["archive"].resolve().parent
+    if root != paths["scan"].resolve().parent:
+        raise ValueError("evidence outputs must remain inside the scan workspace")
+    return root
+
+
 def _name_report_outputs(
     paths: dict[str, Path], output_paths: dict[str, Path], generated_at: datetime
 ) -> dict[str, Path]:
@@ -58,10 +66,7 @@ def _name_report_outputs(
     host = str(scan_doc.get("target", {}).get("host", "scan"))
     safe_host = re.sub(r"[^A-Za-z0-9.-]+", "-", host).strip(".-") or "scan"
     stamp = generated_at.strftime("%Y%m%dT%H%M%SZ")
-    root = output_paths["archive"].resolve().parent
-    scan_root = paths["scan"].resolve().parent
-    if root != scan_root:
-        raise ValueError("evidence outputs must remain inside the scan workspace")
+    root = _workspace_output_root(paths, output_paths)
     output_paths["archive"] = root / f"{safe_host}.breachsafe.{stamp}.zip"
     if "pdf" in output_paths:
         output_paths["pdf"] = root / f"{safe_host}.breachsafe.{stamp}.pdf"

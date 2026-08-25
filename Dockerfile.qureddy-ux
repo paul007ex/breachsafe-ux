@@ -73,13 +73,11 @@ COPY tools/qureddy      /opt/enxemble/tools/qureddy
 COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
-    BREACHSAFE_UX_BUILD_VERSION=0.13.5 \
+    BREACHSAFE_UX_BUILD_VERSION=0.13.6 \
     BREACHSAFE_UX_MINT_OSCAL=false \
-    BREACHSAFE_EVIDENCE_BIN=/usr/local/bin/breachsafe-evidence \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \
     GRADIO_ANALYTICS_ENABLED=False \
-    BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf \
     HOME=/home/breachsafe
 
 # The web host launches scanner subprocesses and serves generated artifacts. Keep that
