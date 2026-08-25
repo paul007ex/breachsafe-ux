@@ -35,6 +35,7 @@ from breachsafe_ux.facade import (
     run_descriptor,
     verify_path,
 )
+from breachsafe_ux.healthcheck import check as _healthcheck
 from breachsafe_ux.render import (
     _B64,
     _ICON,
@@ -44,7 +45,6 @@ from breachsafe_ux.render import (
     _diag_md,
     _empty,
     _env_advanced_md,
-    _env_panel_md,
     _link,
     _result,
 )
@@ -448,14 +448,7 @@ def build() -> gr.Blocks:
 
 def _check() -> int:
     """Resolve every descriptor environment for the Docker healthcheck."""
-    ok = True
-    for did, desc in load_descriptors().items():
-        rows = environment(desc)
-        print(f"\n## {did}\n{_env_panel_md(rows)}")
-        if any(not r["ok"] for r in rows):
-            ok = False
-    print("\nOK" if ok else "\nMISSING TOOLS")
-    return 0 if ok else 1
+    return _healthcheck()
 
 
 def main() -> None:
