@@ -82,6 +82,18 @@ There is **no `justfile`** yet — the gate set is being reworked in #127; use t
 
 ## Skills (smart-Claude-on-day-one)
 
+### Gradio framework skills
+
+The official Gradio API references are installed for all supported coding assistants:
+
+```bash
+uv run gradio skills add --claude --cursor --codex --opencode
+```
+
+This keeps one canonical copy under `.agents/skills/gradio/` (and `hf-gradio/`) and creates
+assistant-specific symlinks. Refresh with the command when the Gradio API changes; do not hand-edit
+the generated copies.
+
 Canonical skills come from `breachsafe/breachsafe-common/skills` — edit them there and re-sync,
 never edit installed copies. The installed set is documented in `skills.manifest.yaml` (for
 drift/sync); copies live in both `.claude/skills/` (Claude) and `.agents/skills/` (Codex).
