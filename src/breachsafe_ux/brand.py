@@ -24,6 +24,8 @@ def provenance_html(items: list[tuple[str, str]]) -> str:
     """Return a lineage strip from descriptor-declared dependency links."""
     links = " · ".join(_link(url, label) for label, url in items if label and url)
     return f'<div class="bs-provenance">Built with {links}</div>' if links else ""
+
+
 # globals.css: bs-cyan-400 #3ae7f4 is THE brand cyan; navy #141414; magenta #ff0073.
 BS = {
     "cyan": "#3ae7f4",
