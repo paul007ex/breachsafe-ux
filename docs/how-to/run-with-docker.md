@@ -2,9 +2,9 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Run a tool-UX image with Docker
 
-Docker is the primary way to run an EnXemble tool-UX and the fastest path to a result. A
-tool-UX image bundles the host, one or more tool descriptors, and the tools those descriptors
-run, so a single `docker run` serves the web UI with the tools already resolvable.
+Docker is the primary way to run EnXemble. The shipped image bundles the host, the TLS and SSH
+descriptors, QuReddy, and the evidence/PDF toolchain, so the operator can run an assessment and
+retain its artifacts without installing scanner dependencies on the workstation.
 
 This guide uses the **shipped reference example** image, `ghcr.io/paul007ex/qureddy-ux`, as the
 concrete image name. Any EnXemble tool-UX image runs the same way.

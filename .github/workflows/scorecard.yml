@@ -1,10 +1,6 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
 #
-# Requires the repository to be PUBLIC (or GitHub Advanced Security). breachsafe-ux is
-# going public as the OSS shared dependency of qureddy[ux]; until then these workflows will
-# not produce results.
-#
 # OpenSSF Scorecard weekly assessment.
 #
 # Scorecard scans the repo for OSS supply-chain best practices and
@@ -16,6 +12,8 @@
 name: OpenSSF Scorecard
 
 on:
+  push:
+    branches: [main]
   branch_protection_rule:
   schedule:
     # Mondays 06:00 UTC. Weekly cadence; not on every PR.

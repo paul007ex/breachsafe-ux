@@ -20,6 +20,65 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def build_evidence_tabs(
+    desc: dict[str, Any],
+    auto_chain: dict[str, Any] | None,
+    code_box: Callable[[str | None], Any],
+) -> tuple[list[Any], Any, list[Any], tuple[Any, Any, Any, Any, Any, Any] | None]:
+    """Build the shared evidence tab layout and return its output components."""
+    eval_cfg = desc.get("render", {}).get("evaluation")
+    eval_outs: list[Any] = []
+    outs: list[Any] = []
+    artifacts = desc["run"].get("artifacts", [])
+    export_outputs: tuple[Any, Any, Any, Any, Any, Any] | None = None
+    with gr.Tabs():
+        if auto_chain:
+            with gr.Tab("Executive Summary"):
+                export_outputs = (
+                    gr.Markdown(visible=False),
+                    gr.JSON(visible=False),
+                    gr.Code(visible=False),
+                    None,
+                    gr.HTML(visible=False),
+                    gr.HTML(visible=False),
+                )
+        if eval_cfg:
+            with gr.Tab("Technical Summary"):
+                eval_outs.append(code_box(eval_cfg.get("language", "yaml")))
+        for art in artifacts:
+            if art["name"] == "rich":
+                with gr.Tab("Output"):
+                    outs.append(code_box("yaml"))
+                continue
+            label = {"json": "JSON", "jsonl": "Findings"}.get(
+                art["name"], art.get("label", art["name"])
+            )
+            with gr.Tab(label):
+                language = "json" if art["name"] == "jsonl" else art.get("language", "json")
+                outs.append(code_box(language))
+        if not artifacts:
+            with gr.Tab("Artifact"):
+                outs.append(gr.JSON(label="artifact"))
+        with gr.Tab("Raw Log"):
+            raw_log = code_box("yaml")
+    return eval_outs, raw_log, outs, export_outputs
+
+
+def wire_actions(
+    desc: dict[str, Any],
+    ordered: list[Any],
+    output: Any,
+    panel: Any,
+    buttons: list[Any],
+    action_md: Callable[..., str],
+) -> None:
+    """Wire descriptor-declared action buttons to the shared output surface."""
+    for index, action in enumerate(desc.get("actions", [])):
+        button = buttons[index]
+        event = button.click(lambda *vals, a=action: action_md(desc, a, vals), ordered, output)
+        event.then(lambda: gr.update(visible=True), None, panel)
+
+
 def evidence_chain_handler(chain: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
     """Adapt the Go evidence composer result to the Gradio output components."""
 

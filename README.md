@@ -7,15 +7,22 @@
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/paul007ex/breachsafe-ux/badge)](https://securityscorecards.dev/viewer/?uri=github.com/paul007ex/breachsafe-ux)
 
-BreachSAFE EnXemble is a generic, config-driven UX host for command-line tools. Declare any CLI
-tool's parameters in one YAML descriptor and the host renders a web tab, runs the tool, validates
-its output with an external validator, and reports a three-state verdict: VALID, INVALID, or
-VALIDATOR-UNAVAILABLE. It never shows a green result the validator did not actually give.
+BreachSAFE EnXemble is the operator-facing audit and evidence surface for BreachSAFE assessment
+tools. It gives security and infrastructure teams a repeatable way to test an endpoint, preserve
+the scanner's source artifacts, validate structured output where a validator is available, and
+review the observed protocol behavior needed to prioritize remediation.
 
-Adding a tool is a YAML file, not new UI code. The renderer, the runner, and the badge are
-written once in the engine and shared by every tool tab, so the host stays tool-agnostic. The
-packaged `qureddy-ux` image used in the examples below is one **shipped reference example** of the
-host with a specific tool bundled in; any other tool wraps the same way.
+For harvest-now-decrypt-later (HNDL) assessments, the shipped QuReddy descriptors surface the
+negotiated key exchange, hybrid post-quantum support, classical fallback, certificate-signature
+algorithms, and legacy protocol offers for TLS and SSH. The result is bounded to the probes and
+artifacts produced by that run: EnXemble does not certify an endpoint or infer controls that were
+not tested.
+
+Each run preserves the scan JSON/CBOM, findings stream, rich report, raw log, validation result,
+and optional PDF export. A reviewer can answer what was tested, which tool version ran, what the
+endpoint returned, what was validated, and where remediation is required. The current
+`qureddy-ux` image is the shipped reference image; its technical name remains for compatibility
+while the tracked EnXemble image rename is completed.
 
 ## Architecture at a glance
 

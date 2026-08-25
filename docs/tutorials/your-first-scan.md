@@ -2,12 +2,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Your first run (and how to read the verdict)
 
-A five-minute walkthrough of the generic flow every EnXemble tab follows: launch the host, run
-a tool against an input, and read the three-state verdict correctly. No configuration required.
+A short walkthrough of an evidence-backed HNDL assessment: launch EnXemble, run a probe against
+an endpoint, and read the bounded validation result and preserved artifacts.
 
-We use the **shipped reference example** image, `qureddy-ux`, because it is the packaged product
-you can pull today. What you learn here is the host flow, not the scanner: every tab, whatever
-tool it wraps, works the same way.
+We use the **shipped reference example** image, `qureddy-ux`, because it is the image you can pull
+today. Its technical image name is retained for compatibility while the EnXemble image rename is
+tracked separately. The assessment records observed protocol behavior; it is not a certification.
 
 The flow end to end:
 

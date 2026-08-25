@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.10.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.12.0-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 
@@ -11,6 +11,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.12.0] - 2026-08-24
+
+### Changed
+- The evidence surface now presents one consistent set of copyable, downloadable tabs:
+  Executive Summary, Technical Summary, CBOM, JSON, Findings, Output, and Raw Log.
+- Findings, rich output, and diagnostic logs retain their source text while receiving syntax
+  highlighting in the browser. The downloadable archive remains authoritative and unchanged.
+- The visible product name is **BreachSAFE EnXemble**. `breachsafe-ux` and `qureddy-ux` remain
+  technical compatibility names until the tracked repository, package, and image rename work is
+  complete.
+
+### Fixed
+- Release checks now read the current version from the changelog badge instead of reporting the
+  previous 0.10.0 release.
 
 ## [0.10.0] - 2026-08-24
 

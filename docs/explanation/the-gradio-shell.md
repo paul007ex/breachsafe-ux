@@ -4,7 +4,7 @@
 
 EnXemble renders its web UI with **Gradio**, an Apache-2.0 Python framework for building web
 interfaces from declarative widget code. This page explains what Gradio is, why it fits a
-config-driven, tool-agnostic host, and, most importantly, how the host keeps the framework
+descriptor-driven EnXemble host, and, most importantly, how the host keeps the framework
 dependency at a single edge so the rest of the code stays framework-free and unit-testable. For
 the module map as a whole, see [architecture](architecture.md); for the invariant that keeps the
 engine generic, see [the host↔descriptor boundary](host-descriptor-boundary.md).
@@ -24,7 +24,8 @@ be a YAML file rather than new UI code (see [why the host is agnostic](why-agnos
 
 ## The framework lives at one edge only
 
-The host is a small MVC around an engine and a theme. **Only two modules import `gradio`:**
+The host keeps Gradio at the UI edge. The controller, theme, and evidence presentation adapter
+are the only modules that import `gradio`; execution and validation remain outside that boundary.
 
 ```mermaid
 flowchart TD

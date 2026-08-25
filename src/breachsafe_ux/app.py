@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 import gradio as gr
 
 from breachsafe_ux.brand import BRAND, CSS, THEME
-from breachsafe_ux.evidence_ui import wire_auto_evidence
+from breachsafe_ux.evidence_ui import build_evidence_tabs, wire_actions, wire_auto_evidence
 from breachsafe_ux.facade import (
     RUN_ROOT,
     feature_enabled,
@@ -306,33 +306,6 @@ def _render_inputs(desc: dict[str, Any], env_rows: list[dict[str, Any]]) -> list
     return _order_widgets(desc, widgets, advanced_widgets)
 
 
-def _wire_actions(
-    desc: dict[str, Any],
-    ordered: list[Any],
-    output: Any | None = None,
-    panel: Any | None = None,
-    buttons: list[Any] | None = None,
-) -> None:
-    """Wire the descriptor-declared action buttons (#5).
-
-    Each runs its own argv against the current inputs and shows the tool's actual output.
-    Replaces the old hardcoded 'Test connection' preflight.
-    """
-    actions = desc.get("actions", [])
-    if not actions:
-        return
-    for index, action in enumerate(actions):
-        ab = (
-            buttons[index]
-            if buttons and index < len(buttons)
-            else gr.Button(action["label"].title(), size="sm", variant="secondary")
-        )
-        ar = output if output is not None else gr.Code(visible=False)
-        event = ab.click(lambda *vals, a=action, d=desc: _action_md(d, a, vals), ordered, ar)
-        if panel is not None:
-            event.then(lambda: gr.update(visible=True), None, panel)
-
-
 def _wire_run(
     desc: dict[str, Any], did: str, ordered: list[Any], auto_chain: dict[str, Any] | None = None
 ) -> Any:
@@ -353,59 +326,9 @@ def _wire_run(
     badge = gr.Markdown(_empty())
     # Keep one compact evidence surface. Tabs select one result at a time while each machine
     # artifact retains the gr.Code copy/download toolbar and syntax highlighting.
-    eval_cfg = desc.get("render", {}).get("evaluation")
-    eval_outs: list[Any] = []
-    artifacts = desc["run"].get("artifacts", [])
-    outs: list[Any] = []
-    export_outputs: tuple[Any, Any, Any, Any, Any, Any] | None = None
     download_button: Any | None = None
-    with gr.Accordion("Evidence", open=True, visible=False) as evidence_panel, gr.Tabs():
-        if auto_chain:
-            with gr.Tab("Executive Summary"):
-                # Metadata and export log remain in the ZIP but are intentionally hidden from the
-                # primary evidence surface. The visible outputs are preview, open, and download.
-                export_outputs = (
-                    gr.Markdown(visible=False),
-                    gr.JSON(visible=False),
-                    gr.Code(visible=False),
-                    None,
-                    gr.HTML(visible=False),
-                    gr.HTML(visible=False),
-                )
-        if eval_cfg:
-            with gr.Tab("Technical Summary"):
-                # Summary is line-oriented evidence, so keep the same colored, copyable,
-                # downloadable viewer as CBOM/log artifacts. Markdown would collapse newlines.
-                eval_outs.append(_code_box(eval_cfg.get("language", "yaml")))
-        if artifacts:
-            for art in artifacts:
-                if art["name"] == "rich":
-                    with gr.Tab("Output"):
-                        # Rich output is a distinct machine-produced report, not the diagnostic
-                        # log. Keep it copyable/downloadable and preserve the declared handler
-                        # slot so the archive and UI stay aligned.
-                        # Rich text is not JSON, but YAML-style highlighting gives its headings,
-                        # labels, and values useful visual structure without rewriting the report.
-                        outs.append(_code_box("yaml"))
-                    continue
-                label = {"json": "JSON", "jsonl": "Findings"}.get(
-                    art["name"], art.get("label", art["name"])
-                )
-                with gr.Tab(label):
-                    # JSONL is still one JSON object per line, not a single foldable document;
-                    # use the JSON lexer so it has the same colored evidence surface and toolbar
-                    # without rewriting or normalizing the authoritative artifact.
-                    language = "json" if art["name"] == "jsonl" else art.get("language", "json")
-                    outs.append(_code_box(language))
-        else:  # legacy single-artifact tool: keep one JSON view
-            with gr.Tab("Artifact"):
-                outs.append(gr.JSON(label="artifact"))
-        # Keep diagnostics last: the evidence/report tabs lead, while connection and process
-        # diagnostics remain available without competing with the audit result.
-        with gr.Tab("Raw Log"):
-            # Log lines are not a single JSON document; YAML highlighting gives timestamps,
-            # keys, and values useful visual structure without changing the captured log.
-            raw_log = _code_box("yaml")
+    with gr.Accordion("Evidence", open=True, visible=False) as evidence_panel:
+        eval_outs, raw_log, outs, export_outputs = build_evidence_tabs(desc, auto_chain, _code_box)
     if auto_chain and export_outputs:
         download_button = gr.DownloadButton("Download", visible=True, interactive=False)
         export_outputs = (*export_outputs[:3], download_button, *export_outputs[4:])
@@ -424,7 +347,7 @@ def _wire_run(
         evidence_panel,
     )
     if action_buttons:
-        _wire_actions(desc, ordered, raw_log, evidence_panel, action_buttons)
+        wire_actions(desc, ordered, raw_log, evidence_panel, action_buttons, _action_md)
     if auto_chain and export_outputs:
         wire_auto_evidence(auto_chain, run_event, artifact_state, export_outputs)
     return artifact_state
@@ -486,7 +409,13 @@ def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
         env_rows = environment(desc)
         ordered = _render_inputs(desc, env_rows)
         auto_chain = next(
-            (chain for chain in desc.get("chains", []) if chain.get("kind") == "pdf_export"),
+            (
+                chain
+                for chain in desc.get("chains", [])
+                if chain.get("kind") == "pdf_export"
+                and (not chain.get("feature_flag") or feature_enabled(chain["feature_flag"]))
+                and tool_available(descs.get(chain.get("to", ""), {}))
+            ),
             None,
         )
         artifact_state = _wire_run(desc, did, ordered, auto_chain)

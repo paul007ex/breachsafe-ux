@@ -7,7 +7,7 @@ standalone: true
 title: "HNDL Audit (TLS)"
 run_label: "HNDL Audit (TLS)"
 description: >-
-  Audits a TLS endpoint for harvest-now-decrypt-later exposure. The assessment records the negotiated key exchange, whether a hybrid post-quantum option is available, certificate-chain signature algorithms, and legacy protocol offers. Use the evidence outputs to support remediation decisions; the scan reports observed protocol behavior and does not certify overall security.
+  Audits a TLS endpoint for harvest-now-decrypt-later exposure. The assessment records the negotiated key exchange, whether a hybrid post-quantum option is available, certificate-chain signature algorithms, and legacy protocol offers. Use the evidence outputs to support remediation decisions; the scan reports observed protocol behavior and does not certify overall security. Runtime depends on probe count, timeout, retries, and endpoint responsiveness.
 
 brand:
   product: "BreachSAFE QuReddy"
@@ -221,7 +221,7 @@ chains:
         name: Quantum Readiness Evidence Report
         generated_at: pending
         language: en-US
-        organization_display_name: BreachSAFE UX
+        organization_display_name: BreachSAFE EnXemble
         classification: COMMUNITY / EVIDENCE REPORT
       cbom: { media_type: application/vnd.cyclonedx+json, schema: cyclonedx:1.7, expected_sha256: pending }
       scan_json: { media_type: application/json, schema: qureddy.scan.v1, expected_sha256: pending }

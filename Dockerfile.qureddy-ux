@@ -37,10 +37,10 @@ RUN set -eux; \
 FROM ${EVIDENCE_IMAGE} AS evidence
 
 FROM ghcr.io/breachsafe/qureddy:latest
-LABEL org.opencontainers.image.title="qureddy-ux" \
+LABEL org.opencontainers.image.title="BreachSAFE EnXemble" \
       org.opencontainers.image.vendor="BreachSAFE" \
       org.opencontainers.image.source="https://github.com/paul007ex/breachsafe-ux" \
-      org.opencontainers.image.description="qureddy-ux — self-contained EnXemble host for QuReddy (TLS/SSH audit)" \
+      org.opencontainers.image.description="BreachSAFE EnXemble — self-contained QuReddy TLS/SSH audit and evidence host" \
       org.opencontainers.image.base.name="ghcr.io/breachsafe/qureddy"
 
 USER root

@@ -6,9 +6,9 @@ This directory follows **[Diátaxis](https://diataxis.fr)**. Each page belongs t
 quadrants and has one job: tutorials teach, how-to guides solve a goal, reference states the
 exact contract, and explanation gives the rationale.
 
-Every page describes the **host**, the generic, config-driven UX host for command-line tools,
-not any one tool. The packaged `qureddy-ux` image appears only as a labelled shipped reference
-example; for what that specific scanner does, see the
+Every page describes the **EnXemble host** and the evidence workflow around a bounded assessment.
+The packaged `qureddy-ux` image is the current shipped reference image; for what that specific
+scanner does, see the
 [`breachsafe/qureddy` documentation](https://github.com/breachsafe/qureddy).
 
 ## Contents
