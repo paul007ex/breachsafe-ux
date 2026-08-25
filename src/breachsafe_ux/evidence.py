@@ -58,7 +58,10 @@ def _name_report_outputs(
     host = str(scan_doc.get("target", {}).get("host", "scan"))
     safe_host = re.sub(r"[^A-Za-z0-9.-]+", "-", host).strip(".-") or "scan"
     stamp = generated_at.strftime("%Y%m%dT%H%M%SZ")
-    root = output_paths["archive"].parent
+    root = output_paths["archive"].resolve().parent
+    scan_root = paths["scan"].resolve().parent
+    if root != scan_root:
+        raise ValueError("evidence outputs must remain inside the scan workspace")
     output_paths["archive"] = root / f"{safe_host}.breachsafe.{stamp}.zip"
     if "pdf" in output_paths:
         output_paths["pdf"] = root / f"{safe_host}.breachsafe.{stamp}.pdf"
@@ -89,7 +92,8 @@ def _execute_report_argv(argv: list[str], workdir: Path, timeout_s: int) -> tupl
     )
     log = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode != 0:
-        raise subprocess.SubprocessError(log.strip()[-2000:] or f"exit {proc.returncode}")
+        safe_log = log.replace(str(workdir), "<run>")
+        raise subprocess.SubprocessError(safe_log.strip()[-2000:] or f"exit {proc.returncode}")
     return argv, log
 
 
