@@ -32,6 +32,7 @@ flowchart TD
     subgraph gradio["imports gradio (framework edge)"]
         app["app.py — Controller"]
         brand["brand.py — Theme"]
+        evidence_ui["evidence_ui.py — Evidence adapter"]
     end
     subgraph free["framework-free (unit-testable, no browser)"]
         resolve["resolve.py — Model"]
@@ -44,6 +45,7 @@ flowchart TD
     app --> resolve
     app --> rendermodel
     app --> brand
+    app --> evidence_ui
     facade --> resolve
     facade --> rendermodel
     style gradio stroke-dasharray: 5 5
@@ -53,7 +55,7 @@ flowchart TD
     classDef process     fill:#cce5ff,stroke:#0d6efd,color:#0a3678;
     classDef artifact    fill:#e2e3e5,stroke:#6c757d,color:#2f3336;
     classDef external    fill:#e7d6ff,stroke:#6f42c1,color:#3d1a78;
-    class app,brand process;
+    class app,brand,evidence_ui process;
     class resolve,rendermodel,view,facade artifact;
 ```
 

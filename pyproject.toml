@@ -1,6 +1,6 @@
 [project]
 name = "breachsafe-ux"
-version = "0.13.1"
+version = "0.13.2"
 description = "Config-driven single-tool UX host for BreachSAFE tools (one YAML per tool)"
 requires-python = ">=3.14"
 license = "Apache-2.0"

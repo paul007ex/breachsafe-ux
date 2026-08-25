@@ -4,7 +4,7 @@
 
 The host's look is a single theme layer, `src/breachsafe_ux/brand.py`. It is the one source of
 the product name, colours, theme, and CSS, so re-skinning the host means editing that one module
-rather than hunting styles across the app. Only `app.py` (the controller) and `brand.py` (the
+rather than hunting styles across the app. Only the UI-edge modules (`app.py`, `brand.py`, and `evidence_ui.py`)
 theme) import Gradio; the model, view, and engine stay framework-free.
 
 `brand.py` ships the BreachSAFE EnXemble identity. To white-label the host under your own brand,

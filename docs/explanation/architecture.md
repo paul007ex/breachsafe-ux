@@ -49,9 +49,9 @@ a green the validator did not give.
 | `facade.py` | **Engine**: load descriptors, build argv, run, validate, derive the badge | no |
 | `brand.py` | **Theme**: branding and white-label tokens | yes |
 
-**Only `app.py` and `brand.py` import Gradio.** The framework dependency is kept at the
-controller and theme edge; the model, view, and engine stay framework-free so they are testable
-in isolation without a browser. That edge is explained in detail in
+`app.py`, `brand.py`, and `evidence_ui.py` import Gradio. The framework dependency is kept at the
+controller, theme, and evidence-adapter edge; the model, view, and engine stay framework-free so
+they are testable in isolation without a browser. That edge is explained in detail in
 [the Gradio shell](the-gradio-shell.md).
 
 ## Component coupling
@@ -73,6 +73,7 @@ flowchart TD
     subgraph gradio["Gradio boundary"]
         app["app.py — Controller"]
         brand["brand.py — Theme"]
+        evidence_ui["evidence_ui.py — Evidence adapter"]
     end
 
     tools --> desc
@@ -85,6 +86,7 @@ flowchart TD
     app --> view
     app --> rendermodel
     app --> brand
+    app --> evidence_ui
     view --> rendermodel
     style gradio stroke-dasharray: 5 5
     classDef valid       fill:#d4edda,stroke:#28a745,color:#155724;
@@ -93,7 +95,7 @@ flowchart TD
     classDef process     fill:#cce5ff,stroke:#0d6efd,color:#0a3678;
     classDef artifact    fill:#e2e3e5,stroke:#6c757d,color:#2f3336;
     classDef external    fill:#e7d6ff,stroke:#6f42c1,color:#3d1a78;
-    class app,brand process;
+    class app,brand,evidence_ui process;
     class tools,desc,resolve,facade,rendermodel,view artifact;
     class validators external;
 ```
@@ -115,7 +117,7 @@ Reading the graph:
 builds a typed argv (values are single argv elements, never a shell string, so an input can never
 become a command), runs the tool by the chosen [execution backend](../reference/execution-backends.md),
 runs the external validator, and derives the [three-state badge](../reference/badge.md). It is
-the ~85%-backend part of the system and the place the correctness properties live.
+the backend portion of the system and the place the execution and validation properties live.
 
 ## The shell
 

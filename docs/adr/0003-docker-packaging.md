@@ -83,7 +83,7 @@ builds `FROM` it.
 ```
   breachsafe-ux repo (this repo, #35)             qureddy repo (issue, not code here)
  ┌───────────────────────────────┐   FROM        ┌────────────────────────────────┐
- │ ghcr.io/paul007ex/             │◀──────────────│ ghcr.io/breachsafe/qureddy-ux  │
+ │ ghcr.io/paul007ex/             │◀──────────────│ ghcr.io/paul007ex/qureddy-ux   │
  │   breachsafe-ux  (BASE)        │               │  + pip install breachsafe-qureddy│
  │  gradio + engine, NO tools     │               │  + tools/qureddy/qureddy.yaml   │
  │  non-root, HEALTHCHECK,        │               │  + BREACHSAFE_UX_TOOLS_DIR=…    │

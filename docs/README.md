@@ -47,7 +47,7 @@ Task-oriented recipes for someone who already knows the basics.
 
 ## 4. Reference
 
-Look-it-up information. Comprehensive, accurate, dry.
+Look-it-up information: accurate, concrete, and concise.
 
 - [Descriptor schema](reference/descriptor-schema.md): every descriptor field.
 - [Descriptor tokens](reference/descriptor-tokens.md): the argv substitution namespace.

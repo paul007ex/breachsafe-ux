@@ -5,7 +5,7 @@
 [![SPDX: reuse](https://img.shields.io/badge/license%20headers-reuse-green?style=flat-square)](https://reuse.software/)
 [![Disclosure SLA](https://img.shields.io/badge/disclosure%20SLA-5%20business%20days-brightgreen?style=flat-square)](#3-response-targets)
 
-breachsafe-ux is a web-facing tool. We take vulnerability reports seriously.
+BreachSAFE EnXemble is a web-facing tool. We take vulnerability reports seriously.
 
 ## Contents
 
@@ -21,8 +21,8 @@ breachsafe-ux is a web-facing tool. We take vulnerability reports seriously.
 | Version | Supported |
 |---|---|
 | `main` (development) | Yes |
-| Latest published `0.3.x` | Yes |
-| `0.2.x` and earlier | No |
+| Latest published `0.13.x` | Yes |
+| `0.12.x` and earlier | No |
 
 Security fixes target `main` and the latest published minor release. No
 backport commitment exists for earlier versions.

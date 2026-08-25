@@ -32,7 +32,7 @@ every one. See [why agnostic](../explanation/why-agnostic.md) for the design the
 The host is a small MVC around an engine and a theme. The framework (Gradio) lives at one edge
 only, so the model, view, and engine are testable without a browser.
 
-- **Only `app.py` (controller) and `brand.py` (theme) may import Gradio.** The model
+- **Only the UI-edge modules (`app.py`, `brand.py`, and `evidence_ui.py`) may import Gradio.** The model
   (`resolve.py`, `_render.py`), the view (`render.py`), and the engine (`facade.py`) stay
   framework-free.
 - New rendering or run logic belongs in the engine or the model, never in the Gradio shell.

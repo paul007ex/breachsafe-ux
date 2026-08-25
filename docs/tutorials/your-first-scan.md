@@ -53,7 +53,7 @@ tutorial stays with the host flow that is the same for any tool.
 
 ## 3. Read the verdict: the three-state badge
 
-The badge is the point of the host. It reports the result of an **external validator**, never a
+The badge reports the result of an **external validator**, never a
 guess, and it has exactly three states:
 
 | Badge | What it means | What it does NOT mean |

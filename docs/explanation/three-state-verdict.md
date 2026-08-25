@@ -3,7 +3,8 @@
 # Why the verdict has three states
 
 Most tool UIs report two outcomes: pass or fail. EnXemble reports three, and the third one is
-the whole point. This page explains why the host fails closed and never shows a false green. For
+The third state prevents a scan that could not run from being presented as a pass. This page
+explains the fail-closed behavior and validation boundary. For
 the states themselves, see the [badge reference](../reference/badge.md); for the states in a
 first run, see [your first run](../tutorials/your-first-scan.md).
 
