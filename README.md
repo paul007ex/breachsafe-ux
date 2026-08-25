@@ -162,8 +162,8 @@ in [descriptor tokens](docs/reference/descriptor-tokens.md).
 
 ## 5. Interpret the verdict
 
-The badge reports the result of an external validator as one of three states, and never a green
-the validator did not give:
+The badge reports whether the structured artifact was accepted, rejected, or could not be
+validated. Treat this as an artifact-quality result, not a security certification:
 
 | State | Meaning |
 |---|---|
