@@ -32,8 +32,8 @@ RUN set -eux; \
            /install/lib/python3.14/site-packages/pkg_resources \
            /install/bin/pip /install/bin/pip3 /install/bin/pip3.14
 
-# The OSS customer image carries the PDF renderer. ePack remains outside this image for the
-# enterprise evidence workflow. Override this source image for pressure tests.
+# The OSS customer image carries the evidence facade, the official ePack executable it delegates
+# to, and the PDF renderer. The facade verifies both bundled digests before it runs.
 FROM ${EVIDENCE_IMAGE} AS evidence
 
 FROM ghcr.io/breachsafe/qureddy:latest
@@ -54,14 +54,21 @@ RUN apt-get update \
 COPY --from=ux-builder /install /usr/local
 # Evidence export is fully self-contained: no Docker socket and no runtime download.
 COPY --from=evidence /usr/local/bin/breachsafe-evidence /usr/local/bin/breachsafe-evidence
+COPY --from=evidence /usr/local/bin/epack /usr/local/bin/epack
+COPY --from=evidence /usr/share/breachsafe/epack.sha256 /usr/share/breachsafe/epack.sha256
+COPY --from=evidence /usr/share/breachsafe/epack.revision /usr/share/breachsafe/epack.revision
+COPY --from=evidence /usr/share/licenses/epack /usr/share/licenses/epack
 COPY --from=evidence /usr/local/bin/breachsafe-pdf /usr/local/bin/breachsafe-pdf
 COPY --from=evidence /usr/share/breachsafe/breachsafe-pdf.sha256 /usr/share/breachsafe/breachsafe-pdf.sha256
+COPY --from=evidence /usr/share/licenses/breachsafe-pdf /usr/share/licenses/breachsafe-pdf
 # Fail closed if the host didn't actually land (an earlier `|| true` once shipped an app-less image).
 RUN set -eux; \
     python3 -c "import breachsafe_ux"; \
     command -v breachsafe-ux; \
     command -v breachsafe-evidence; \
+    command -v epack; \
     command -v breachsafe-pdf; \
+    test -s /usr/share/breachsafe/epack.sha256; \
     test -s /usr/share/breachsafe/breachsafe-pdf.sha256; \
     expected_sha256=$(awk 'NF {print $1; exit}' /usr/share/breachsafe/breachsafe-pdf.sha256); \
     test "${#expected_sha256}" -eq 64; \
@@ -73,7 +80,9 @@ COPY tools/qureddy      /opt/enxemble/tools/qureddy
 COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
-    BREACHSAFE_UX_BUILD_VERSION=0.13.6 \
+    BREACHSAFE_EPACK_BIN=/usr/local/bin/epack \
+    BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf \
+    BREACHSAFE_UX_BUILD_VERSION=0.13.7 \
     BREACHSAFE_UX_MINT_OSCAL=false \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \

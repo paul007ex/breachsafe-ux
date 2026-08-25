@@ -2,7 +2,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-[![Version](https://img.shields.io/badge/version-0.13.6-blue?style=flat-square)](CHANGELOG.md)
+## [0.13.7] - 2026-08-25
+
+- Bundle the official ePack executable and its integrity metadata in the EnXemble image so
+  evidence PDF/export runs are self-contained.
+
+[![Version](https://img.shields.io/badge/version-0.13.7-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 

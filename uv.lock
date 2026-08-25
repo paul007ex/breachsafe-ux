@@ -227,7 +227,7 @@ wheels = [
 
 [[package]]
 name = "breachsafe-ux"
-version = "0.13.6"
+version = "0.13.7"
 source = { editable = "." }
 dependencies = [
     { name = "cyclonedx-python-lib", extra = ["json-validation"] },
