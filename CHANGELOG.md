@@ -2,6 +2,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## [0.13.9] - 2026-08-25
+
+- Make the Light / Dark control apply consistently to the document, Gradio root, and container
+  theme scopes.
+
 ## [0.13.8] - 2026-08-25
 
 - Make Test Connection select the shared Raw Log tab after it runs, for immediate TLS/SSH
@@ -12,7 +17,7 @@
 - Bundle the official ePack executable and its integrity metadata in the EnXemble image so
   evidence PDF/export runs are self-contained.
 
-[![Version](https://img.shields.io/badge/version-0.13.8-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.13.9-blue?style=flat-square)](CHANGELOG.md)
 [![Keep a Changelog](https://img.shields.io/badge/keep%20a%20changelog-1.1.0-orange?style=flat-square)](https://keepachangelog.com/en/1.1.0/)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue?style=flat-square)](https://semver.org/spec/v2.0.0.html)
 

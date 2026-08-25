@@ -66,14 +66,21 @@ _RUN_LABEL = "{id}"  # fallback button label; descriptors set their own run_labe
 _BUSY_LABEL = "Working…"
 _RADIO_MAX = 3  # <= this many enum choices render as radios, else a dropdown
 _HEAVY_TIMEOUT_S = 60  # a tool timeout at/above this serializes runs (concurrency_limit=1)
-# class-based dark mode, like EnXemble (next-themes .dark). Toggles the theme's _dark tokens.
+# class-based dark mode, like EnXemble (next-themes .dark). Gradio's generated theme rules can be
+# scoped to different roots across releases, so keep the class and color-scheme in sync on all of
+# them instead of relying on one custom element.
 _THEME_TOGGLE_JS = (
-    "() => { const el = document.querySelector('gradio-app') || document.body; "
-    "el.classList.toggle('dark'); }"
+    "() => { const roots = [document.documentElement, document.body, "
+    "document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); "
+    "const dark = !document.documentElement.classList.contains('dark'); "
+    "roots.forEach((el) => el.classList.toggle('dark', dark)); "
+    "document.documentElement.style.colorScheme = dark ? 'dark' : 'light'; }"
 )
 _DARK_ON_LOAD_JS = (
-    "() => { const el = document.querySelector('gradio-app') || document.body; "
-    "el.classList.add('dark'); }"
+    "() => { const roots = [document.documentElement, document.body, "
+    "document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); "
+    "roots.forEach((el) => el.classList.add('dark')); "
+    "document.documentElement.style.colorScheme = 'dark'; }"
 )
 
 

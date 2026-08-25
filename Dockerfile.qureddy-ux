@@ -82,7 +82,7 @@ COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
     BREACHSAFE_EPACK_BIN=/usr/local/bin/epack \
     BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf \
-    BREACHSAFE_UX_BUILD_VERSION=0.13.8 \
+    BREACHSAFE_UX_BUILD_VERSION=0.13.9 \
     BREACHSAFE_UX_MINT_OSCAL=false \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \
