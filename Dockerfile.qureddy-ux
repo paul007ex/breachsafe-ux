@@ -59,7 +59,11 @@ COPY --from=evidence /usr/share/breachsafe/breachsafe-pdf.sha256 /usr/share/brea
 # Fail closed if the host didn't actually land (an earlier `|| true` once shipped an app-less image).
 RUN set -eux; \
     python3 -c "import breachsafe_ux"; \
-    command -v breachsafe-ux
+    command -v breachsafe-ux; \
+    command -v breachsafe-evidence; \
+    command -v breachsafe-pdf; \
+    test -s /usr/share/breachsafe/breachsafe-pdf.sha256; \
+    sha256sum -c /usr/share/breachsafe/breachsafe-pdf.sha256
 
 # ship the OSS descriptors (HNDL Audit: TLS + SSH)
 COPY tools/qureddy      /opt/enxemble/tools/qureddy
