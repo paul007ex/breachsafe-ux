@@ -33,7 +33,7 @@ One generic host, many descriptor plugins, each an example of the same contract:
 
 ```mermaid
 flowchart TD
-    d1["descriptor: qureddy-ux (example)"]
+    d1["descriptor: enxemble (example)"]
     d2["descriptor: gitleaks (example)"]
     d3["descriptor: mytool (example)"]
     host["EnXemble host (generic engine + shell)"]
@@ -71,7 +71,7 @@ scope to "one tool, done well" is what lets the host stay small enough to be gen
 
 ## The shipped reference example
 
-The packaged `qureddy-ux` image is one example of the host with a specific tool's descriptors
+The packaged `enxemble` image is one example of the host with a specific tool's descriptors
 bundled in. It is a demonstration of the host, not the host's subject: the host itself knows
 nothing about that tool, and any other tool wraps the same way. To wrap your own, see
 [add a tool](../how-to/add-a-tool.md).

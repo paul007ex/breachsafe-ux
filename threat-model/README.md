@@ -3,7 +3,7 @@
 # Threat model — EnXemble UX host
 
 [`threagile.yaml`](threagile.yaml) is a [Threagile](https://threagile.io) (agile
-threat-modeling) model of the EnXemble UX host (breachsafe-ux / qureddy-ux). It encodes the
+threat-modeling) model of the BreachSAFE EnXemble host. It encodes the
 trust-boundary reasoning that already lives in prose in
 [`ADR-0002`](../docs/adr/0002-host-descriptor-boundary.md) (host ↔ descriptor boundary,
 operator-owned exposure, no in-image auth) and

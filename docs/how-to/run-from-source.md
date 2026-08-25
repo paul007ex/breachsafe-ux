@@ -19,7 +19,7 @@ EnXemble is **not** published to PyPI or TestPyPI. Install it from a source chec
 ## Install and launch
 
 ```bash
-git clone https://github.com/paul007ex/breachsafe-ux && cd breachsafe-ux
+git clone https://github.com/breachsafe/breachsafe-enxemble && cd breachsafe-enxemble
 uv sync                          # runtime only (enough to launch)
 uv run breachsafe-ux             # serves http://127.0.0.1:7860
 ```

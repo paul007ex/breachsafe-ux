@@ -6,15 +6,16 @@ Docker is the primary way to run EnXemble. The shipped image bundles the host, t
 descriptors, QuReddy, and the evidence/PDF toolchain, so the operator can run an assessment and
 retain its artifacts without installing scanner dependencies on the workstation.
 
-This guide uses the **shipped reference example** image, `ghcr.io/paul007ex/qureddy-ux`, as the
+This guide uses the **shipped EnXemble** image, `ghcr.io/breachsafe/breachsafe-enxemble`, as the
 concrete image name. Any EnXemble tool-UX image runs the same way.
 
 ## Quickstart
 
 ```bash
-docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
-docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
-sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
+docker rm -f enxemble 2>/dev/null || true
+docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
+until curl -fsS http://localhost:7860/ >/dev/null; do sleep 1; done
+open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
 Copy-paste the three lines:
@@ -39,9 +40,9 @@ reproducibility matters more than freshness, pin an immutable reference instead 
 a version tag, or preferably a `@sha256:` digest.
 
 ```bash
-docker pull ghcr.io/paul007ex/qureddy-ux:latest
-docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/paul007ex/qureddy-ux:latest
-docker run -d -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux@sha256:<digest>
+docker pull ghcr.io/breachsafe/breachsafe-enxemble:latest
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/breachsafe/breachsafe-enxemble:latest
+docker run -d -p 7860:7860 --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
 ```
 
 ## Verify the tools resolve
@@ -64,7 +65,7 @@ change the port or hide an optional tab:
 ```bash
 docker run -d --pull=always -p 8080:8080 \
   -e BREACHSAFE_UX_PORT=8080 \
-  --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
+  --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
 ```
 
 The full list is the [environment variables reference](../reference/environment-variables.md);

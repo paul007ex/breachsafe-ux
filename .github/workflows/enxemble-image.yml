@@ -1,24 +1,24 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
 #
-# Build + publish the SELF-CONTAINED, multi-arch qureddy-ux image to GHCR. Built FROM the
+# Build + publish the self-contained, multi-arch EnXemble image to GHCR. Built FROM the
 # official multi-arch qureddy image (qureddy + python + openssl inside) plus the EnXemble host
-# wheel and the TLS/SSH descriptors — one command to run, no docker socket. See Dockerfile.qureddy-ux.
-name: qureddy-ux-image
+# wheel and the TLS/SSH descriptors — one command to run, no docker socket. See Dockerfile.enxemble.
+name: enxemble-image
 
 on:
   push:
     branches: [main]
     tags: ["v*"]
     paths:
-      - "Dockerfile.qureddy-ux"
-      - "Dockerfile.qureddy-ux.dockerignore"
+      - "Dockerfile.enxemble"
+      - "Dockerfile.enxemble.dockerignore"
       - "src/**"
       - "pyproject.toml"
       - "uv.lock"
       - "tools/qureddy/**"
       - "tools/qureddy-ssh/**"
-      - ".github/workflows/qureddy-ux-image.yml"
+      - ".github/workflows/enxemble-image.yml"
   schedule:
     # Daily. The base image (ghcr.io/breachsafe/qureddy:latest) moves independently of this
     # repo, so without a time trigger a new scanner release never reaches the UI — the push
@@ -30,11 +30,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: qureddy-ux-image-${{ github.ref }}
+  group: enxemble-image-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/qureddy-ux
+  IMAGE: ghcr.io/breachsafe/breachsafe-enxemble
 
 jobs:
   build-push:
@@ -57,32 +57,32 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: Dockerfile.qureddy-ux
+          file: Dockerfile.enxemble
           # Re-resolve the unpinned base (ghcr.io/breachsafe/qureddy:latest) every run;
           # without this the gha layer cache can rebuild on a stale base (#138).
           pull: true
           load: true
-          tags: qureddy-ux:ci
+          tags: enxemble:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Trivy scan — fail on HIGH/CRITICAL (amd64 image)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: qureddy-ux:ci
+          image-ref: enxemble:ci
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Smoke test — one command, no socket, serves + resolves tools
         run: |
-          docker run -d --name qux -p 7860:7860 qureddy-ux:ci
+          docker run -d --name enxemble-ci -p 7860:7860 enxemble:ci
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:7860/ >/dev/null 2>&1 && { echo "up after ${i}s"; break; }
             sleep 1
           done
           curl -fsS http://127.0.0.1:7860/ >/dev/null || { echo "did not serve"; docker logs qux; exit 1; }
-          docker exec qux breachsafe-ux --check
-          docker rm -f qux
+          docker exec enxemble-ci breachsafe-ux --check
+          docker rm -f enxemble-ci
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
@@ -103,7 +103,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: Dockerfile.qureddy-ux
+          file: Dockerfile.enxemble
           # Re-resolve the unpinned base (ghcr.io/breachsafe/qureddy:latest) every run;
           # without this the gha layer cache can rebuild on a stale base (#138).
           pull: true

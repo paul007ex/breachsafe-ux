@@ -38,7 +38,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## 5. Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers. The reporting channel is the same as for security disclosures: see [`SECURITY.md`](SECURITY.md) (GitHub Security Advisories, or the maintainer via the GitHub profile of the project owner, @paul007ex). All complaints will be reviewed and investigated promptly and fairly. All maintainers are obligated to respect the privacy and security of the reporter of any incident.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers. The reporting channel is the same as for security disclosures: see [`SECURITY.md`](SECURITY.md) (GitHub Security Advisories or the BreachSAFE maintainers). All complaints will be reviewed and investigated promptly and fairly. All maintainers are obligated to respect the privacy and security of the reporter of any incident.
 
 ## 6. Enforcement Guidelines
 

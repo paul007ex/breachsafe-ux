@@ -35,5 +35,5 @@ With Docker:
 docker run -d --pull=always -p 8080:8080 \
   -e BREACHSAFE_UX_PORT=8080 \
   -e BREACHSAFE_UX_MINT_OSCAL=false \
-  --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
+  --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
 ```

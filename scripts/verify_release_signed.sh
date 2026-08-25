@@ -37,7 +37,7 @@
 #
 # Usage:
 #   scripts/verify_release_signed.sh v0.3.3
-#   scripts/verify_release_signed.sh v0.3.3 paul007ex/breachsafe-ux
+#   scripts/verify_release_signed.sh v0.3.3 breachsafe/breachsafe-enxemble
 #
 # Flags:
 #   --simulate-unsigned   pretend the .sigstore assets are absent -- proves the
@@ -48,7 +48,7 @@
 
 set -u
 
-REPO_DEFAULT="paul007ex/breachsafe-ux"
+REPO_DEFAULT="breachsafe/breachsafe-enxemble"
 SIMULATE_UNSIGNED=0
 DO_VERIFY=1
 TAG=""

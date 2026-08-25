@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
 # SPDX-License-Identifier: Apache-2.0
 #
-# Threagile threat model of the EnXemble UX host (breachsafe-ux / qureddy-ux).
+# Threagile threat model of the BreachSAFE EnXemble UX host.
 # Encodes the trust-boundary reasoning of ADR-0002 (host <-> descriptor boundary,
 # operator-owned exposure, no in-image auth) and ADR-0003 (self-contained tool image,
 # run.image docker fallback). Regenerate/validate with threat-model/README.md.
@@ -9,7 +9,7 @@
 
 threagile_version: 1.0.0
 
-title: EnXemble UX host (breachsafe-ux / qureddy-ux)
+title: BreachSAFE EnXemble UX host
 
 date: 2026-08-22
 
@@ -20,7 +20,7 @@ author:
 management_summary_comment: >
   breachsafe-ux is a generic Gradio host that turns any BreachSAFE CLI tool into a web UX by
   reading a YAML descriptor and running the tool as a no-shell subprocess. It ships as the
-  self-contained qureddy-ux image (ADR-0003). The security posture is deliberately thin and
+  self-contained EnXemble image (ADR-0003). The security posture is deliberately thin and
   operator-owned (ADR-0002 section 3): the host binds loopback by default, carries no in-image
   authentication, and treats the operator's port mapping / reverse proxy as the trust boundary.
   Reaching the UI equals reaching a process spawner, so exposure is a deployment decision. The
@@ -64,7 +64,7 @@ abuse_cases:
     `-p` / reverse proxy (ADR-0002 section 3).
   Malicious or tampered tool image: >
     The run.image docker fallback pulls and runs an untrusted image. Constrained to the official
-    digest-pinned tool image; in the shipped qureddy-ux image the local binary always resolves,
+    official tool image; in the shipped EnXemble image the local binary always resolves,
     so the docker path is not exercised (ADR-0003).
 
 security_requirements:
@@ -271,7 +271,7 @@ technical_assets:
         description: >
           Optional: when the local tool binary is not on PATH, the engine runs the tool via
           `docker run --pull=always <run.image>` (ADR-0003 fallback). Not exercised in the shipped
-          qureddy-ux image, where the binary always resolves.
+          EnXemble image, where the binary always resolves.
         protocol: container-spawning
         authentication: none
         authorization: technical-user
@@ -485,7 +485,7 @@ trust_boundaries:
   Host runtime (container):
     id: host-runtime
     description: >
-      The execution environment of the qureddy-ux container: the Gradio host and the tool runner,
+      The execution environment of the EnXemble container: the Gradio host and the tool runner,
       validator and docker backend it spawns. In the shipped image these run in-process with no
       docker socket (ADR-0003).
     type: execution-environment

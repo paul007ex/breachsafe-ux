@@ -41,7 +41,7 @@ boundary.
 
 ```bash
 # Clone
-git clone https://github.com/paul007ex/breachsafe-ux.git
+git clone https://github.com/breachsafe/breachsafe-enxemble.git
 cd breachsafe-ux
 
 # Install uv if you don't have it

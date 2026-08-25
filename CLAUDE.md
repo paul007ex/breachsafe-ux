@@ -4,7 +4,7 @@
 
 This file guides Claude Code (and any AI agent) working in this repository. It follows the
 BreachSAFE repo standard defined in `breachsafe-common/docs/specs/2026-08-22-breachsafe-repo-design.md`
-(the `paul007ex/breachsafe-repo` copier template, now consolidated into
+(the `breachsafe/breachsafe-repo` copier template, now consolidated into
 `breachsafe-common/scaffold`). Retroactive `copier update` adoption is recorded in
 `.copier-answers.yml`; skill drift is tracked in `skills.manifest.yaml`.
 
@@ -82,6 +82,6 @@ There is **no `justfile`** yet — the gate set is being reworked in #127; use t
 
 ## Skills (smart-Claude-on-day-one)
 
-Canonical skills come from `paul007ex/breachsafe-common/skills` — edit them there and re-sync,
+Canonical skills come from `breachsafe/breachsafe-common/skills` — edit them there and re-sync,
 never edit installed copies. The installed set is documented in `skills.manifest.yaml` (for
 drift/sync); copies live in both `.claude/skills/` (Claude) and `.agents/skills/` (Codex).

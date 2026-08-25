@@ -1,11 +1,11 @@
 # BreachSAFE EnXemble
 
-[![Version](https://img.shields.io/badge/version-0.13.9-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat-square)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
-[![OpenSSF Scorecard](https://github.com/paul007ex/breachsafe-ux/actions/workflows/scorecard.yml/badge.svg)](https://github.com/paul007ex/breachsafe-ux/actions/workflows/scorecard.yml)
+[![OpenSSF Scorecard](https://github.com/breachsafe/breachsafe-enxemble/actions/workflows/scorecard.yml/badge.svg)](https://github.com/breachsafe/breachsafe-enxemble/actions/workflows/scorecard.yml)
 
 BreachSAFE EnXemble is the operator-facing audit and evidence surface for BreachSAFE assessment
 tools. It gives security and infrastructure teams a repeatable way to test an endpoint, preserve
@@ -21,8 +21,7 @@ not tested.
 Each run preserves the scan JSON/CBOM, findings stream, rich report, raw log, validation result,
 and optional PDF export. A reviewer can answer what was tested, which tool version ran, what the
 endpoint returned, what was validated, and where remediation is required. The current
-`qureddy-ux` image is the shipped reference image; its technical name remains for compatibility
-while the tracked EnXemble image rename is completed.
+`breachsafe-enxemble` image is the shipped reference image for the BreachSAFE organization.
 
 ## Architecture at a glance
 
@@ -98,16 +97,17 @@ bundles the host and its tools, so a single `docker run` serves the UI with the 
 resolvable. Using the shipped reference example image:
 
 ```bash
-docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
-docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/paul007ex/qureddy-ux:latest
-sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
+docker rm -f enxemble 2>/dev/null || true
+docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
+until curl -fsS http://localhost:7860/ >/dev/null; do sleep 1; done
+open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 
-The first line clears any container already on port 7860; `--pull=always` fetches the newest
-image; the third opens your browser once the host is up (macOS `open`; Linux `xdg-open`; Windows
-`start`). No login, no Docker socket, multi-arch (Intel and Apple Silicon). Stop it with
-`docker stop enxemble`. See [run with Docker](docs/how-to/run-with-docker.md) for tags, digest
-pinning, and configuration.
+The first line removes only the named EnXemble container; `--pull=always` fetches the newest
+image; the health loop waits for the UI before opening the browser. Use `xdg-open` on Linux or
+`start` on Windows. No login, no Docker socket, multi-arch (Intel and Apple Silicon). Stop it
+with `docker stop enxemble`. See [run with Docker](docs/how-to/run-with-docker.md) for tags,
+digest pinning, and configuration.
 
 ## 2. Run from source
 
@@ -116,7 +116,7 @@ point it at your own descriptors. EnXemble is **not** published to PyPI or TestP
 from source with [`uv`](https://github.com/astral-sh/uv):
 
 ```bash
-git clone https://github.com/paul007ex/breachsafe-ux && cd breachsafe-ux
+git clone https://github.com/breachsafe/breachsafe-enxemble && cd breachsafe-enxemble
 uv sync                          # runtime only (enough to launch)
 uv run breachsafe-ux             # serves http://127.0.0.1:7860
 uv run breachsafe-ux --check     # resolve every tab's tool + validator (exit != 0 if any is missing)
@@ -223,7 +223,7 @@ Full details, including feature flags, are in the
 - [Architecture](docs/explanation/architecture.md) · [Why the host is agnostic](docs/explanation/why-agnostic.md)
 - [Architecture decision records](docs/adr/) · [Known issues](docs/KNOWN-ISSUES.md)
 - [Security policy and private disclosure](SECURITY.md)
-- [Public issue tracker](https://github.com/paul007ex/breachsafe-ux/issues)
+- [Public issue tracker](https://github.com/breachsafe/breachsafe-enxemble/issues)
 
 Do not file security vulnerabilities in the public issue tracker. Follow
 [`SECURITY.md`](SECURITY.md) for private reporting.

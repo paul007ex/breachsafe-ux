@@ -59,8 +59,8 @@ run and how its result is reported.
   an unhandled format or exit code, can never render as a passing verdict. The full rationale is in
   [why the verdict has three states](three-state-verdict.md).
 - **Pinned tool image.** When the local tool binary is not on `PATH`, an optional Docker fallback
-  runs the tool from a **digest-pinned** official image (ADR-0003). In the shipped `qureddy-ux`
-  image the local binary always resolves, so this path is not exercised.
+  runs the tool from the official QuReddy image (ADR-0003). In the shipped EnXemble
+  EnXemble image the local binary always resolves, so this path is not exercised.
 
 ## The trust boundaries, drawn
 

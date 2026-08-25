@@ -8,16 +8,16 @@
 - **Deciders:** BreachSAFE (paul)
 - **Related:** ADR-0001 (facade), ADR-0002 (host↔descriptor boundary + trust posture), #35, #67, #120.
 
-## Update — 2026-08-22: self-contained, multi-arch `qureddy-ux` image
+## Update — 2026-08-22: self-contained, multi-arch EnXemble image
 
 The original Decision below (a host-only BASE image, with each tool's product image building
 `FROM` it, and the tool reached via a mounted docker socket or a pip install) never shipped. The
-released packaging (v0.3.1) is a **single self-contained, multi-arch `qureddy-ux` image**:
+released packaging (v0.3.1) is a **single self-contained, multi-arch EnXemble image**:
 
 ```
   official tool image (multi-arch)              breachsafe-ux repo (this repo)
  ┌───────────────────────────────┐   FROM      ┌────────────────────────────────────┐
- │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/paul007ex/qureddy-ux       │
+ │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/breachsafe/breachsafe-enxemble │
  │  qureddy + python + openssl   │             │  + EnXemble host wheel (gradio+eng) │
  │  (amd64 + arm64)              │             │  + tools/qureddy, tools/qureddy-ssh │
  └───────────────────────────────┘             │  + openssh-client (SSH tab)        │
@@ -28,7 +28,7 @@ released packaging (v0.3.1) is a **single self-contained, multi-arch `qureddy-ux
 
 - **Built FROM the official multi-arch `ghcr.io/breachsafe/qureddy:latest`** (qureddy, python,
   and openssl already inside), then adds the EnXemble host wheel and the TLS/SSH descriptors.
-  See `Dockerfile.qureddy-ux` and `.github/workflows/qureddy-ux-image.yml`.
+  See `Dockerfile.enxemble` and `.github/workflows/enxemble-image.yml`.
 - **Scans run in-process.** qureddy is on `PATH` in the image, so the local-binary backend is
   taken; there is **no docker socket mount** and no in-container docker daemon. The workflow's
   smoke test asserts exactly this ("one command, no socket, serves + resolves tools").
@@ -47,14 +47,14 @@ maintainers already ship and test it, gives in-process scans with no socket, and
 **What is preserved.** The engine's `run.image` docker backend (originally W-3) still exists as
 the **general fallback**: a descriptor may declare `run.image`, and the engine runs the local
 binary when it resolves on `PATH` and falls back to `docker run --pull=always <image>` otherwise
-(`src/breachsafe_ux/facade.py`, `resolve.py`; README §6). In the shipped `qureddy-ux` image the
+(`src/breachsafe_ux/facade.py`, `resolve.py`; README §6). In the shipped EnXemble image the
 local binary always resolves, so the image path is not exercised there.
 
 **Base image retired (2026-08-22, #131).** Because the product image builds `FROM` the tool's
-official image (not the host-only base), the `ghcr.io/paul007ex/breachsafe-ux` **base image had no
+official image (not the host-only base), the `ghcr.io/breachsafe/breachsafe-enxemble` **base image had no
 consumer**. It has been removed (`Dockerfile` + `.github/workflows/container.yml` + the base
 `.dockerignore`) and its container package deprecated. What remains is **one image per tool-UX
-product** (`qureddy-ux`) plus the **`breachsafe-ux` Python package/wheel** (the host engine —
+product** (`enxemble`) plus the **`breachsafe-ux` Python package/wheel** (the host engine —
 `pip install` and the wheel the product image bakes in). A future generic "bring-your-own-tools"
 host, if ever needed, would be reintroduced deliberately rather than maintained speculatively.
 
@@ -83,7 +83,7 @@ builds `FROM` it.
 ```
   breachsafe-ux repo (this repo, #35)             qureddy repo (issue, not code here)
  ┌───────────────────────────────┐   FROM        ┌────────────────────────────────┐
- │ ghcr.io/paul007ex/             │◀──────────────│ ghcr.io/paul007ex/qureddy-ux   │
+ │ ghcr.io/breachsafe/            │◀──────────────│ ghcr.io/breachsafe/breachsafe-enxemble │
  │   breachsafe-ux  (BASE)        │               │  + pip install breachsafe-qureddy│
  │  gradio + engine, NO tools     │               │  + tools/qureddy/qureddy.yaml   │
  │  non-root, HEALTHCHECK,        │               │  + BREACHSAFE_UX_TOOLS_DIR=…    │
@@ -97,7 +97,7 @@ builds `FROM` it.
   sets `BREACHSAFE_UX_TOOLS_DIR`. Smoke-tested in CI by "starts and serves HTTP 200"; full
   render/run coverage is the pytest suite (in CI) + the consumer image.
 - **Product images build FROM the base**, in the *tool's* repo (keeps breachsafe-ux
-  tool-agnostic). The `qureddy-ux` image is specified as a detailed issue in the qureddy repo,
+  tool-agnostic). The EnXemble image is specified as a detailed issue in the QuReddy repo,
   not code here.
 - **Trust boundary (ADR-0002 §3):** inside the container the host binds `0.0.0.0` so the port
   can be mapped; the boundary is the operator's `-p` / reverse proxy, not code in the image.

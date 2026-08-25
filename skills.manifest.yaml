@@ -8,7 +8,7 @@
 # and re-synced. Edit skills upstream in breachsafe-common/skills, never the installed copies.
 repo: breachsafe-ux
 archetype: python-cli
-source: https://github.com/paul007ex/breachsafe-common/tree/main/skills
+source: https://github.com/breachsafe/breachsafe-common/tree/main/skills
 skills:
   - breachsafe-architecture-review
   - breachsafe-cicd-hygiene

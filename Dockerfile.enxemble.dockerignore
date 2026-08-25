@@ -1,4 +1,4 @@
-# Per-Dockerfile ignore (BuildKit) for the qureddy-ux consumer image. Keeps dist/ (the host
+# Per-Dockerfile ignore (BuildKit) for the EnXemble consumer image. Keeps dist/ (the host
 # wheel this image installs) and tools/qureddy + tools/qureddy-ssh (the OSS descriptors); drops
 # the Enterprise mint-oscal descriptor and local bin shims.
 .git

@@ -7,7 +7,7 @@ quadrants and has one job: tutorials teach, how-to guides solve a goal, referenc
 exact contract, and explanation gives the rationale.
 
 Every page describes the **EnXemble host** and the evidence workflow around a bounded assessment.
-The packaged `qureddy-ux` image is the current shipped reference image; for what that specific
+The packaged `breachsafe-enxemble` image is the current shipped reference image; for what that specific
 scanner does, see the
 [`breachsafe/qureddy` documentation](https://github.com/breachsafe/qureddy).
 

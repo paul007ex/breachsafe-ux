@@ -28,7 +28,7 @@ also gets a copy of these terms or the URL for them above, as well as copies of 
 plain-text lines beginning with `Required Notice:` that the licensor provided with
 the software. For example:
 
-> Required Notice: Copyright BreachSAFE (https://github.com/paul007ex/breachsafe-skills)
+> Required Notice: Copyright BreachSAFE (https://github.com/breachsafe/breachsafe-common)
 
 ## Changes and New Works License
 

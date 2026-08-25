@@ -1,7 +1,7 @@
 # breachsafe-ux - known issues
 
 No open blockers at this time. New issues are tracked on the GitHub issue tracker:
-https://github.com/paul007ex/breachsafe-ux/issues
+https://github.com/breachsafe/breachsafe-enxemble/issues
 
 ## Resolved
 
