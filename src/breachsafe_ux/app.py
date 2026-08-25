@@ -162,7 +162,8 @@ def _handler(desc: dict[str, Any]) -> Callable[..., tuple[Any, ...]]:
         badge, evaluation, raw, art_texts, primary, path = _result(desc, res)
         # A successful run is represented by the evidence surface; do not add a redundant
         # success banner above it. Failure diagnostics remain visible in the output surface.
-        if "error" not in res and res.get("artifact_path"):
+        badge_state = res.get("badge", ("", ""))[0]
+        if "error" not in res and res.get("artifact_path") and badge_state in ("valid", "none"):
             badge = ""
         # Reset the Run button here, atomic with the result, so it always clears "Running…"
         # (a trailing .then could be skipped; _result never raises, so this return always runs).

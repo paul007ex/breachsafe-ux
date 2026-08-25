@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 BreachSAFE <https://www.breachsafe.io>
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: Apache-2.0
 """Gradio presentation adapters for the descriptor-declared evidence export."""
 
 from __future__ import annotations
