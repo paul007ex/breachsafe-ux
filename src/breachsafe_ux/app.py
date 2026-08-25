@@ -69,19 +69,8 @@ _HEAVY_TIMEOUT_S = 60  # a tool timeout at/above this serializes runs (concurren
 # class-based dark mode, like EnXemble (next-themes .dark). Gradio's generated theme rules can be
 # scoped to different roots across releases, so keep the class and color-scheme in sync on all of
 # them instead of relying on one custom element.
-_THEME_TOGGLE_JS = (
-    "() => { const roots = [document.documentElement, document.body, "
-    "document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); "
-    "const dark = !document.documentElement.classList.contains('dark'); "
-    "roots.forEach((el) => el.classList.toggle('dark', dark)); "
-    "document.documentElement.style.colorScheme = dark ? 'dark' : 'light'; }"
-)
-_DARK_ON_LOAD_JS = (
-    "() => { const roots = [document.documentElement, document.body, "
-    "document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); "
-    "roots.forEach((el) => el.classList.add('dark')); "
-    "document.documentElement.style.colorScheme = 'dark'; }"
-)
+_THEME_TOGGLE_JS = "() => { const roots = [document.documentElement, document.body, document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); const dark = !document.documentElement.classList.contains('dark'); roots.forEach((el) => el.classList.toggle('dark', dark)); document.documentElement.style.colorScheme = dark ? 'dark' : 'light'; }"
+_DARK_ON_LOAD_JS = "() => { const roots = [document.documentElement, document.body, document.querySelector('gradio-app'), document.querySelector('.gradio-container')].filter(Boolean); roots.forEach((el) => el.classList.add('dark')); document.documentElement.style.colorScheme = 'dark'; }"
 
 
 def _code_box(language: str | None = None) -> Any:
