@@ -15,6 +15,12 @@ brand:
   version: "0.2.x"                         # fallback if qureddy is not installed
   url: "https://www.breachsafe.io"
   repo: "https://github.com/breachsafe/qureddy"
+  dependencies:
+    - { label: "QuReddy", url: "https://github.com/breachsafe/qureddy" }
+    - { label: "OpenSSL 3.5.7 LTS", url: "https://github.com/openssl/openssl/releases/tag/openssl-3.5.7" }
+    - { label: "NIST PQC", url: "https://csrc.nist.gov/projects/post-quantum-cryptography" }
+    - { label: "CycloneDX CBOM", url: "https://cyclonedx.org/capabilities/cbom/" }
+    - { label: "Evidence export", url: "https://github.com/paul007ex/breachsafe-evidence-go" }
 inputs:
   - name: host
     type: text

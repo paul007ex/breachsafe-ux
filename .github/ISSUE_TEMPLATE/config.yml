@@ -3,8 +3,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/paul007ex/breachsafe-ux/security/advisories/new
+    url: https://github.com/breachsafe/enxemble/security/advisories/new
     about: Report security issues privately here. Never file a public issue for a vulnerability.
   - name: Project home
     url: https://www.breachsafe.io
-    about: Learn more about BreachSAFE and breachsafe-ux.
+    about: Learn more about BreachSAFE EnXemble.

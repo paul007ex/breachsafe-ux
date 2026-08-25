@@ -7,6 +7,8 @@ in both modes. Single source of truth; these mirror globals.css (do not re-inven
 
 import gradio as gr
 
+from breachsafe_ux.render import _link
+
 BRAND = {
     "name": "BreachSAFE EnXemble",
     "company": "BreachSAFE",
@@ -16,6 +18,12 @@ BRAND = {
     "repo": "https://github.com/breachsafe/enxemble",
     "tagline": "The unified security posture platform, starting with the post-quantum transition.",
 }
+
+
+def provenance_html(items: list[tuple[str, str]]) -> str:
+    """Return a lineage strip from descriptor-declared dependency links."""
+    links = " · ".join(_link(url, label) for label, url in items if label and url)
+    return f'<div class="bs-provenance">Built with {links}</div>' if links else ""
 # globals.css: bs-cyan-400 #3ae7f4 is THE brand cyan; navy #141414; magenta #ff0073.
 BS = {
     "cyan": "#3ae7f4",
@@ -93,4 +101,7 @@ CSS = (
     ".bs-footer{border-top:1px solid #1f293733;margin-top:20px;padding-top:12px;"
     "color:#64748b;font-size:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}"
     ".bs-footer a{color:#0ba0b6;text-decoration:none}"
+    ".bs-provenance{border-top:1px solid #1f293733;margin-top:8px;padding-top:8px;"
+    "color:#64748b;font-size:11px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}"
+    ".bs-provenance a{color:#0ba0b6;text-decoration:none}"
 )

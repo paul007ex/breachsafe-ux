@@ -2,10 +2,18 @@
 
 [![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat-square)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Gradio](https://img.shields.io/badge/UI-Gradio-orange?style=flat-square)](https://www.gradio.app/)
+[![Docker](https://img.shields.io/badge/runtime-Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/)
+[![uv](https://img.shields.io/badge/build-uv-6E56CF?style=flat-square)](https://docs.astral.sh/uv/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
 [![Type Checked: mypy strict](https://img.shields.io/badge/type%20check-mypy%20strict-blue?style=flat-square)](https://mypy-lang.org/)
 [![OpenSSF Scorecard](https://github.com/breachsafe/enxemble/actions/workflows/scorecard.yml/badge.svg)](https://github.com/breachsafe/enxemble/actions/workflows/scorecard.yml)
+[![GHCR image](https://img.shields.io/badge/GHCR-enxemble-blue?style=flat-square&logo=docker)](https://github.com/BreachSAFE/enxemble/pkgs/container/enxemble)
+[![OpenSSL 3.5.7 LTS](https://img.shields.io/badge/OpenSSL-3.5.7%20LTS-721412?style=flat-square&logo=openssl)](https://github.com/openssl/openssl/releases/tag/openssl-3.5.7)
+[![CycloneDX CBOM](https://img.shields.io/badge/CycloneDX-CBOM-2f6690?style=flat-square)](https://cyclonedx.org/capabilities/cbom/)
+[![QuReddy engine](https://img.shields.io/badge/engine-QuReddy-6f42c1?style=flat-square&logo=github)](https://github.com/BreachSAFE/qureddy)
+[![Evidence export](https://img.shields.io/badge/evidence-breachsafe--evidence--go-0ba0b6?style=flat-square&logo=go)](https://github.com/paul007ex/breachsafe-evidence-go)
 
 BreachSAFE EnXemble is the operator-facing audit and evidence surface for BreachSAFE assessment
 tools. It gives security and infrastructure teams a repeatable way to test an endpoint, preserve
@@ -156,9 +164,42 @@ validate:
   badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
 ```
 
-The full recipe (with a generic worked example) is [add a tool](docs/how-to/add-a-tool.md); every
-field is in the [descriptor schema](docs/reference/descriptor-schema.md) and the argv tokens are
-in [descriptor tokens](docs/reference/descriptor-tokens.md).
+The shipped TLS example is the real [`tools/qureddy/qureddy.yaml`](tools/qureddy/qureddy.yaml)
+descriptor. Its core contract is shown below; the file is authoritative and includes the complete
+HNDL evaluation, evidence export, SSH-safe defaults, and provenance comments:
+
+```yaml
+id: qureddy
+title: "HNDL Audit (TLS)"
+standalone: true
+inputs:
+  - { name: host, type: text, label: "host", required: true }
+  - { name: port, type: int, label: "port", default: 443, min: 1, max: 65535 }
+  - { name: timeout, type: int, label: "per-probe timeout (s)", widget: slider,
+      min: 1, max: 300, default: 30, arg: "--timeout" }
+  - { name: sni, type: text, label: "SNI override", group: advanced, arg: "--sni" }
+run:
+  base: [qureddy, scan, tls]
+  image: ghcr.io/breachsafe/qureddy:latest
+  positional_from: "{host}:{port}"
+  output_dir_flag: "--output-dir"
+  artifacts:
+    - { name: cbom, file: scan.cdx.json, primary: true }
+    - { name: json, file: scan.json }
+    - { name: jsonl, file: scan.jsonl }
+    - { name: rich, file: scan.rich.txt }
+validate:
+  argv: ["{python}", "-c", "... CycloneDX 1.7 validation ..."]
+  badge_rule: { pass_if: { exit: 0 }, fail_if: { exit: 1 }, otherwise: unavailable }
+actions:
+  - label: "Test connection"
+    argv: [openssl, s_client, -connect, "{host}:{port}"]
+    ok_if: { exit: 0 }
+```
+
+The full recipe for adding another tool is [add a tool](docs/how-to/add-a-tool.md); every field
+is in the [descriptor schema](docs/reference/descriptor-schema.md) and the argv tokens are in
+[descriptor tokens](docs/reference/descriptor-tokens.md).
 
 ## 5. Interpret the verdict
 

@@ -2,6 +2,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EnXemble documentation
 
+[![BreachSAFE EnXemble](https://img.shields.io/badge/BreachSAFE-EnXemble-0ba0b6?style=flat-square)](https://github.com/breachsafe/enxemble)
+[![QuReddy engine](https://img.shields.io/badge/engine-QuReddy-6f42c1?style=flat-square)](https://github.com/BreachSAFE/qureddy)
+[![OpenSSL 3.5.7 LTS](https://img.shields.io/badge/OpenSSL-3.5.7%20LTS-721412?style=flat-square)](https://github.com/openssl/openssl/releases/tag/openssl-3.5.7)
+[![CycloneDX CBOM](https://img.shields.io/badge/CycloneDX-CBOM-2f6690?style=flat-square)](https://cyclonedx.org/capabilities/cbom/)
+
 This directory follows **[Diátaxis](https://diataxis.fr)**. Each page belongs to one of four
 quadrants and has one job: tutorials teach, how-to guides solve a goal, reference states the
 exact contract, and explanation gives the rationale.

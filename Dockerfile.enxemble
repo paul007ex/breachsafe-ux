@@ -23,6 +23,7 @@
 # Temporary cross-organization dependency: Evidence is still published from the existing
 # breachsafe-evidence-go image until that repository/package is ported to the BreachSAFE org.
 ARG EVIDENCE_IMAGE=ghcr.io/paul007ex/breachsafe-evidence-go:latest
+ARG ENXEMBLE_VERSION=0.9.0
 FROM python:3.14-slim-bookworm AS ux-builder
 COPY dist/breachsafe_ux-*.whl /tmp/
 RUN set -eux; \
@@ -38,10 +39,13 @@ RUN set -eux; \
 # to, and the PDF renderer. The facade verifies both bundled digests before it runs.
 FROM ${EVIDENCE_IMAGE} AS evidence
 
+ARG ENXEMBLE_VERSION=0.9.0
 FROM ghcr.io/breachsafe/qureddy:latest
+ARG ENXEMBLE_VERSION
 LABEL org.opencontainers.image.title="BreachSAFE EnXemble" \
       org.opencontainers.image.vendor="BreachSAFE" \
       org.opencontainers.image.source="https://github.com/breachsafe/enxemble" \
+      org.opencontainers.image.version="${ENXEMBLE_VERSION}" \
       org.opencontainers.image.description="BreachSAFE EnXemble — self-contained QuReddy TLS/SSH audit and evidence host" \
       org.opencontainers.image.base.name="ghcr.io/breachsafe/qureddy"
 
@@ -84,7 +88,7 @@ COPY tools/qureddy-ssh  /opt/enxemble/tools/qureddy-ssh
 ENV BREACHSAFE_UX_TOOLS_DIR=/opt/enxemble/tools \
     BREACHSAFE_EPACK_BIN=/usr/local/bin/epack \
     BREACHSAFE_PDF_BIN=/usr/local/bin/breachsafe-pdf \
-    BREACHSAFE_UX_BUILD_VERSION=0.9.0 \
+    BREACHSAFE_UX_BUILD_VERSION=${ENXEMBLE_VERSION} \
     BREACHSAFE_UX_MINT_OSCAL=false \
     BREACHSAFE_UX_HOST=0.0.0.0 \
     BREACHSAFE_UX_PORT=7860 \

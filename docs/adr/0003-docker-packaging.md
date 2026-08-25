@@ -15,7 +15,7 @@ The original Decision below (a host-only BASE image, with each tool's product im
 released packaging (v0.3.1) is a **single self-contained, multi-arch EnXemble image**:
 
 ```
-  official tool image (multi-arch)              breachsafe-ux repo (this repo)
+  official tool image (multi-arch)              EnXemble repo (this repo)
  ┌───────────────────────────────┐   FROM      ┌────────────────────────────────────┐
  │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/breachsafe/enxemble       │
  │  qureddy + python + openssl   │             │  + EnXemble host wheel (gradio+eng) │
@@ -81,7 +81,7 @@ thesis). Non-functional requirements:
 builds `FROM` it.
 
 ```
-  breachsafe-ux repo (this repo, #35)             qureddy repo (issue, not code here)
+  EnXemble repo (this repo, #35)                  QuReddy repo (issue, not code here)
  ┌───────────────────────────────┐   FROM        ┌────────────────────────────────┐
  │ ghcr.io/breachsafe/            │◀──────────────│ ghcr.io/breachsafe/enxemble   │
  │   breachsafe-ux  (BASE)        │               │  + pip install breachsafe-qureddy│

@@ -1,9 +1,9 @@
-# ADR-0001 — breachsafe-ux: a config-driven single-tool UX facade
+# ADR-0001 — EnXemble: a config-driven single-tool UX facade
 
 - **Status:** Proposed (draft)
 - **Date:** 2026-07-28
 - **Deciders:** BreachSAFE (paul)
-- **Codename:** Gizmo · **Product name:** breachsafe-ux
+- **Codename:** Gizmo · **Product name:** BreachSAFE EnXemble
 - **Related:** breachsafe-ux-frameworks + breachsafe-build-vs-buy skills; TAO/Osmedeus
   ExecutionProvider (orchestration boundary); mint-oscal #30 (productize the facade).
 
@@ -29,7 +29,7 @@ We need a **nice UX per tool** that exposes *all* a tool's parameters and report
 
 ## Decision
 
-Adopt **breachsafe-ux**: a **config-driven, descriptor-based, single-tool UX facade**
+Adopt **BreachSAFE EnXemble**: a **config-driven, descriptor-based, single-tool UX facade**
 rendered on **Gradio** (Apache-2.0), with a 3-state validation badge and BreachSAFE
 brand tokens.
 
@@ -69,7 +69,8 @@ Non-negotiables baked into the engine:
 - **3-state result** — `validator-ran-but-rejected → invalid`; `validator-couldn't-run →
   unavailable`; only a real pass → `valid`. Declarative `badge_rule`, auditable as data.
 - **Engine-owned paths / pinned validator images / upload bounds / timeouts.**
-- **Brand from a single source** (EnXemble `brand.ts` tokens: bs-cyan `#3ae7f4`, lockup).
+- **Brand from a single source** (`src/breachsafe_ux/brand.py`, using EnXemble bs-cyan
+  `#3ae7f4` tokens and the lockup).
 
 ## Consequences
 
@@ -100,6 +101,5 @@ Non-negotiables baked into the engine:
   a permissive base, minimal Claude UX code.
 
 ## Open questions
-- Final name (breachsafe-ux vs Facet vs codename Gizmo).
-- Home repo: its own repo vs `breachsafe-common/` (tooling) vs a `ux/` package.
+- Home repo: [`breachsafe/enxemble`](https://github.com/breachsafe/enxemble).
 - Trust/auth model before any non-localhost deployment (reaching the UI == a process-spawner).

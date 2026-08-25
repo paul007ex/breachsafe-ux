@@ -98,6 +98,19 @@
         },
         "repo": {
           "type": "string"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "Optional display-only runtime lineage links shown in the product header.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "url"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "url": { "type": "string", "minLength": 1 }
+            }
+          }
         }
       }
     },

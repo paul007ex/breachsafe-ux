@@ -54,7 +54,7 @@ jobs:
         # ("'2.5' is not a valid metadata version"), which failed the release. 7.0.0 accepts it.
         run: uv tool run --from "twine==7.0.0" twine check dist/*
       # SLSA build provenance for the wheel + sdist. Verifiable with
-      # `gh attestation verify <file> --repo paul007ex/breachsafe-ux`.
+      # `gh attestation verify <file> --repo breachsafe/enxemble`.
       - name: Attest build provenance for the distributions
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

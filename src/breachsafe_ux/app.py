@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
-from breachsafe_ux.brand import BRAND, CSS, THEME
+from breachsafe_ux.brand import BRAND, CSS, THEME, provenance_html
 from breachsafe_ux.evidence_ui import (
     build_evidence_tabs,
     order_widgets,
@@ -228,7 +228,7 @@ def _action_md(desc: dict[str, Any], action: dict[str, Any], vals: Sequence[Any]
     return _action_output_md(ok, output)
 
 
-def _header() -> None:
+def _header(provenance_items: list[tuple[str, str]]) -> None:
     """Brandbar row: logo + product/version + links, plus the Light/Dark toggle button."""
     img = (
         f'<img src="data:image/png;base64,{_B64}" style="height:50px;width:auto" alt="{BRAND["company"]} logo"/>'
@@ -243,7 +243,8 @@ def _header() -> None:
                 f'<span style="color:#16c7d8">v{_HOST_VERSION}</span></div>'
                 f'<div style="color:#64748b;font-size:12px">'
                 f"{_link(BRAND['url'], 'breachsafe.io')} &nbsp;&middot;&nbsp; "
-                f"{_link(BRAND['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div></div></div>"
+                f"{_link(BRAND['repo'], 'GitHub')} &nbsp;&middot;&nbsp; {_LICENSE}</div>"
+                f"{provenance_html(provenance_items)}</div></div>"
             )
         with gr.Column(scale=1, min_width=130):
             theme_btn = gr.Button("Light / Dark", size="sm")
@@ -434,8 +435,13 @@ def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
 def build() -> gr.Blocks:
     """Build the Gradio Blocks app: a tab per standalone descriptor, plus header and footer."""
     descs = load_descriptors()
+    provenance_items = [
+        (str(item.get("label", "")), str(item.get("url", "")))
+        for desc in descs.values()
+        for item in desc.get("brand", {}).get("dependencies", [])
+    ]
     with gr.Blocks(title=BRAND["name"]) as demo:
-        _header()
+        _header(provenance_items)
         for did, desc in descs.items():
             if desc.get("standalone") is False:
                 continue  # chain-only tool (e.g. mint-oscal): reached via a Convert button, not a tab
