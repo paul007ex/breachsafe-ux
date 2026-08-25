@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
-from breachsafe_ux.brand import BRAND, CSS, THEME, provenance_html
+from breachsafe_ux.brand import BRAND, CSS, THEME, descriptor_provenance, provenance_html
 from breachsafe_ux.evidence_ui import (
     build_evidence_tabs,
     order_widgets,
@@ -435,11 +435,7 @@ def _build_tab(did: str, desc: dict[str, Any], descs: dict[str, Any]) -> None:
 def build() -> gr.Blocks:
     """Build the Gradio Blocks app: a tab per standalone descriptor, plus header and footer."""
     descs = load_descriptors()
-    provenance_items = [
-        (str(item.get("label", "")), str(item.get("url", "")))
-        for desc in descs.values()
-        for item in desc.get("brand", {}).get("dependencies", [])
-    ]
+    provenance_items = descriptor_provenance(descs)
     with gr.Blocks(title=BRAND["name"]) as demo:
         _header(provenance_items)
         for did, desc in descs.items():

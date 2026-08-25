@@ -7,8 +7,6 @@ in both modes. Single source of truth; these mirror globals.css (do not re-inven
 
 import gradio as gr
 
-from breachsafe_ux.render import _link
-
 BRAND = {
     "name": "BreachSAFE EnXemble",
     "company": "BreachSAFE",
@@ -22,8 +20,22 @@ BRAND = {
 
 def provenance_html(items: list[tuple[str, str]]) -> str:
     """Return a lineage strip from descriptor-declared dependency links."""
-    links = " · ".join(_link(url, label) for label, url in items if label and url)
+    links = " · ".join(
+        f'<a href="{url}" target="_blank" rel="noopener" '
+        f'style="color:#0ba0b6;text-decoration:none">{label}</a>'
+        for label, url in items
+        if label and url
+    )
     return f'<div class="bs-provenance">Built with {links}</div>' if links else ""
+
+
+def descriptor_provenance(descs: dict[str, dict]) -> list[tuple[str, str]]:
+    """Collect display-only dependency links without making the controller tool-aware."""
+    return [
+        (str(item.get("label", "")), str(item.get("url", "")))
+        for desc in descs.values()
+        for item in desc.get("brand", {}).get("dependencies", [])
+    ]
 
 
 # globals.css: bs-cyan-400 #3ae7f4 is THE brand cyan; navy #141414; magenta #ff0073.
