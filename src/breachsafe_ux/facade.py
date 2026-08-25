@@ -214,7 +214,9 @@ def _run_workdir(desc: dict[str, Any]) -> Path:
     A fresh uuid4 dir each run so no stale artifact is reused and no two runs share a dir;
     RUN_ROOT pruned to N (#121).
     """
-    workdir = RUN_ROOT / f"{desc['id']}-{uuid.uuid4().hex[:12]}"
+    # Keep the full 128-bit identifier: the directory name can appear in a file URL, so
+    # truncating it needlessly lowers the resistance of the legacy broad-path serving boundary.
+    workdir = RUN_ROOT / f"{desc['id']}-{uuid.uuid4().hex}"
     workdir.mkdir(parents=True, exist_ok=True)
     _prune_run_root()  # #121: bound RUN_ROOT growth (keep the most-recent runs, incl. this one)
     return workdir
