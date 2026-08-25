@@ -63,7 +63,10 @@ RUN set -eux; \
     command -v breachsafe-evidence; \
     command -v breachsafe-pdf; \
     test -s /usr/share/breachsafe/breachsafe-pdf.sha256; \
-    sha256sum -c /usr/share/breachsafe/breachsafe-pdf.sha256
+    expected_sha256=$(awk 'NF {print $1; exit}' /usr/share/breachsafe/breachsafe-pdf.sha256); \
+    test "${#expected_sha256}" -eq 64; \
+    actual_sha256=$(sha256sum /usr/local/bin/breachsafe-pdf | awk '{print $1}'); \
+    test "${actual_sha256}" = "${expected_sha256}"
 
 # ship the OSS descriptors (HNDL Audit: TLS + SSH)
 COPY tools/qureddy      /opt/enxemble/tools/qureddy
