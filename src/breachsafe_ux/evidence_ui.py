@@ -64,6 +64,16 @@ def build_evidence_tabs(
     return eval_outs, raw_log, outs, export_outputs
 
 
+def order_widgets(desc: dict[str, Any], widgets: list[Any], advanced_widgets: list[Any]) -> list[Any]:
+    """Interleave basic and advanced widgets in descriptor order for handler wiring."""
+    ordered: list[Any] = []
+    adv_iter = iter(advanced_widgets)
+    basic_iter = iter(widgets)
+    for spec in desc.get("inputs", []):
+        ordered.append(next(adv_iter) if spec.get("group") == "advanced" else next(basic_iter))
+    return ordered
+
+
 def wire_actions(
     desc: dict[str, Any],
     ordered: list[Any],
