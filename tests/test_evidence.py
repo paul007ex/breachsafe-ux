@@ -132,7 +132,7 @@ def test_presentation_helpers_and_handler(monkeypatch, tmp_path: Path) -> None:
     outside = tmp_path / "report.pdf"
     outside.write_bytes(b"not a pdf")
     assert evidence_ui.pdf_preview_html(str(outside)) == ""
-    assert 'target="_blank"' in evidence_ui.pdf_open_link(str(outside))
+    assert evidence_ui.pdf_open_link(str(outside)) == ""
 
     monkeypatch.setattr(
         evidence_ui, "run_evidence_report", lambda _chain, _path: (False, {"error": "no"})

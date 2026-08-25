@@ -164,11 +164,14 @@ def pdf_open_link(path: str | None) -> str:
     """Expose the generated PDF as a normal browser-openable link."""
     if not path:
         return ""
+    pdf = Path(path).resolve()
+    if not pdf.is_file() or not pdf.is_relative_to(RUN_ROOT.resolve()):
+        return ""
     return (
         '<a class="pdf-open-button" target="_blank" rel="noopener" '
         'style="display:block;text-align:center;padding:12px;margin-top:12px;'
         'border:1px solid #94a3b8;border-radius:8px;color:inherit;text-decoration:none;" '
-        f'href="/gradio_api/file={quote(path, safe="")}">'
+        f'href="/gradio_api/file={quote(str(pdf), safe="")}">'
         f"{html.escape('PDF')}<span> ↗</span></a>"
     )
 
