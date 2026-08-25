@@ -7,10 +7,12 @@
 ### Migration baseline
 
 - Rebrand the public container and workflow surface as **BreachSAFE EnXemble**.
-- Canonical image target is `ghcr.io/breachsafe/breachsafe-enxemble:latest`.
-- Canonical repository target is `breachsafe/breachsafe-enxemble`.
+- Canonical image target is `ghcr.io/breachsafe/enxemble:latest`.
+- Canonical repository target is `breachsafe/enxemble`.
 - Rename the image Dockerfile and workflow to EnXemble names; historical release entries remain
   unchanged below this migration section.
+- Keep the Evidence image reference at `ghcr.io/paul007ex/breachsafe-evidence-go:latest` until
+  the Evidence repository and package are ported to the BreachSAFE organization.
 
 ## [0.13.9] - 2026-08-25
 
@@ -521,7 +523,7 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Self-contained, multi-arch Docker image: `docker run -p 7860:7860 ghcr.io/breachsafe/breachsafe-enxemble:latest`
+- Self-contained, multi-arch Docker image: `docker run -p 7860:7860 ghcr.io/breachsafe/enxemble:latest`
   — QuReddy, the host, and the descriptors in one public image (amd64 + arm64), no login, no docker
   socket. A `run.image` backend also lets the engine run a tool as its published image, always
   latest (`docker run --pull=always`), when the binary isn't on PATH.

@@ -5,7 +5,7 @@
 A short walkthrough of an evidence-backed HNDL assessment: launch EnXemble, run a probe against
 an endpoint, and read the bounded validation result and preserved artifacts.
 
-We use the **shipped EnXemble** image, `ghcr.io/breachsafe/breachsafe-enxemble`, because it bundles the
+We use the **shipped EnXemble** image, `ghcr.io/breachsafe/enxemble`, because it bundles the
 scanner, evidence, and PDF toolchains required for the walkthrough. The assessment records
 observed protocol behavior; it is not a certification.
 
@@ -30,7 +30,7 @@ flowchart LR
 
 ```bash
 docker rm -f $(docker ps -aq --filter publish=7860) 2>/dev/null   # clear any previous run on :7860
-docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
+docker run -d --pull=always -p 7860:7860 --name enxemble ghcr.io/breachsafe/enxemble:latest
 sleep 10 && open http://localhost:7860       # macOS  ·  Linux: xdg-open  ·  Windows: start
 ```
 

@@ -13,7 +13,7 @@ BRAND = {
     "product": "EnXemble",
     "ai": "Aurelius",
     "url": "https://www.breachsafe.io",
-    "repo": "https://github.com/breachsafe/breachsafe-enxemble",
+    "repo": "https://github.com/breachsafe/enxemble",
     "tagline": "The unified security posture platform, starting with the post-quantum transition.",
 }
 # globals.css: bs-cyan-400 #3ae7f4 is THE brand cyan; navy #141414; magenta #ff0073.

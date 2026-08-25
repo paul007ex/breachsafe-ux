@@ -17,7 +17,7 @@ released packaging (v0.3.1) is a **single self-contained, multi-arch EnXemble im
 ```
   official tool image (multi-arch)              breachsafe-ux repo (this repo)
  ┌───────────────────────────────┐   FROM      ┌────────────────────────────────────┐
- │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/breachsafe/breachsafe-enxemble │
+ │ ghcr.io/breachsafe/qureddy    │◀────────────│ ghcr.io/breachsafe/enxemble       │
  │  qureddy + python + openssl   │             │  + EnXemble host wheel (gradio+eng) │
  │  (amd64 + arm64)              │             │  + tools/qureddy, tools/qureddy-ssh │
  └───────────────────────────────┘             │  + openssh-client (SSH tab)        │
@@ -51,7 +51,7 @@ binary when it resolves on `PATH` and falls back to `docker run --pull=always <i
 local binary always resolves, so the image path is not exercised there.
 
 **Base image retired (2026-08-22, #131).** Because the product image builds `FROM` the tool's
-official image (not the host-only base), the `ghcr.io/breachsafe/breachsafe-enxemble` **base image had no
+official image (not the host-only base), the `ghcr.io/breachsafe/enxemble` **base image had no
 consumer**. It has been removed (`Dockerfile` + `.github/workflows/container.yml` + the base
 `.dockerignore`) and its container package deprecated. What remains is **one image per tool-UX
 product** (`enxemble`) plus the **`breachsafe-ux` Python package/wheel** (the host engine —
@@ -83,7 +83,7 @@ builds `FROM` it.
 ```
   breachsafe-ux repo (this repo, #35)             qureddy repo (issue, not code here)
  ┌───────────────────────────────┐   FROM        ┌────────────────────────────────┐
- │ ghcr.io/breachsafe/            │◀──────────────│ ghcr.io/breachsafe/breachsafe-enxemble │
+ │ ghcr.io/breachsafe/            │◀──────────────│ ghcr.io/breachsafe/enxemble   │
  │   breachsafe-ux  (BASE)        │               │  + pip install breachsafe-qureddy│
  │  gradio + engine, NO tools     │               │  + tools/qureddy/qureddy.yaml   │
  │  non-root, HEALTHCHECK,        │               │  + BREACHSAFE_UX_TOOLS_DIR=…    │

@@ -36,7 +36,7 @@ With Docker, pass it with `-e`:
 ```bash
 docker run -d --pull=always -p 7860:7860 \
   -e BREACHSAFE_UX_MINT_OSCAL=false \
-  --name enxemble ghcr.io/breachsafe/breachsafe-enxemble:latest
+  --name enxemble ghcr.io/breachsafe/enxemble:latest
 ```
 
 ## Why this matters for `--check`

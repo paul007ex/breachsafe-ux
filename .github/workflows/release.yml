@@ -42,7 +42,7 @@ jobs:
       - name: Verify canonical release repository
         # GitHub org/repo names are case-insensitive; GITHUB_REPOSITORY preserves the canonical
         # display casing, so lower-case before comparing.
-        run: test "$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" = "breachsafe/breachsafe-enxemble"
+        run: test "$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" = "breachsafe/enxemble"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"

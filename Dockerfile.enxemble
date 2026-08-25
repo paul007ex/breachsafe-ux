@@ -5,7 +5,7 @@
 # enxemble: a self-contained EnXemble host for QuReddy. Built FROM the official, multi-arch
 # qureddy image (qureddy + python + openssl already inside), then adds the EnXemble web host and
 # the TLS/SSH descriptors. One command, no docker socket, any arch:
-#   docker run -p 7860:7860 ghcr.io/breachsafe/breachsafe-enxemble
+#   docker run -p 7860:7860 ghcr.io/breachsafe/enxemble
 # qureddy is on PATH here, so scans run in-process (the descriptors' run.image is just a fallback).
 # Base image digest-pinned (#119) — tag comment kept for humans; the digest is authoritative.
 # Track the qureddy release stream, deliberately UNPINNED. README §6 says to pin by digest
@@ -20,7 +20,9 @@
 # wheel + its deps are installed here (same digest-pinned python as the qureddy base, so the
 # site-packages ABI matches) and COPYed into the final image. qureddy itself comes from the
 # base image — never pip/TestPyPI.
-ARG EVIDENCE_IMAGE=ghcr.io/breachsafe/breachsafe-evidence-go:latest
+# Temporary cross-organization dependency: Evidence is still published from the existing
+# breachsafe-evidence-go image until that repository/package is ported to the BreachSAFE org.
+ARG EVIDENCE_IMAGE=ghcr.io/paul007ex/breachsafe-evidence-go:latest
 FROM python:3.14-slim-bookworm AS ux-builder
 COPY dist/breachsafe_ux-*.whl /tmp/
 RUN set -eux; \
@@ -39,7 +41,7 @@ FROM ${EVIDENCE_IMAGE} AS evidence
 FROM ghcr.io/breachsafe/qureddy:latest
 LABEL org.opencontainers.image.title="BreachSAFE EnXemble" \
       org.opencontainers.image.vendor="BreachSAFE" \
-      org.opencontainers.image.source="https://github.com/breachsafe/breachsafe-enxemble" \
+      org.opencontainers.image.source="https://github.com/breachsafe/enxemble" \
       org.opencontainers.image.description="BreachSAFE EnXemble — self-contained QuReddy TLS/SSH audit and evidence host" \
       org.opencontainers.image.base.name="ghcr.io/breachsafe/qureddy"
 

@@ -32,7 +32,7 @@ backport commitment exists for earlier versions.
 **Do not file a public GitHub issue for vulnerabilities.**
 
 Use **GitHub Security Advisories** at
-https://github.com/breachsafe/breachsafe-enxemble/security/advisories/new to report
+https://github.com/breachsafe/enxemble/security/advisories/new to report
 privately. The repository maintainer is automatically notified.
 
 If you cannot use GitHub Security Advisories, email the maintainer; the contact
